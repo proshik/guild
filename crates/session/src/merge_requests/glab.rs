@@ -3,9 +3,12 @@
 //! Cut down from the removed MR panel's reader (commit 69c459cf): every
 //! call is `glab api --hostname <host> <endpoint>` with `GLAB_NO_PROMPT`,
 //! in a process group of its own, under a per-call and a whole-read
-//! deadline, its output capped while it runs. A read is whole or nothing:
-//! a failed page, a head that moved between the list and the detail, or a
-//! bound passed answers an error, and the caller keeps what it had.
+//! deadline, its output capped while it runs. **Each branch is whole or
+//! nothing**: a failed page, a head that moved between the list and the
+//! detail, or a bound passed answers that branch's error, the caller keeps
+//! what it had for it, and the other branches stand on their own. Only what
+//! is not a branch's — a stop, glab gone, a 401, the deadline spent before
+//! the first branch — fails the read as a whole.
 //!
 //! What did not come back: the five writes, the account read, and project
 //! discovery through glab's `projects/:id` placeholder — the host and the
@@ -93,6 +96,10 @@ pub const SCRUBBED: &[&str] = &[
     "GLAB_DEBUG",
     "GLAB_DEBUG_HTTP",
 ];
+
+/// Each branch's MR, or why that branch alone has no answer — what
+/// [`Glab::read`] answers when the read as a whole held.
+pub type Answers = Vec<(String, Result<Option<MergeRequest>, Error>)>;
 
 /// Why glab gave no answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -399,17 +406,21 @@ impl Glab {
         self
     }
 
-    /// The MR of each branch of one project on one host, whole or nothing:
-    /// per branch, every page of its MRs (every state, newest first), the
-    /// one it maps to, and for an open one its detail, approvals and every
-    /// page of its discussions. Only MRs whose source is this project
-    /// count — a fork's is not ours (spec review r2, finding 6).
-    pub fn read(
-        &self,
-        host: &str,
-        project: &str,
-        branches: &[String],
-    ) -> Result<Vec<(String, Option<MergeRequest>)>, Error> {
+    /// The MR of each branch of one project on one host, **each branch
+    /// whole or nothing**: per branch, every page of its MRs (every state,
+    /// newest first), the one it maps to, and for an open one its detail,
+    /// approvals and every page of its discussions. Only MRs whose source
+    /// is this project count — a fork's is not ours (spec review r2,
+    /// finding 6).
+    ///
+    /// A branch's own failure — a call timed out, a record that changed or
+    /// is incomplete, any other refusal — is that branch's answer, and the
+    /// next branch is still asked. The read fails as a whole only for what
+    /// is not a branch's: stopped by its owner, glab gone, the host signed
+    /// out (a 401 on any branch asks nothing more), or the deadline spent
+    /// before its first branch. A deadline that passes in the middle times
+    /// out each branch left without a call.
+    pub fn read(&self, host: &str, project: &str, branches: &[String]) -> Result<Answers, Error> {
         self.read_until(
             host,
             project,
@@ -427,7 +438,7 @@ impl Glab {
         project: &str,
         branches: &[String],
         deadline: Instant,
-    ) -> Result<Vec<(String, Option<MergeRequest>)>, Error> {
+    ) -> Result<Answers, Error> {
         let project_segment = encode(project);
         let mut answers = Vec::with_capacity(branches.len());
         for branch in branches {
@@ -435,10 +446,18 @@ impl Glab {
                 return Err(Error::Stopped);
             }
             if Instant::now() >= deadline {
-                return Err(Error::TimedOut);
+                if answers.is_empty() {
+                    return Err(Error::TimedOut);
+                }
+                answers.push((branch.clone(), Err(Error::TimedOut)));
+                continue;
             }
-            let mr = self.branch(host, &project_segment, branch, deadline)?;
-            answers.push((branch.clone(), mr));
+            match self.branch(host, &project_segment, branch, deadline) {
+                Err(error @ (Error::Stopped | Error::NotInstalled | Error::SignedOut { .. })) => {
+                    return Err(error);
+                }
+                answer => answers.push((branch.clone(), answer)),
+            }
         }
         Ok(answers)
     }

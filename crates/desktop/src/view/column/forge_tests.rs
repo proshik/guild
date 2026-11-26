@@ -122,7 +122,7 @@ fn a_worktree_s_merge_request_is_drawn_opened_and_explained(cx: &mut TestAppCont
                     batches: vec![crate::forge::Batch {
                         host: "gitlab.example.com".into(),
                         project: "team/app".into(),
-                        result: Ok(vec![("feat".into(), Some(mr()))]),
+                        result: Ok(vec![("feat".into(), Ok(Some(mr())))]),
                     }],
                 },
                 now,
@@ -205,11 +205,14 @@ fn a_worktree_s_merge_request_is_drawn_opened_and_explained(cx: &mut TestAppCont
             failed.batches.push(crate::forge::Batch {
                 host: "gitlab.example.com".into(),
                 project: "team/app".into(),
-                result: Err(guild_session::merge_requests::glab::Error::Failed(
-                    "glab: 500 Internal Server Error (HTTP 500) while reading the \
-                     merge request's discussions, page two of three"
-                        .into(),
-                )),
+                result: Ok(vec![(
+                    "feat".into(),
+                    Err(guild_session::merge_requests::glab::Error::Failed(
+                        "glab: 500 Internal Server Error (HTTP 500) while reading the \
+                         merge request's discussions, page two of three"
+                            .into(),
+                    )),
+                )]),
             });
             assert!(model.land(failed, later));
             cx.notify();
@@ -266,90 +269,5 @@ fn a_worktree_s_merge_request_is_drawn_opened_and_explained(cx: &mut TestAppCont
     assert!(
         cx.debug_bounds("worktree-ahead").is_some(),
         "git's, not GitLab's"
-    );
-}
-
-#[gpui::test]
-fn a_reason_is_the_plain_glyph_s_hover(cx: &mut TestAppContext) {
-    if !crate::root::isolation::isolated_test(concat!(
-        module_path!(),
-        "::a_reason_is_the_plain_glyph_s_hover"
-    )) {
-        return;
-    }
-    let dir = tempfile::tempdir().unwrap();
-    let folder = dir.path().to_path_buf();
-    let common = folder.join(".git");
-    let (_, cx) = cx.add_window_view(|window, cx| {
-        crate::editor::init(cx);
-        let mut desk = Desk::default();
-        desk.normalise();
-        let workspace = desk.active_workspace();
-        let project = desk.open_in(workspace, &folder);
-        let root = cx.new(|cx| {
-            let mut root = Root::from_state(Default::default(), desk, cx);
-            root.isolated_render = true;
-            root.settings.gitlab_merge_requests = true;
-            let now = std::time::Instant::now();
-            let model = root.forge_model_mut();
-            model.set_enabled(true, now);
-            let candidate = crate::forge::Candidate {
-                worktree: folder.clone(),
-                url: "git@gitlab.example.com:team/app.git".into(),
-                branch: "feat".into(),
-            };
-            model.inputs(&common, vec![candidate], now);
-            let ask = model.take_due(now).remove(0);
-            model.land(
-                crate::forge::Answer {
-                    repo: ask.repo,
-                    candidates: ask.candidates,
-                    generation: ask.generation,
-                    resolutions: vec![(
-                        crate::forge::Candidate {
-                            worktree: folder.clone(),
-                            url: "git@gitlab.example.com:team/app.git".into(),
-                            branch: "feat".into(),
-                        },
-                        crate::forge::Resolution::Why(crate::forge::Why::NotLoggedIn(
-                            "gitlab.example.com".into(),
-                        )),
-                    )],
-                    batches: vec![],
-                },
-                now,
-            );
-            root
-        });
-        let row = Row::Opened {
-            project,
-            title: crate::column::Title {
-                name: "feat".into(),
-                primary: false,
-            },
-            branch: Some("feat".into()),
-            committed: Some(1),
-            lines: None,
-        };
-        let view = cx.new(|_| Host {
-            root,
-            row,
-            workspace,
-        });
-        gpui_component::Root::new(view, window, cx)
-    });
-    cx.simulate_resize(gpui::size(px(232.), px(200.)));
-    cx.run_until_parked();
-    assert!(cx.debug_bounds("worktree-mr-glyph").is_none());
-    let why = cx
-        .debug_bounds("worktree-mr-why")
-        .expect("the plain glyph, explained");
-    cx.simulate_mouse_move(why.center(), None, gpui::Modifiers::default());
-    cx.executor()
-        .advance_clock(std::time::Duration::from_secs(2));
-    cx.run_until_parked();
-    assert!(
-        cx.debug_bounds("guild-control-tooltip").is_some(),
-        "its hover says why"
     );
 }

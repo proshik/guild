@@ -1,9 +1,10 @@
 //! When a worktree's merge request is asked again, and what a reply may
 //! change — GLD-063. Pure, on virtual time: no glab, no window.
 use guild_desktop::forge::{
-    Answer, Batch, Candidate, Forge, Resolution, Shown, Trigger, Why, resolve,
+    Answer, Batch, Candidate, Forge, Problem, Progress, Resolution, Shown, Trigger, Why, resolve,
 };
 use guild_session::merge_requests::{
+    glab::Error,
     hosts::Hosts,
     status::{MergeRequest, State},
 };
@@ -73,10 +74,22 @@ fn answer(forge_ask: &guild_desktop::forge::Ask, found: &[(&str, Option<u64>)]) 
             project: PROJECT.into(),
             result: Ok(found
                 .iter()
-                .map(|(branch, iid)| ((*branch).to_owned(), iid.map(mr)))
+                .map(|(branch, iid)| ((*branch).to_owned(), Ok(iid.map(mr))))
                 .collect()),
         }],
     }
+}
+
+/// The answer a refresh would bring when each asked branch's own read
+/// timed out.
+fn failing(forge_ask: &guild_desktop::forge::Ask) -> Answer {
+    let mut failed = answer(forge_ask, &[]);
+    failed.batches[0].result = Ok(forge_ask
+        .candidates
+        .iter()
+        .map(|c| (c.branch.clone(), Err(Error::TimedOut)))
+        .collect());
+    failed
 }
 
 fn shown_iid(forge: &Forge, worktree: &str) -> Option<u64> {
@@ -228,8 +241,7 @@ fn a_failed_batch_keeps_the_last_state_and_says_so() {
     let later = now + Duration::from_secs(200);
     forge.trigger(None, Trigger::Tick, later);
     let ask = forge.take_due(later).remove(0);
-    let mut failed = answer(&ask, &[]);
-    failed.batches[0].result = Err(guild_session::merge_requests::glab::Error::TimedOut);
+    let failed = failing(&ask);
     forge.land(failed, later);
     match forge.shown(Path::new("/work/app")) {
         Shown::Mr { mr, failure, .. } => {
@@ -353,8 +365,10 @@ fn a_host_with_a_port_is_inactive_and_says_why() {
     );
 }
 
+/// A reason no glab was started is the repository's state, not the row's:
+/// the row draws nothing, the status says why, and off hides it.
 #[test]
-fn a_reason_reaches_the_row_and_off_hides_it() {
+fn a_reason_is_the_repository_s_not_the_row_s() {
     let now = Instant::now();
     let mut forge = Forge::new(true);
     forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
@@ -363,12 +377,16 @@ fn a_reason_reaches_the_row_and_off_hides_it() {
     why.resolutions[0].1 = Resolution::Why(Why::NotLoggedIn(HOST.into()));
     why.batches.clear();
     forge.land(why, now);
+    assert_eq!(forge.shown(Path::new("/work/app")), Shown::Nothing);
+    let status = forge.status(&repo()).unwrap();
     assert_eq!(
-        forge.shown(Path::new("/work/app")),
-        Shown::Why(Why::NotLoggedIn(HOST.into()))
+        status.problems,
+        &[Problem::Why(Why::NotLoggedIn(HOST.into()))]
     );
+    assert_eq!(status.checked, Some(now));
     forge.set_enabled(false, now);
     assert_eq!(forge.shown(Path::new("/work/app")), Shown::Nothing);
+    assert_eq!(forge.status(&repo()), None);
 }
 
 // --- what the card and the status bar say, in both languages
@@ -537,8 +555,7 @@ fn clones_keep_their_own_state() {
         (&asks[1], &asks[0])
     };
     forge.land(answer(ask_one, &[("a", Some(1))]), now);
-    let mut failed = answer(ask_two, &[]);
-    failed.batches[0].result = Err(guild_session::merge_requests::glab::Error::TimedOut);
+    let failed = failing(ask_two);
     forge.land(failed, now);
     match forge.shown(Path::new("/work/one")) {
         Shown::Mr { failure, .. } => assert_eq!(failure, None, "two's failure is two's"),
@@ -548,8 +565,7 @@ fn clones_keep_their_own_state() {
     forge.trigger(None, Trigger::Tick, later);
     let asks = forge.take_due(later);
     let ask_one = asks.iter().find(|a| a.repo == one).unwrap();
-    let mut failed = answer(ask_one, &[]);
-    failed.batches[0].result = Err(guild_session::merge_requests::glab::Error::TimedOut);
+    let failed = failing(ask_one);
     forge.land(failed, later);
     let ask_two = asks.iter().find(|a| a.repo == two).unwrap();
     forge.land(answer(ask_two, &[("b", Some(2))]), later);
@@ -567,8 +583,7 @@ fn a_failed_first_refresh_is_unknown_not_no_mr() {
     let mut forge = Forge::new(true);
     forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
     let ask = forge.take_due(now).remove(0);
-    let mut failed = answer(&ask, &[]);
-    failed.batches[0].result = Err(guild_session::merge_requests::glab::Error::TimedOut);
+    let failed = failing(&ask);
     forge.land(failed, now);
     match forge.shown(Path::new("/work/app")) {
         Shown::Unknown { error, .. } => {
@@ -629,8 +644,7 @@ fn a_failure_after_an_empty_read_is_unknown() {
     let later = now + Duration::from_secs(200);
     forge.trigger(None, Trigger::Tick, later);
     let ask = forge.take_due(later).remove(0);
-    let mut failed = answer(&ask, &[]);
-    failed.batches[0].result = Err(guild_session::merge_requests::glab::Error::TimedOut);
+    let failed = failing(&ask);
     forge.land(failed, later);
     match forge.shown(Path::new("/work/app")) {
         Shown::Unknown { error, .. } => {
@@ -719,4 +733,143 @@ fn off_forgets_a_hidden_repository() {
     forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
     assert_eq!(shown_iid(&forge, "/work/app"), None);
     assert_eq!(forge.take_due(now).len(), 1);
+}
+
+// --- each branch on its own, and the repository's state
+
+/// One branch's failure leaves the other branch of the same project
+/// answered, and keeps its own last known MR with the failure beside it.
+#[test]
+fn one_branch_failing_leaves_the_others_answered() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    let both = vec![candidate("/work/a", "a"), candidate("/work/b", "b")];
+    forge.inputs(&repo(), both, now);
+    let ask = forge.take_due(now).remove(0);
+    forge.land(answer(&ask, &[("a", Some(1)), ("b", Some(2))]), now);
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let ask = forge.take_due(later).remove(0);
+    let mut partial = answer(&ask, &[("a", Some(3))]);
+    if let Ok(branches) = &mut partial.batches[0].result {
+        branches.push(("b".into(), Err(Error::Changed)));
+    }
+    forge.land(partial, later);
+    match forge.shown(Path::new("/work/a")) {
+        Shown::Mr { mr, failure, .. } => {
+            assert_eq!(mr.iid, 3, "a's answer is not lost to b's failure");
+            assert_eq!(failure, None, "b's failure is not a's");
+        }
+        other => panic!("{other:?}"),
+    }
+    match forge.shown(Path::new("/work/b")) {
+        Shown::Mr { mr, failure, .. } => {
+            assert_eq!(mr.iid, 2, "b keeps its last known MR");
+            assert_eq!(failure.map(|(why, _)| why), Some(&Error::Changed));
+        }
+        other => panic!("{other:?}"),
+    }
+    assert!(forge.status(&repo()).unwrap().problems.is_empty());
+}
+
+/// A batch that failed as a whole — the deadline spent before it started,
+/// glab's own proxy — is the repository's problem: the rows keep their last
+/// known MRs with no failure of their own, and the next answer that holds
+/// clears it.
+#[test]
+fn a_batch_failing_as_a_whole_is_the_repository_s() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    forge.land(answer(&ask, &[("feat", Some(5))]), now);
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let ask = forge.take_due(later).remove(0);
+    assert_eq!(forge.status(&repo()).unwrap().progress, Progress::Checking);
+    let mut failed = answer(&ask, &[]);
+    failed.batches[0].result = Err(Error::TimedOut);
+    forge.land(failed, later);
+    match forge.shown(Path::new("/work/app")) {
+        Shown::Mr { mr, failure, .. } => {
+            assert_eq!(mr.iid, 5);
+            assert_eq!(failure, None, "not the row's");
+        }
+        other => panic!("{other:?}"),
+    }
+    let status = forge.status(&repo()).unwrap();
+    assert_eq!(status.progress, Progress::Idle);
+    assert_eq!(
+        status.problems,
+        &[Problem::Batch {
+            host: HOST.into(),
+            project: PROJECT.into(),
+            error: Error::TimedOut,
+        }]
+    );
+    let again = later + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, again);
+    let ask = forge.take_due(again).remove(0);
+    forge.land(answer(&ask, &[("feat", Some(5))]), again);
+    assert!(forge.status(&repo()).unwrap().problems.is_empty());
+}
+
+/// A host found signed out — glab's config, or a 401 — keeps the rows'
+/// last known MRs; the repository's state says why.
+#[test]
+fn signed_out_keeps_the_badges() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    forge.land(answer(&ask, &[("feat", Some(5))]), now);
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let ask = forge.take_due(later).remove(0);
+    let mut out = answer(&ask, &[]);
+    out.resolutions[0].1 = Resolution::Why(Why::NotLoggedIn(HOST.into()));
+    out.batches.clear();
+    forge.land(out, later);
+    assert_eq!(shown_iid(&forge, "/work/app"), Some(5));
+    assert_eq!(
+        forge.status(&repo()).unwrap().problems,
+        &[Problem::Why(Why::NotLoggedIn(HOST.into()))]
+    );
+}
+
+/// A refresh due while another is out is queued; the problems' words are
+/// said in both languages.
+#[test]
+fn the_status_says_queued_and_its_problems_in_words() {
+    use guild_desktop::i18n::Ui;
+    use guild_session::Language;
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    assert_eq!(forge.status(&repo()), None, "never taken in");
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    assert_eq!(forge.status(&repo()).unwrap().progress, Progress::Queued);
+    let ask = forge.take_due(now).remove(0);
+    forge.wrote(&repo(), now);
+    assert_eq!(forge.status(&repo()).unwrap().progress, Progress::Checking);
+    forge.land(answer(&ask, &[("feat", None)]), now);
+    assert_eq!(forge.status(&repo()).unwrap().progress, Progress::Queued);
+    forge.retain(|_| false);
+    assert_eq!(forge.status(&repo()), None, "hidden");
+    let batch = Problem::Batch {
+        host: HOST.into(),
+        project: PROJECT.into(),
+        error: Error::TimedOut,
+    };
+    assert_eq!(
+        Ui(Language::English).mr_problem(&batch),
+        "team/app: merge requests not read: glab did not answer in time"
+    );
+    assert_eq!(
+        Ui(Language::Russian).mr_problem(&batch),
+        "team/app: merge requests не прочитаны: glab не ответил вовремя"
+    );
+    assert_eq!(
+        Ui(Language::English).mr_problem(&Problem::Why(Why::NotFound)),
+        "glab not found"
+    );
 }

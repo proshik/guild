@@ -2368,7 +2368,8 @@ impl Root {
     /// The leading glyph's 14×18 slot: a group's folder, the plain branch
     /// glyph, or — GLD-063 — the branch's merge request, which a click
     /// opens and whose hover is the path to merge. The plain glyph's hover
-    /// says why there is none only where that helps.
+    /// says only that the branch's MR is unknown, and why; what is not the
+    /// branch's — glab missing, a host signed out — is the repository's.
     fn worktree_mr_slot(
         &self,
         shown: &crate::forge::Shown<'_>,
@@ -2447,10 +2448,6 @@ impl Root {
                     })
                     .into_any_element()
             }
-            crate::forge::Shown::Why(why) => plain(slot(format!("worktree-glyph-{key}")))
-                .debug_selector(|| "worktree-mr-why".into())
-                .hint(ui.mr_why(why), theme)
-                .into_any_element(),
             // Asked and never answered: the plain glyph, whose hover says it
             // is unknown and why — not the silence of a branch with no MR
             // (code review r1, adversarial-9).

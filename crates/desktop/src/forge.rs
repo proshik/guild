@@ -24,11 +24,16 @@
 //! - **A resolution belongs to the candidate it was made for**: a worktree
 //!   whose destination changed keeps nothing of the old one (code review
 //!   r1, bugs+impl-6).
-//! - **An incomplete answer is unknown, not empty**: a failed batch keeps
-//!   its branches' last known MRs, with the failure beside them, and a
-//!   branch never read says it is unknown (code review r1, adversarial-9).
+//! - **An incomplete answer is unknown, not empty — per branch**: a
+//!   branch whose read failed keeps its own last known MR, with its own
+//!   failure beside it, and one never read says it is unknown (code review
+//!   r1, adversarial-9); another branch's failure changes nothing of it.
+//! - **What is not a branch's is the repository's**: glab missing, a host
+//!   not logged in or with a port, a batch that failed as a whole — glab's
+//!   proxy, the network policy, the deadline spent before it started — is
+//!   [`Forge::status`]'s, never a row's.
 use guild_session::merge_requests::{
-    glab::Error,
+    glab::{Answers, Error},
     hosts::{Hosts, Login},
     remote::{Remote, looks_like_gitlab},
     status::MergeRequest,
@@ -93,15 +98,58 @@ pub enum Resolution {
     Silent,
 }
 
-/// One host and project's reads: each branch's MR, or why there are none.
+/// One host and project's reads: each branch's MR or its own failure, or
+/// why the batch as a whole has none.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Batch {
     /// glab's host name.
     pub host: String,
     /// The project's path.
     pub project: String,
-    /// Each branch's MR, or why the batch has none.
-    pub result: Result<Vec<(String, Option<MergeRequest>)>, Error>,
+    /// Each branch's answer, or the batch's failure as a whole.
+    pub result: Result<Answers, Error>,
+}
+
+/// Why some of a repository's MRs could not be asked at all — the
+/// repository's state, never a row's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Problem {
+    /// No glab was started for a host, and why: not logged in — a 401
+    /// included — glab missing, or a host with a port.
+    Why(Why),
+    /// A host and project's batch failed as a whole: glab's own proxy over
+    /// Guild's, the network policy, the deadline spent before it started.
+    Batch {
+        /// glab's host name.
+        host: String,
+        /// The project's path.
+        project: String,
+        /// What failed.
+        error: Error,
+    },
+}
+
+/// Where a repository's refresh stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Progress {
+    /// Nothing due and nothing out.
+    Idle,
+    /// Due, waiting for the refresh out or for a write's list to land.
+    Queued,
+    /// A refresh is out.
+    Checking,
+}
+
+/// A repository's state, for its header: whether it is being asked, when
+/// it was last answered, and what could not be asked at all.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RepoStatus<'a> {
+    /// Where its refresh stands.
+    pub progress: Progress,
+    /// When the last answer landed; `None` before the first.
+    pub checked: Option<Instant>,
+    /// What that answer could not ask, once each.
+    pub problems: &'a [Problem],
 }
 
 /// A refresh to run: what was asked, under which generation.
@@ -135,12 +183,10 @@ pub struct Answer {
 pub enum Shown<'a> {
     /// The plain branch glyph, nothing to say.
     Nothing,
-    /// The plain branch glyph, with a reason in its hover.
-    Why(Why),
     /// The plain branch glyph: the branch was asked and never answered —
     /// unknown, not "no MR".
     Unknown {
-        /// Why the last refresh failed.
+        /// Why the branch's last read failed.
         error: &'a Error,
         /// When.
         at: Instant,
@@ -151,7 +197,7 @@ pub enum Shown<'a> {
         mr: &'a MergeRequest,
         /// When it was read.
         at: Instant,
-        /// The last refresh's failure, when it came after that read.
+        /// The branch's last failure, when it came after that read.
         failure: Option<(&'a Error, Instant)>,
     },
 }
@@ -174,7 +220,12 @@ struct Repo {
     hidden: bool,
     resolutions: HashMap<Candidate, Resolution>,
     found: HashMap<BranchKey, (Option<MergeRequest>, Instant)>,
-    failures: HashMap<(String, String), (Error, Instant)>,
+    /// Each branch's last failure, kept until its next read holds.
+    failures: HashMap<BranchKey, (Error, Instant)>,
+    /// What the last landed answer could not ask at all.
+    problems: Vec<Problem>,
+    /// When the last answer landed.
+    checked: Option<Instant>,
 }
 
 /// Every repository's MRs and their refresh state.
@@ -219,6 +270,8 @@ impl Forge {
             repo.resolutions.clear();
             repo.found.clear();
             repo.failures.clear();
+            repo.problems.clear();
+            repo.checked = None;
             repo.pending = enabled;
             repo.last = None;
         }
@@ -384,27 +437,53 @@ impl Forge {
             state.pending = true;
             return false;
         }
-        state.resolutions = answer.resolutions.into_iter().collect();
-        for batch in answer.batches {
-            match batch.result {
-                Ok(branches) => {
-                    state
-                        .failures
-                        .remove(&(batch.host.clone(), batch.project.clone()));
-                    for (branch, mr) in branches {
-                        state.found.insert(
-                            (batch.host.clone(), batch.project.clone(), branch),
-                            (mr, now),
-                        );
-                    }
-                }
-                Err(why) => {
-                    state
-                        .failures
-                        .insert((batch.host, batch.project), (why, now));
+        let mut problems = Vec::new();
+        for (_, resolution) in &answer.resolutions {
+            if let Resolution::Why(why) = resolution {
+                let problem = Problem::Why(why.clone());
+                if !problems.contains(&problem) {
+                    problems.push(problem);
                 }
             }
         }
+        // A candidate that was asked and now has a reason not to be — its
+        // host signed out, glab gone — keeps what it last read: the reason
+        // is the repository's, and the row's MR is not a confirmed absence.
+        let mut resolutions: HashMap<Candidate, Resolution> =
+            answer.resolutions.into_iter().collect();
+        for (candidate, resolution) in &mut resolutions {
+            if let (Resolution::Why(_), Some(asked @ Resolution::Asked { .. })) =
+                (&*resolution, state.resolutions.get(candidate))
+            {
+                *resolution = asked.clone();
+            }
+        }
+        state.resolutions = resolutions;
+        for batch in answer.batches {
+            match batch.result {
+                Ok(branches) => {
+                    for (branch, read) in branches {
+                        let key = (batch.host.clone(), batch.project.clone(), branch);
+                        match read {
+                            Ok(mr) => {
+                                state.failures.remove(&key);
+                                state.found.insert(key, (mr, now));
+                            }
+                            Err(why) => {
+                                state.failures.insert(key, (why, now));
+                            }
+                        }
+                    }
+                }
+                Err(error) => problems.push(Problem::Batch {
+                    host: batch.host,
+                    project: batch.project,
+                    error,
+                }),
+            }
+        }
+        state.problems = problems;
+        state.checked = Some(now);
         true
     }
 
@@ -420,7 +499,7 @@ impl Forge {
             return match state.resolutions.get(candidate) {
                 Some(Resolution::Asked { host, project }) => {
                     let key = (host.clone(), project.clone(), candidate.branch.clone());
-                    let failure = state.failures.get(&(host.clone(), project.clone()));
+                    let failure = state.failures.get(&key);
                     match (state.found.get(&key), failure) {
                         (Some((Some(mr), at)), failure) => Shown::Mr {
                             mr,
@@ -439,11 +518,33 @@ impl Forge {
                         _ => Shown::Nothing,
                     }
                 }
-                Some(Resolution::Why(why)) => Shown::Why(why.clone()),
+                // A reason is the repository's, in its status, not the
+                // row's.
                 _ => Shown::Nothing,
             };
         }
         Shown::Nothing
+    }
+
+    /// A repository's state, for its header. `None` while the setting is
+    /// off, while the column does not show it, or before it was taken in.
+    pub fn status(&self, repo: &Path) -> Option<RepoStatus<'_>> {
+        let state = self.repos.get(repo).filter(|state| !state.hidden)?;
+        if !self.enabled {
+            return None;
+        }
+        let progress = if state.in_flight.is_some() {
+            Progress::Checking
+        } else if state.pending && !state.candidates.is_empty() {
+            Progress::Queued
+        } else {
+            Progress::Idle
+        };
+        Some(RepoStatus {
+            progress,
+            checked: state.checked,
+            problems: &state.problems,
+        })
     }
 }
 

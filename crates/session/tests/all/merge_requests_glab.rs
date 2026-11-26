@@ -10,7 +10,7 @@ use guild_session::merge_requests::{
     glab::{Admission, Cancel, Error, Glab, Limits},
     hosts::{Hosts, Login},
     remote::{Remote, looks_like_gitlab},
-    status::{Pipeline, State},
+    status::{MergeRequest, Pipeline, State},
 };
 use std::{
     ffi::OsString,
@@ -235,6 +235,7 @@ fn an_open_mr_is_read_whole_with_the_host_pinned() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     assert_eq!(read.len(), 1);
     let (branch, mr) = &read[0];
@@ -267,6 +268,7 @@ fn a_branch_with_no_mr_answers_none() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["lonely"]))
+        .and_then(whole)
         .unwrap();
     assert_eq!(read, vec![("lonely".to_owned(), None)]);
 }
@@ -303,6 +305,7 @@ fn an_open_mr_wins_over_a_merged_one_and_forks_are_not_ours() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     let mr = read[0].1.as_ref().unwrap();
     assert_eq!(
@@ -321,6 +324,7 @@ fn a_merged_mr_needs_no_detail() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["done"]))
+        .and_then(whole)
         .unwrap();
     let mr = read[0].1.as_ref().unwrap();
     assert_eq!(mr.state, State::Merged);
@@ -335,6 +339,7 @@ fn a_branch_name_is_one_query_value() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feature/x&y"]))
+        .and_then(whole)
         .unwrap();
     assert_eq!(read, vec![("feature/x&y".to_owned(), None)]);
 }
@@ -373,6 +378,7 @@ fn every_page_of_mrs_and_discussions_is_read() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     let mr = read[0].1.as_ref().unwrap();
     assert_eq!(mr.iid, 1, "the open MR was on the second page");
@@ -383,8 +389,21 @@ fn every_page_of_mrs_and_discussions_is_read() {
     );
 }
 
+/// A read whose every branch answered: the first branch's failure is the
+/// read's. What each test of one branch's reading asks; a test of how the
+/// branches stand apart reads the answers as they come.
+fn whole(
+    read: Vec<(String, Result<Option<MergeRequest>, Error>)>,
+) -> Result<Vec<(String, Option<MergeRequest>)>, Error> {
+    read.into_iter()
+        .map(|(branch, mr)| mr.map(|mr| (branch, mr)))
+        .collect()
+}
+
+/// A failed page fails its own branch, whole: the other branch of the same
+/// project keeps its answer.
 #[test]
-fn a_failed_page_fails_the_whole_batch() {
+fn a_failed_page_fails_its_branch_and_no_other() {
     let stand = Stand::new();
     stand.open("a", 1);
     stand.open("b", 2);
@@ -392,11 +411,58 @@ fn a_failed_page_fails_the_whole_batch() {
         &format!("{}/discussions?per_page=100&page=1", Stand::base(2)),
         "glab: 500 Internal Server Error (HTTP 500)\n",
     );
-    let error = stand
+    let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["a", "b"]))
-        .unwrap_err();
-    assert!(matches!(error, Error::Failed(_)), "{error:?}");
+        .unwrap();
+    assert_eq!(read.len(), 2);
+    assert_eq!(read[0].0, "a");
+    assert_eq!(read[0].1.as_ref().unwrap().as_ref().unwrap().iid, 1);
+    assert_eq!(read[1].0, "b");
+    assert!(matches!(read[1].1, Err(Error::Failed(_))), "{:?}", read[1]);
+}
+
+/// The deadline passing in the middle of a batch times out the branch it
+/// caught and each one after it, without a call; what was read before it
+/// stands.
+#[test]
+fn a_deadline_mid_batch_times_out_only_the_rest() {
+    let stand = Stand::new();
+    stand.answer(&stand.list("a", 1), serde_json::json!([]));
+    stand.answer(&stand.list("b", 1), serde_json::json!([]));
+    stand.stall(&stand.list("b", 1), 30.0);
+    stand.answer(&stand.list("c", 1), serde_json::json!([]));
+    let glab = stand.glab().with_limits(Limits {
+        call: Duration::from_secs(20),
+        refresh: Duration::from_secs(20),
+        ..Limits::default()
+    });
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let read = glab
+        .read_until(HOST, PROJECT, &branches(&["a", "b", "c"]), deadline)
+        .unwrap();
+    assert_eq!(read[0], ("a".to_owned(), Ok(None)));
+    assert_eq!(read[1], ("b".to_owned(), Err(Error::TimedOut)));
+    assert_eq!(read[2], ("c".to_owned(), Err(Error::TimedOut)));
+    assert!(!stand.calls().iter().any(|c| c.contains("source_branch=c")));
+}
+
+/// A 401 on any branch is the host's, not the branch's: the read fails as
+/// a whole and asks nothing more.
+#[test]
+fn a_401_on_one_branch_is_the_whole_read_s() {
+    let stand = Stand::new();
+    stand.answer(&stand.list("a", 1), serde_json::json!([]));
+    stand.fail(&stand.list("b", 1), "glab: 401 Unauthorized (HTTP 401)\n");
+    stand.answer(&stand.list("c", 1), serde_json::json!([]));
+    assert_eq!(
+        stand
+            .glab()
+            .read(HOST, PROJECT, &branches(&["a", "b", "c"]))
+            .unwrap_err(),
+        Error::SignedOut { host: HOST.into() }
+    );
+    assert!(!stand.calls().iter().any(|c| c.contains("source_branch=c")));
 }
 
 /// GitLab with no approval rule answers `approved: false` with nothing
@@ -413,6 +479,7 @@ fn no_approval_required_is_satisfied() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     let approvals = read[0].1.as_ref().unwrap().approvals.unwrap();
     assert_eq!((approvals.given, approvals.required), (0, 0));
@@ -425,6 +492,7 @@ fn no_approval_required_is_satisfied() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     assert!(!read[0].1.as_ref().unwrap().approvals.unwrap().satisfied);
 }
@@ -441,6 +509,7 @@ fn approvals_gitlab_does_not_offer_are_unknown_not_a_failure() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     assert_eq!(read[0].1.as_ref().unwrap().approvals, None);
 }
@@ -455,6 +524,7 @@ fn a_head_that_moves_between_the_list_and_the_detail_is_no_answer() {
     let error = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err();
     assert_eq!(error, Error::Changed);
 }
@@ -475,6 +545,7 @@ fn a_stalled_glab_is_stopped_at_its_deadline() {
             ..Limits::default()
         })
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err();
     assert_eq!(error, Error::TimedOut);
     assert!(started.elapsed() < Duration::from_secs(5));
@@ -495,6 +566,7 @@ fn output_past_its_cap_stops_the_child_while_it_runs() {
                 ..Limits::default()
             })
             .read(HOST, PROJECT, &branches(&["feat"]))
+            .and_then(whole)
             .unwrap_err();
         assert!(
             matches!(error, Error::Failed(ref why) if why.contains("MB")),
@@ -521,6 +593,7 @@ fn no_more_children_than_the_admission_allows_across_reads() {
             let glab = stand.glab().with_admission(admission.clone());
             scope.spawn(move || {
                 glab.read(HOST, PROJECT, &branches(&[&format!("b{i}")]))
+                    .and_then(whole)
                     .unwrap();
             });
         }
@@ -549,6 +622,7 @@ fn a_read_waiting_for_admission_still_has_a_deadline() {
             ..Limits::default()
         })
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err();
     assert_eq!(error, Error::TimedOut);
     assert!(started.elapsed() < Duration::from_secs(3));
@@ -605,6 +679,7 @@ fn the_child_never_sees_endpoint_proxy_or_credential_overrides() {
         .glab()
         .with_environment(env)
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     let seen = stand.env_seen();
     assert_eq!(seen.len(), OVERRIDES.len(), "{seen:#?}");
@@ -630,6 +705,7 @@ fn the_config_dir_and_the_prepared_proxy_pass_through() {
             command.env("HTTPS_PROXY", "http://proxy.example:3128");
         }))
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     assert_eq!(
         stand.env_seen(),
@@ -666,6 +742,7 @@ fn unauthorized_is_signed_out_naming_the_host() {
         stand
             .glab()
             .read(HOST, PROJECT, &branches(&["feat"]))
+            .and_then(whole)
             .unwrap_err(),
         Error::SignedOut { host: HOST.into() }
     );
@@ -687,6 +764,7 @@ fn other_failures_are_one_bounded_line_without_token_like_text() {
     let Error::Failed(line) = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err()
     else {
         panic!("not a failure")
@@ -812,6 +890,7 @@ fn an_answer_without_its_project_is_unknown_not_none() {
     let error = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err();
     assert!(matches!(error, Error::Failed(_)), "{error:?}");
 }
@@ -833,6 +912,7 @@ fn an_mr_closed_between_list_and_detail_is_no_answer() {
         let error = stand
             .glab()
             .read(HOST, PROJECT, &branches(&["feat"]))
+            .and_then(whole)
             .unwrap_err();
         assert_eq!(error, Error::Changed, "{state} {status}");
     }
@@ -851,6 +931,7 @@ fn ci_must_pass_without_a_pipeline_is_not_a_check() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     let mr = read[0].1.as_ref().unwrap();
     assert_eq!(mr.pipeline, Some(Pipeline::Missing));
@@ -872,6 +953,7 @@ fn approvals_missing_their_fields_are_unknown() {
         let read = stand
             .glab()
             .read(HOST, PROJECT, &branches(&["feat"]))
+            .and_then(whole)
             .unwrap();
         assert_eq!(read[0].1.as_ref().unwrap().approvals, None, "{answer}");
     }
@@ -890,6 +972,7 @@ fn a_malformed_answer_says_its_shape_not_its_values() {
     let Error::Failed(line) = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err()
     else {
         panic!("not a failure")
@@ -912,6 +995,7 @@ fn the_newest_mr_wins_within_a_second() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     assert_eq!(read[0].1.as_ref().unwrap().iid, 7);
 }
@@ -933,11 +1017,13 @@ fn one_deadline_bounds_every_batch() {
     let started = Instant::now();
     assert_eq!(
         glab.read_until(HOST, PROJECT, &branches(&["a"]), deadline)
+            .and_then(whole)
             .unwrap_err(),
         Error::TimedOut
     );
     assert_eq!(
         glab.read_until(HOST, PROJECT, &branches(&["b"]), deadline)
+            .and_then(whole)
             .unwrap_err(),
         Error::TimedOut,
         "the second batch has no time left"
@@ -959,6 +1045,7 @@ fn a_stop_before_spawn_starts_no_child() {
         .with_cancel(cancel)
         .with_prepare(Arc::new(move |_| raised.stop()))
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err();
     assert_eq!(error, Error::Stopped);
     assert!(stand.calls().is_empty(), "{:?}", stand.calls());
@@ -986,6 +1073,7 @@ fn a_stop_after_spawn_lets_the_child_finish_and_drops_its_answer() {
         .glab()
         .with_cancel(cancel)
         .read(HOST, PROJECT, &branches(&["a", "b"]))
+        .and_then(whole)
         .unwrap_err();
     assert_eq!(error, Error::Stopped);
     assert_eq!(stand.log("signals.log"), "", "not signalled");
@@ -1014,6 +1102,7 @@ fn the_deadline_terminates_before_it_kills() {
             ..Limits::default()
         })
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err();
     assert_eq!(error, Error::TimedOut);
     assert!(!stand.calls().is_empty(), "the child ran");
@@ -1052,6 +1141,7 @@ fn an_abort_ends_the_child_in_flight() {
         })
         .with_cancel(cancel)
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err();
     assert_eq!(error, Error::Stopped);
     assert!(
@@ -1207,7 +1297,10 @@ fn an_answer_without_its_source_branch_is_unknown_not_none() {
             empty => record["source_branch"] = empty.clone(),
         }
         stand.answer(&stand.list("feat", 1), serde_json::json!([record]));
-        let read = stand.glab().read(HOST, PROJECT, &branches(&["feat"]));
+        let read = stand
+            .glab()
+            .read(HOST, PROJECT, &branches(&["feat"]))
+            .and_then(whole);
         assert!(
             matches!(read, Err(Error::Failed(_))),
             "{unsaid:?}: {read:?}"
@@ -1231,6 +1324,7 @@ fn the_detail_s_draft_wins_over_the_list_s() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     assert!(!read[0].1.as_ref().unwrap().draft);
 
@@ -1243,6 +1337,7 @@ fn the_detail_s_draft_wins_over_the_list_s() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     assert!(read[0].1.as_ref().unwrap().draft);
 }
@@ -1268,7 +1363,10 @@ fn only_a_web_link_is_an_mr_s_link() {
         let mut record = listed(1, "feat", "merged");
         record["web_url"] = url.into();
         stand.answer(&stand.list("feat", 1), serde_json::json!([record]));
-        let read = stand.glab().read(HOST, PROJECT, &branches(&["feat"]));
+        let read = stand
+            .glab()
+            .read(HOST, PROJECT, &branches(&["feat"]))
+            .and_then(whole);
         assert!(matches!(read, Err(Error::Failed(_))), "{url:?}: {read:?}");
     }
     for url in [
@@ -1282,6 +1380,7 @@ fn only_a_web_link_is_an_mr_s_link() {
         let read = stand
             .glab()
             .read(HOST, PROJECT, &branches(&["feat"]))
+            .and_then(whole)
             .unwrap();
         assert_eq!(read[0].1.as_ref().unwrap().web_url, url);
     }
@@ -1315,7 +1414,8 @@ fn a_deadline_passed_in_preparing_starts_no_child() {
                 });
             }
         }))
-        .read_until(HOST, PROJECT, &branches(&["feat"]), deadline);
+        .read_until(HOST, PROJECT, &branches(&["feat"]), deadline)
+        .and_then(whole);
     assert_eq!(read, Err(Error::TimedOut));
     assert!(!mark.exists(), "a child was started after the deadline");
     assert!(stand.calls().is_empty(), "{:?}", stand.calls());
@@ -1339,6 +1439,7 @@ fn not_approved_without_approvals_is_gitlab_s_block() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     let mr = read[0].1.as_ref().unwrap();
     assert_eq!(mr.approvals, None);
@@ -1372,6 +1473,7 @@ fn a_relative_config_dir_reaches_glab_absolute() {
         .glab()
         .with_environment(env)
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     let expected = std::env::current_dir().unwrap().join("relative/glab");
     assert_eq!(
@@ -1517,6 +1619,7 @@ fn the_quit_s_last_moment_kills_what_sigterm_did_not() {
         })
         .with_cancel(cancel)
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap_err();
     assert_eq!(error, Error::Stopped);
     assert!(
@@ -1543,7 +1646,10 @@ fn signed_out_is_gitlab_s_401_not_a_message_s_words() {
         r#"{"message": "not authenticated for this project"}"#,
         Some("glab: not authenticated for this project (HTTP 403)"),
     );
-    let read = stand.glab().read(HOST, PROJECT, &branches(&["feat"]));
+    let read = stand
+        .glab()
+        .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole);
     assert!(matches!(read, Err(Error::Failed(_))), "{read:?}");
     assert!(
         stand.calls()[0].contains("--include"),
@@ -1558,7 +1664,10 @@ fn signed_out_is_gitlab_s_401_not_a_message_s_words() {
         r#"{"errors": ["Unauthorized"]}"#,
         Some("glab: Unauthorized"),
     );
-    let read = stand.glab().read(HOST, PROJECT, &branches(&["feat"]));
+    let read = stand
+        .glab()
+        .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole);
     assert_eq!(read, Err(Error::SignedOut { host: HOST.into() }));
 
     // A whole answer behind its headers reads as before, and no header
@@ -1576,6 +1685,7 @@ fn signed_out_is_gitlab_s_401_not_a_message_s_words() {
     let read = stand
         .glab()
         .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
         .unwrap();
     assert_eq!(read[0].1.as_ref().unwrap().iid, 1);
     let stand = Stand::new();
@@ -1585,7 +1695,11 @@ fn signed_out_is_gitlab_s_401_not_a_message_s_words() {
         r#"{"message": "404 Project Not Found"}"#,
         Some("glab: 404 Project Not Found (HTTP 404)"),
     );
-    match stand.glab().read(HOST, PROJECT, &branches(&["feat"])) {
+    match stand
+        .glab()
+        .read(HOST, PROJECT, &branches(&["feat"]))
+        .and_then(whole)
+    {
         Err(Error::Failed(line)) => assert!(!line.contains("X-Request-Id"), "{line}"),
         other => panic!("{other:?}"),
     }

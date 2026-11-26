@@ -6,9 +6,9 @@
 
 ## 2. Per-branch answers and the repository's state
 
-- [ ] 2.1 Failing tests: `glab` read with one failed branch answers the other's MR (session `merge_requests_glab.rs`); deadline mid-batch times out only the rest; the model keeps a branch's own failure and its last MR; project-wide failures reach `status()` and no row; a 401 keeps badges
-- [ ] 2.2 `Glab::read_until` per branch; `Batch::result` per branch; `Repo` failures per branch, `problems`; `Progress`, `Problem`, `RepoStatus`, `Forge::status`, `Root::forge_status`, `Ui::mr_problem`; `Shown::Why` and its row arm removed; `refresh` turns proxy, policy and deadline-before-batch into project-wide errors
-- [ ] 2.3 Decision 56, module comments, CHANGELOG `### Fixed`/`### Changed`; `just check`; commit
+- [x] 2.1 Failing tests: `glab` read with one failed branch answers the other's MR (session `merge_requests_glab.rs`); deadline mid-batch times out only the rest; the model keeps a branch's own failure and its last MR; project-wide failures reach `status()` and no row; a 401 keeps badges
+- [x] 2.2 `Glab::read_until` per branch; `Batch::result` per branch; `Repo` failures per branch, `problems`; `Progress`, `Problem`, `RepoStatus`, `Forge::status`, `Root::forge_status`, `Ui::mr_problem`; `Shown::Why` and its row arm removed; `refresh` turns proxy, policy and deadline-before-batch into project-wide errors
+- [x] 2.3 Decision 56, module comments, CHANGELOG `### Fixed`/`### Changed`; `just check`; commit
 
 ## 3. The default branch is not asked
 

@@ -584,9 +584,20 @@ here; the comment beside the citation carries the rule it names.
       into its parent is not looked up.
     - **REST, per branch**: every page of its MRs in every state, an open
       one over a merged or closed one and the newest of a state; for an
-      open one its detail, approvals and every page of its discussions. A
-      read is whole or nothing; a failed batch keeps the last known MRs
-      beside its failure and is never shown as "no MR". Only an absolute
+      open one its detail, approvals and every page of its discussions.
+      **Each branch is whole or nothing**: a branch whose read failed — a
+      call timed out, a record changed or incomplete, any other refusal —
+      keeps its own last known MR beside its own failure and is never shown
+      as "no MR", while the other branches of the same batch publish what
+      they read. A deadline passing mid-batch times out each branch left,
+      without a call.
+    - **What is not a branch's is the repository's state, not a row's**:
+      glab missing, a host not logged in — a 401 included — or with a port,
+      and a batch failed as a whole — glab's own proxy, the network policy,
+      the refresh's deadline spent before the batch started. The rows keep
+      their last known MRs and draw no reason; `Forge::status` says the
+      repository's progress (queued, checking), when it was last answered
+      and these problems, for its header. Only an absolute
       http or https `web_url` is an MR's link; anything else makes the
       record incomplete, so nothing but a web page is opened from GitLab's
       answer.
@@ -630,13 +641,14 @@ here; the comment beside the citation carries the rule it names.
       A host's `ssh_host` names it only for an ssh or scp-style remote. A
       401 signs a host out for the rest of the refresh: one probe. A
       signed-out host, a missing glab and a host with an explicit port —
-      which glab 1.118's `--hostname` refuses — cost no request; the row's
-      glyph says why only for those three, and a missing glab only for a
-      remote that looks like GitLab. The port stays in the host's identity.
+      which glab 1.118's `--hostname` refuses — cost no request; the
+      repository's state says why only for those three, and a missing glab
+      only for a remote that looks like GitLab. The port stays in the
+      host's identity.
     - **What is not known is not "no MR".** A record without its project or
       its source branch, an MR closed between the list and its detail, an
       approvals answer that states nothing: unknown, never a ✓. A branch read
-      with no MR whose next refresh failed is unknown again. GitLab's
+      with no MR whose next read failed is unknown again. GitLab's
       `not_approved` with no failing approvals line is GitLab's own block,
       said without a count; the detail's `draft` wins over the list's. A branch asked and never answered
       draws the plain glyph with its hover saying the MR is unknown and why.

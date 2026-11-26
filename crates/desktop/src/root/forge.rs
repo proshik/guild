@@ -259,6 +259,15 @@ impl Root {
         self.forge.model.shown(worktree)
     }
 
+    /// A repository's state, by its common git directory, for its header:
+    /// queued, checking, when it was last answered, and what could not be
+    /// asked at all. `None` while the setting is off or the column does not
+    /// show it.
+    #[allow(dead_code)] // The repository header's indicator reads it.
+    pub(crate) fn forge_status(&self, repo: &Path) -> Option<crate::forge::RepoStatus<'_>> {
+        self.forge.model.status(repo)
+    }
+
     /// The URL of the MR a worktree's row shows now, if it shows one.
     pub(crate) fn forge_url(&self, worktree: &Path) -> Option<String> {
         match self.forge_shown(worktree) {
@@ -313,7 +322,10 @@ impl Root {
 
 /// One logical refresh of one repository, under **one deadline** for all
 /// its batches (code review r1, bugs+impl-7): a batch that has no time
-/// left is timed out without a call, and keeps its last known state.
+/// left is timed out as a whole without a call — the repository's problem
+/// — and its rows keep their last known state. A failure of glab's or of
+/// the network policy fails a batch as a whole too; a branch's own failure
+/// stays the branch's.
 pub(crate) fn refresh(
     ask: Ask,
     located: Result<PathBuf, Error>,
@@ -478,18 +490,19 @@ mod tests {
         );
         assert_eq!(calls(&dir).len(), 1, "{:?}", calls(&dir));
         assert_eq!(answer.batches.len(), 2);
-        assert!(
-            answer
-                .batches
-                .iter()
-                .all(|batch| batch.result == Err(Error::TimedOut))
+        // The first batch's branch timed out in its call — its own; the
+        // second had no time left before it started — the repository's.
+        assert_eq!(
+            answer.batches[0].result,
+            Ok(vec![("feat".to_owned(), Err(Error::TimedOut))])
         );
+        assert_eq!(answer.batches[1].result, Err(Error::TimedOut));
         assert!(started.elapsed() < std::time::Duration::from_secs(8));
     }
 
     /// bugs+impl-2: a 401 says the host is signed out for the rest of the
-    /// refresh: its other projects are not asked, and every row on it says
-    /// why.
+    /// refresh: its other projects are not asked, and every candidate on it
+    /// resolves to the reason — the repository's state, not its rows'.
     #[test]
     fn a_401_signs_the_host_out_for_the_whole_refresh() {
         let (dir, glab) = stand_in("echo 'glab: 401 Unauthorized (HTTP 401)' >&2; exit 1");
@@ -695,7 +708,7 @@ mod tests {
                     batches: vec![Batch {
                         host: "gitlab.example.com".into(),
                         project: "team/app".into(),
-                        result: Ok(vec![("a".into(), Some(mr)), ("b".into(), None)]),
+                        result: Ok(vec![("a".into(), Ok(Some(mr))), ("b".into(), Ok(None))]),
                     }],
                 },
                 now,

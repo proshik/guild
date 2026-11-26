@@ -1,7 +1,7 @@
 //! A merge request's path to merge, worded when shown — GLD-063. The model
 //! (`guild_session::merge_requests::status`) keeps facts; the words are here.
 use super::{Language, Ui};
-use crate::forge::Why;
+use crate::forge::{Problem, Why};
 use guild_session::merge_requests::{
     glab::Error,
     status::{Block, Check, Pipeline},
@@ -215,6 +215,22 @@ impl Ui {
             }
             (Why::PortedHost(host), true) => {
                 format!("glab не умеет обращаться к хосту с портом: {host}")
+            }
+        }
+    }
+
+    /// What a repository could not ask at all, in one line — its header's
+    /// words: the reason, or the project and why its batch failed.
+    pub fn mr_problem(self, problem: &Problem) -> String {
+        match problem {
+            Problem::Why(why) => self.mr_why(why),
+            Problem::Batch { project, error, .. } => {
+                let why = self.mr_error(error);
+                if self.0 == Language::Russian {
+                    format!("{project}: merge requests не прочитаны: {why}")
+                } else {
+                    format!("{project}: merge requests not read: {why}")
+                }
             }
         }
     }

@@ -5,7 +5,7 @@ kind: feature
 status: backlog
 priority: 4
 component: desktop
-depends_on: [GLD-021]
+depends_on: [GLD-063]
 touches:
   - crates/desktop/src/root/gitlab.rs
   - crates/desktop/src/root/column.rs
@@ -51,4 +51,4 @@ design system and the person's decision come before code.
 ## Context
 
 - `AGENTS.md` — git writes and their guards.
-- GLD-021.
+- GLD-063 (decision 56); GLD-021, cancelled.

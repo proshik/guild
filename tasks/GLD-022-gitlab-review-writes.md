@@ -5,7 +5,7 @@ kind: feature
 status: backlog
 priority: 4
 component: desktop
-depends_on: [GLD-021]
+depends_on: [GLD-063]
 touches:
   - crates/desktop/src/gitlab/**
   - crates/desktop/src/root/gitlab.rs
@@ -53,4 +53,4 @@ Guild's design system and the person's decision come before code.
 
 ## Context
 
-- GLD-021, GLD-030.
+- GLD-063 (decision 56), GLD-030; GLD-021, cancelled.

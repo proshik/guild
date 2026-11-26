@@ -2,7 +2,7 @@
 id: GLD-021
 title: "Read the current branch's GitLab MR, checks and failing job log"
 kind: feature
-status: backlog
+status: cancelled
 priority: 1
 component: desktop
 depends_on: []
@@ -18,6 +18,13 @@ created: "2026-11-07"
 ---
 
 ## Goal
+
+**Cancelled:** GLD-063 delivered what this task was for and settled its
+open choice. Decision 56 reads each worktree's merge request through `glab`,
+only reads, and holds no token of Guild's own. The column and the status bar
+show the MR, its state and its pipeline, and they say when there is none.
+The failing job's log was not delivered and is dropped here. If it is wanted,
+it becomes a task of its own with a new id.
 
 From the window, see the merge request of the branch in front, its pipeline's
 checks and the log of a failing job — without opening a browser. Read-only.

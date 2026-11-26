@@ -2412,18 +2412,14 @@ impl Root {
             } => {
                 // The age is the last successful read's; the failure only
                 // says why the refresh after it did not land (code review
-                // r1, bugs+impl-14).
-                let card = crate::view::forge::PathCard::of(
-                    mr,
-                    ahead,
-                    failure.map(|(error, _)| ui.mr_failure(error, at.elapsed().as_secs() as i64)),
-                    ui,
-                    theme,
-                );
-                let lines = card.lines.clone();
-                let (iid, title) = (card.iid, card.title.clone());
-                let failure = card.failure.clone();
+                // r1, bugs+impl-14). The card is worded when it opens, not
+                // when the column was built: an answer that changes nothing
+                // asks for no frame, so ages worded at build time would
+                // stand still.
                 let url = mr.web_url.clone();
+                let card_mr = (*mr).clone();
+                let failure = failure.map(|(error, _)| error.clone());
+                let read = *at;
                 slot(format!("worktree-mr-{key}"))
                     .cursor_pointer()
                     .child(crate::view::forge::glyph(mr, theme, ring))
@@ -2434,17 +2430,16 @@ impl Root {
                     })
                     .hint_delay()
                     .tooltip(move |_, app| {
-                        let lines = lines.clone();
-                        let title = title.clone();
-                        let failure = failure.clone();
-                        app.new(move |_| crate::view::forge::PathCard {
-                            iid,
-                            title,
-                            lines,
-                            failure,
+                        let card = crate::view::forge::PathCard::of(
+                            &card_mr,
+                            ahead,
+                            failure
+                                .as_ref()
+                                .map(|error| ui.mr_failure(error, read.elapsed().as_secs() as i64)),
+                            ui,
                             theme,
-                        })
-                        .into()
+                        );
+                        app.new(move |_| card).into()
                     })
                     .into_any_element()
             }

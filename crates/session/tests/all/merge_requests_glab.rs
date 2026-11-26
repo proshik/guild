@@ -400,26 +400,34 @@ fn whole(
         .collect()
 }
 
-/// A failed page fails its own branch, whole: the other branch of the same
-/// project keeps its answer.
+/// A failed page fails its own branch, whole: the branches before and after
+/// it in the same project keep their answers, and the one after is still
+/// asked.
 #[test]
 fn a_failed_page_fails_its_branch_and_no_other() {
     let stand = Stand::new();
     stand.open("a", 1);
     stand.open("b", 2);
+    stand.open("c", 3);
     stand.fail(
         &format!("{}/discussions?per_page=100&page=1", Stand::base(2)),
         "glab: 500 Internal Server Error (HTTP 500)\n",
     );
     let read = stand
         .glab()
-        .read(HOST, PROJECT, &branches(&["a", "b"]))
+        .read(HOST, PROJECT, &branches(&["a", "b", "c"]))
         .unwrap();
-    assert_eq!(read.len(), 2);
+    assert_eq!(read.len(), 3);
     assert_eq!(read[0].0, "a");
     assert_eq!(read[0].1.as_ref().unwrap().as_ref().unwrap().iid, 1);
     assert_eq!(read[1].0, "b");
     assert!(matches!(read[1].1, Err(Error::Failed(_))), "{:?}", read[1]);
+    assert_eq!(read[2].0, "c");
+    assert_eq!(read[2].1.as_ref().unwrap().as_ref().unwrap().iid, 3);
+    assert!(
+        stand.calls().iter().any(|c| c.contains("source_branch=c")),
+        "the branch after the failed one is asked"
+    );
 }
 
 /// The deadline passing in the middle of a batch times out the branch it

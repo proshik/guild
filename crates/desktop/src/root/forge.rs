@@ -326,9 +326,10 @@ impl Root {
 }
 
 /// One logical refresh of one repository, under **one deadline** for all
-/// its batches (code review r1, bugs+impl-7): a batch that has no time
-/// left is timed out as a whole without a call — the repository's problem
-/// — and its rows keep their last known state. A failure of glab's or of
+/// its batches (code review r1, bugs+impl-7), each batch given an equal
+/// share of what is left: a batch that has no time left is timed out as a
+/// whole without a call — the repository's problem — and its rows keep
+/// their last known state. A failure of glab's or of
 /// the network policy fails a batch as a whole too; a branch's own failure
 /// stays the branch's.
 pub(crate) fn refresh(
@@ -346,13 +347,22 @@ pub(crate) fn refresh(
     // refresh: one probe, not one per project (code review r2, bugs+impl-2).
     let mut signed_out: Vec<String> = Vec::new();
     if let Ok(program) = located {
-        for (host, project, branches) in asked {
+        let count = asked.len();
+        for (index, (host, project, branches)) in asked.into_iter().enumerate() {
             if cancel.is_raised() {
                 break;
             }
             if signed_out.contains(&host) {
                 continue;
             }
+            // Each batch left gets an equal share of the time left, and what
+            // one does not use passes to the next: an unresponsive host
+            // whose every branch waits out its call cannot spend the
+            // refresh's whole deadline and leave the batches after it none
+            // (code review r1 of the per-branch change, adversarial-1).
+            let now = Instant::now();
+            let share = deadline.saturating_duration_since(now) / (count - index) as u32;
+            let batch_deadline = (now + share).min(deadline);
             let result = match &proxy {
                 Err(why) => Err(Error::Failed((*why).to_owned())),
                 // glab's own proxy for the host wins over the environment's,
@@ -369,7 +379,7 @@ pub(crate) fn refresh(
                         .with_prepare(Arc::new(move |command| {
                             crate::network::apply_policy(command, proxy.as_ref());
                         }))
-                        .read_until(&host, &project, &branches, deadline)
+                        .read_until(&host, &project, &branches, batch_deadline)
                 }
             };
             match result {
@@ -476,32 +486,61 @@ mod tests {
         )
     }
 
-    /// docs+tests-8: one budget for the repository's whole refresh: a first
-    /// batch that spends it leaves the second none, and the second starts no
-    /// child. The budget leaves a loaded machine room to start the first
-    /// child and log its call: 500 ms did not, and the call went unlogged.
+    /// docs+tests-8 and adversarial-1: one budget bounds the repository's
+    /// whole refresh, shared by its batches. A first project whose every
+    /// branch stalls times out its own branches — the first in its call,
+    /// the rest without one — and leaves the second project its share: read,
+    /// not timed out unasked. The budget leaves a loaded machine room to
+    /// start each child and log its call.
     #[test]
-    fn one_budget_bounds_every_batch_of_a_refresh() {
-        let (dir, glab) = stand_in("sleep 10 & wait $!");
-        let (ask, hosts) = two_projects();
+    fn one_budget_is_shared_by_every_batch_of_a_refresh() {
+        let (dir, glab) = stand_in(r#"case "$*" in *team%2Fone*) sleep 10 & wait $!;; esac"#);
+        let candidate = |worktree: &str, project: &str, branch: &str| Candidate {
+            worktree: PathBuf::from(worktree),
+            url: format!("git@gitlab.example.com:team/{project}.git"),
+            branch: branch.into(),
+        };
+        let ask = Ask {
+            repo: PathBuf::from("/work/app/.git"),
+            candidates: vec![
+                candidate("/work/a", "one", "a"),
+                candidate("/work/b", "one", "b"),
+                candidate("/work/c", "one", "c"),
+                candidate("/work/two", "two", "feat"),
+            ],
+            generation: 0,
+        };
         let started = Instant::now();
         let answer = refresh(
             ask,
             Ok(glab),
-            &hosts,
+            &signed_in(),
             Ok(None),
             Arc::new(Cancel::default()),
-            std::time::Duration::from_secs(3),
+            std::time::Duration::from_secs(4),
         );
-        assert_eq!(calls(&dir).len(), 1, "{:?}", calls(&dir));
-        assert_eq!(answer.batches.len(), 2);
-        // The first batch's branch timed out in its call — its own; the
-        // second had no time left before it started — the repository's.
+        let batch = |project: &str| {
+            answer
+                .batches
+                .iter()
+                .find(|batch| batch.project == project)
+                .unwrap_or_else(|| panic!("{project}: {:?}", answer.batches))
+                .result
+                .clone()
+        };
+        let timed_out = |branch: &str| (branch.to_owned(), Err(Error::TimedOut));
         assert_eq!(
-            answer.batches[0].result,
-            Ok(vec![("feat".to_owned(), Err(Error::TimedOut))])
+            batch("team/one"),
+            Ok(vec![timed_out("a"), timed_out("b"), timed_out("c")])
         );
-        assert_eq!(answer.batches[1].result, Err(Error::TimedOut));
+        assert_eq!(batch("team/two"), Ok(vec![("feat".to_owned(), Ok(None))]));
+        let asked = calls(&dir);
+        assert_eq!(
+            asked.iter().filter(|c| c.contains("team%2Fone")).count(),
+            1,
+            "{asked:?}"
+        );
+        assert!(asked.iter().any(|c| c.contains("team%2Ftwo")), "{asked:?}");
         assert!(started.elapsed() < std::time::Duration::from_secs(8));
     }
 

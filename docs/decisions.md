@@ -606,7 +606,9 @@ here; the comment beside the citation carries the rule it names.
       record incomplete, so nothing but a web page is opened from GitLab's
       answer.
     - **Bounded**: a per-call deadline and **one deadline for a
-      repository's whole refresh**, looked at before a permit is granted and
+      repository's whole refresh**, each of its batches given an equal share
+      of what is left — so an unresponsive host cannot spend it all and leave
+      the next project none — looked at before a permit is granted and
       again right before a child starts; output read from pipes as it comes,
       no byte past the cap kept, a stream past it ending the child; and
       **at most two glab children across every repository**. Each child is a `ProcessGroup`, with

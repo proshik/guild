@@ -365,6 +365,29 @@ pub struct Desk {
     /// Never saved: a root left open by a restart is an ordinary root.
     #[serde(skip)]
     pub(crate) released_group_folders: Vec<(WorkspaceId, PathBuf)>,
+    /// The seats whose records this run has read from their root's own
+    /// file — GLD-060. [`crate::persist::save`] replaces a seat's records
+    /// on disk with memory's only for these: a seat added since — a root
+    /// opened again in a workspace that had closed it — or one whose
+    /// folder was away when the desk was read has records memory has
+    /// never seen. Never saved: what a run has read is that run's.
+    #[serde(skip)]
+    pub(crate) loaded: std::collections::HashSet<Seat>,
+    /// The records this run removed — GLD-060, review r1. A seat read
+    /// late must not bring one back from a copy its file still has: a
+    /// record the desk held from the global file while its folder was
+    /// away, removed before the folder came back. Never saved.
+    #[serde(skip)]
+    pub(crate) removed: std::collections::HashSet<SessionId>,
+    /// The seats of a root whose folder was away at the save that wrote
+    /// this file and which that run had read — GLD-060, review r2. Their
+    /// records in this file are the whole of them, so the next run takes
+    /// them from here and not from the older copy beside the root, which a
+    /// removal made while the folder was away never reached. Written by
+    /// [`crate::persist::save`] alone; empty, and absent from the file,
+    /// for every root whose folder was there.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) read_away: Vec<(WorkspaceId, ProjectId)>,
 }
 
 /// How many directories "Open Recent" keeps.
@@ -738,6 +761,15 @@ impl Desk {
                 session.workspace = to;
             }
         }
+        // The destination's seat is not read by the move: a workspace that
+        // closed the root kept its records beside it, and the next save
+        // reads them before it replaces anything of the seat — review r1.
+        for project in &moving {
+            self.loaded.remove(&Seat {
+                workspace: from,
+                project: *project,
+            });
+        }
         if self.active_workspace == Some(from)
             && self
                 .active_project
@@ -778,6 +810,7 @@ impl Desk {
         }
         self.sessions
             .retain(|session| session.workspace != workspace || session.project != project);
+        self.loaded.remove(&Seat { workspace, project });
         if let Some(key) = key {
             self.forget_left_repository(workspace, &key);
         }
@@ -804,6 +837,7 @@ impl Desk {
         let projects = self.workspaces[position].projects.clone();
         self.workspaces.remove(position);
         self.sessions.retain(|session| session.workspace != id);
+        self.loaded.retain(|seat| seat.workspace != id);
         let mut released = Vec::new();
         for project in projects {
             if self.holders(project).is_empty() {
@@ -916,6 +950,7 @@ impl Desk {
     pub fn remove_project(&mut self, id: ProjectId) {
         self.projects.retain(|project| project.id != id);
         self.sessions.retain(|session| session.project != id);
+        self.loaded.retain(|seat| seat.project != id);
         self.forget_missing_selection();
     }
 
@@ -967,6 +1002,7 @@ impl Desk {
             record.workspace = self.active_workspace();
         }
         let id = record.id;
+        self.removed.remove(&id);
         self.sessions.push(record);
         id
     }
@@ -984,6 +1020,7 @@ impl Desk {
     /// Forget a session entirely.
     pub fn remove_session(&mut self, id: SessionId) {
         self.sessions.retain(|session| session.id != id);
+        self.removed.insert(id);
         self.forget_missing_selection();
     }
 
@@ -1009,6 +1046,18 @@ impl Desk {
     /// Put sessions back, from wherever they were read.
     pub fn absorb_sessions(&mut self, sessions: impl IntoIterator<Item = SessionRecord>) {
         self.sessions.extend(sessions);
+    }
+
+    /// Put a root's sessions read after the desk was — GLD-060 — ahead of
+    /// the ones memory already holds of it: they were made before those,
+    /// and the order is the one a seat from before tab lists restores in.
+    pub(crate) fn absorb_earlier(&mut self, project: ProjectId, sessions: Vec<SessionRecord>) {
+        let at = self
+            .sessions
+            .iter()
+            .position(|session| session.project == project)
+            .unwrap_or(self.sessions.len());
+        self.sessions.splice(at..at, sessions);
     }
 
     /// What a person named the project kept by `key`, if they named it.
@@ -1111,6 +1160,7 @@ impl Desk {
     /// spent are left alone: a counter that forgets spending is worse than
     /// a long list.
     pub fn forget_unresumable(&mut self) {
+        let removed = &mut self.removed;
         self.sessions.retain(|session| {
             // There is nowhere to return to in a closed shell: it has no
             // conversation, while a row in the list would promise
@@ -1118,7 +1168,11 @@ impl Desk {
             // conversation — not Claude's alone, since M14.
             let resumable =
                 session.has_conversation() || (session.runs.is_agent() && session.cost_usd > 0.0);
-            session.open || resumable
+            let kept = session.open || resumable;
+            if !kept {
+                removed.insert(session.id);
+            }
+            kept
         });
         self.forget_missing_selection();
     }

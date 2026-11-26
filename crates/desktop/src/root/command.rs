@@ -3136,6 +3136,198 @@ mod background_launch_tests {
         );
     }
 
+    /// The session ids a project's own file holds, read once every queued
+    /// write has landed.
+    fn records_on_disk(path: &Path) -> Vec<SessionId> {
+        guild_session::flush();
+        let bytes = std::fs::read(path.join(".guild").join("state.json")).unwrap();
+        let state: ProjectState = serde_json::from_slice(&bytes).unwrap();
+        state.sessions.iter().map(|record| record.id).collect()
+    }
+
+    /// Everything a seat's strips name, area by area, in order.
+    fn shown(seat: &SeatState) -> Vec<Shows> {
+        let areas = seat.areas_or_one();
+        areas
+            .strips
+            .values()
+            .flat_map(|strip| strip.tabs.iter().map(|tab| tab.shows.clone()))
+            .collect()
+    }
+
+    /// Two shells of B in b2, both in its strip: on disk only, or in the
+    /// desk too — what the caller does with them.
+    fn shells_of_b2(
+        desk: &guild_session::Desk,
+        second: WorkspaceId,
+        b2: ProjectId,
+        path: &Path,
+    ) -> (Vec<guild_session::SessionRecord>, SeatState) {
+        let records: Vec<_> = ["one", "two"]
+            .into_iter()
+            .map(|name| {
+                guild_session::SessionRecord::new(
+                    name.into(),
+                    (second, b2),
+                    path.to_path_buf(),
+                    guild_session::Runs::Shell,
+                )
+            })
+            .collect();
+        let order: Vec<Shows> = records
+            .iter()
+            .map(|record| Shows::Session(record.id))
+            .collect();
+        let first = desk.workspaces()[0].id;
+        let seat = appended(&SeatState::default(), &order);
+        let mut state = guild_session::project_state::load(path);
+        state.set_seat(second, first, seat.clone());
+        guild_session::project_state::save(path, &state).unwrap();
+        (records, seat)
+    }
+
+    /// GLD-060, the first route: b2 was closed in B with
+    /// `forget_sessions_on_close` off, so B's records of it stayed beside
+    /// it; Guild restarted in A, and `guild session new b2` without
+    /// `--front` opens it in B again. The launch's save must not drop
+    /// those records, and the visit brings every tab of the strip back.
+    #[gpui::test]
+    fn a_background_launch_into_a_project_closed_in_its_workspace_keeps_its_records(
+        cx: &mut TestAppContext,
+    ) {
+        let Some(home) = isolated(concat!(
+            module_path!(),
+            "::a_background_launch_into_a_project_closed_in_its_workspace_keeps_its_records"
+        )) else {
+            return;
+        };
+        let mut shells = Vec::new();
+        let fixture = restarted_with(&home, cx, |desk, second, (b2, path)| {
+            let (records, _) = shells_of_b2(desk, second, b2, path);
+            let mut state = guild_session::project_state::load(path);
+            shells = records.iter().map(|record| record.id).collect();
+            state.sessions.extend(records);
+            guild_session::project_state::save(path, &state).unwrap();
+            // Closed in B, its only holder: the root goes from the desk,
+            // its file keeps B's records and strip.
+            assert_eq!(desk.leave(second, b2), guild_session::Released::Released);
+        });
+        assert_eq!(records_on_disk(&fixture.b2), shells);
+        let before = launches(&fixture);
+        let second = fixture.second.to_string();
+        let answer = fixture.root.update(cx, |root, cx| {
+            root.command_session_new(
+                &fixture.b2,
+                None,
+                None,
+                false,
+                Some(&second),
+                guild_session::HarnessKind::Claude,
+                None,
+                cx,
+            )
+        });
+        let session = started(answer, Door::SessionNew);
+        launched_since(&fixture, &before);
+        let expected: Vec<SessionId> = shells.iter().copied().chain([session]).collect();
+        assert_eq!(
+            records_on_disk(&fixture.b2),
+            expected,
+            "B's retained records are kept, and the new one added"
+        );
+        let strip = shown(&seat_on_disk(&fixture.b2, fixture.second, fixture.first));
+        let order: Vec<Shows> = expected.iter().map(|id| Shows::Session(*id)).collect();
+        assert_eq!(strip, order);
+
+        fixture.root.update(cx, |root, cx| {
+            root.select_workspace(fixture.second, cx);
+            let b2 = root
+                .desk
+                .projects_of(fixture.second)
+                .find(|project| project.path == fixture.b2)
+                .map(|project| project.id)
+                .expect("b2 is B's again");
+            let seat = guild_session::Seat {
+                workspace: fixture.second,
+                project: b2,
+            };
+            let restored: Vec<SessionId> = root
+                .tabs
+                .iter()
+                .filter(|tab| tab.seat == seat)
+                .flat_map(|tab| tab.sessions().collect::<Vec<_>>())
+                .collect();
+            assert_eq!(restored, expected, "every tab the strip names is back");
+        });
+        assert_eq!(
+            shown(&seat_on_disk(&fixture.b2, fixture.second, fixture.first)),
+            order,
+            "and the visit's save keeps the strip whole"
+        );
+        assert_eq!(records_on_disk(&fixture.b2), expected);
+    }
+
+    /// GLD-060, the second route: Guild starts while b2, a project of the
+    /// unvisited B, is away — a volume not mounted — so the desk is read
+    /// without B's records of it; the folder is back before the next save.
+    /// That save must not drop them, and the visit brings b2's tabs back.
+    #[gpui::test]
+    fn a_save_after_a_folder_comes_back_keeps_the_records_it_was_read_without(
+        cx: &mut TestAppContext,
+    ) {
+        let Some(home) = isolated(concat!(
+            module_path!(),
+            "::a_save_after_a_folder_comes_back_keeps_the_records_it_was_read_without"
+        )) else {
+            return;
+        };
+        let mut shells = Vec::new();
+        let fixture = restarted_with(&home, cx, |desk, second, (b2, path)| {
+            let (records, _) = shells_of_b2(desk, second, b2, path);
+            shells = records.iter().map(|record| record.id).collect();
+            for record in records {
+                desk.add_session(record);
+            }
+            // The run before wrote them beside b2; this one reads the
+            // desk while the folder is away and starts with what it read.
+            let global = path.parent().unwrap().join("before.json");
+            guild_session::persist::save(desk, &global).unwrap();
+            assert_eq!(records_on_disk(path), shells);
+            let away = path.with_extension("away");
+            std::fs::rename(path, &away).unwrap();
+            *desk = guild_session::persist::load(&global);
+            std::fs::rename(&away, path).unwrap();
+            assert!(shells.iter().all(|id| desk.session(*id).is_none()));
+        });
+        // Whatever the restart saved, once the folder was back, kept them.
+        assert_eq!(records_on_disk(&fixture.b2), shells);
+        // And so does the next save: a background session into b1 of B.
+        let session = launch(&fixture, Door::SessionNew, false, cx);
+        assert_eq!(
+            records_on_disk(&fixture.b2),
+            shells,
+            "b2's records are kept by a save that never read them"
+        );
+        assert_b_kept_on_disk(&fixture, Door::SessionNew, session);
+
+        let order: Vec<Shows> = shells.iter().map(|id| Shows::Session(*id)).collect();
+        fixture.root.update(cx, |root, cx| {
+            root.select_workspace(fixture.second, cx);
+            assert_eq!(root.active_project, Some(fixture.b2_id));
+            let restored: Vec<SessionId> = root
+                .visible_tabs()
+                .flat_map(|tab| tab.sessions().collect::<Vec<_>>())
+                .collect();
+            assert_eq!(restored, shells, "every tab the strip names is back");
+        });
+        assert_eq!(
+            shown(&seat_on_disk(&fixture.b2, fixture.second, fixture.first)),
+            order,
+            "and the visit's save keeps the strip whole"
+        );
+        assert_eq!(records_on_disk(&fixture.b2), shells);
+    }
+
     /// Every path under `dir`, none when it does not exist.
     fn walkdir(dir: &Path) -> Vec<PathBuf> {
         let mut found = Vec::new();

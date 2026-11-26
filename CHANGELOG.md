@@ -23,6 +23,7 @@ would notice adds its line under `Unreleased` in its own branch.
 
 - The column no longer redraws itself whole every time merge requests are checked in the background and nothing about them changed; with many repositories that was a short stall every two minutes.
 - When one branch's merge request could not be read, the other branches of the same project no longer lose theirs: each branch shows what was read for it, and only a branch whose own read failed says so in its hover.
+- A project closed in one workspace, Guild restarted, and the project then reopened there by `guild session new` or `guild open` before you switch to that workspace — or a project in another workspace whose disk was not mounted when Guild started and is back before you switch to it — no longer loses that workspace's sessions: its tabs and conversations are all there when you visit it. A session removed while a project's disk is not mounted no longer comes back once the disk is.
 
 ## [nightly-2026-11-26-b20911a] - 2026-11-26
 

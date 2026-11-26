@@ -1660,7 +1660,7 @@ impl Root {
         // lenses-6).
         self.forge_reconcile();
         if let Err(err) = guild_session::persist::save(
-            &self.desk,
+            &mut self.desk,
             &self.integrations.state_dir().join("workspace.json"),
         ) {
             tracing::warn!(%err, "state was not saved");

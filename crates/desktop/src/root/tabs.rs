@@ -871,6 +871,10 @@ impl Root {
         if !self.restored_workspaces.insert(self.active_workspace) {
             return;
         }
+        // A seat held but never read — a root opened again by a command,
+        // a folder away when the desk was read — has its records read now,
+        // so that its strip finds them (GLD-060).
+        guild_session::persist::read_unread(&mut self.desk);
         let first = self
             .desk
             .workspaces()

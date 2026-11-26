@@ -222,14 +222,14 @@ fn sessions_in_the_global_file_move_into_their_projects() {
     std::fs::write(&global, old).unwrap();
 
     // Reading an old file keeps everything it holds.
-    let workspace = guild_session::persist::load(&global);
+    let mut workspace = guild_session::persist::load(&global);
     assert_eq!(workspace.sessions().count(), 1, "nothing was dropped");
     let session = workspace.sessions().next().unwrap();
     assert_eq!(session.topic.as_deref(), Some("что за проект"));
     assert_eq!(session.usage.output_tokens, 2900);
 
     // Writing it puts them where they belong.
-    guild_session::persist::save(&workspace, &global).expect("saved");
+    guild_session::persist::save(&mut workspace, &global).expect("saved");
     flush();
 
     let beside = project_state::load(&project_dir);
@@ -262,7 +262,7 @@ fn a_project_whose_directory_is_gone_keeps_its_sessions() {
     let project = workspace.add_project(&missing);
     workspace.add_session(session(project, &missing));
 
-    guild_session::persist::save(&workspace, &global).expect("saved");
+    guild_session::persist::save(&mut workspace, &global).expect("saved");
     flush();
 
     let global_now: serde_json::Value =

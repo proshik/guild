@@ -103,8 +103,8 @@ impl crate::Root {
     /// The repository header's indicator before its `⋯ +`, in the action
     /// slot's size, its hover worded when it opens. *Checked* is drawn only
     /// while the pointer is on the header — `head` is the header's hover
-    /// group, the chevron's. `None` when the repository has no state: the
-    /// setting off, not GitLab, nothing answered yet.
+    /// group, the chevron's. `None` when it draws nothing: the setting off,
+    /// the repository off GitLab, or idle before its first answer.
     pub(crate) fn project_header_mr(
         &self,
         repo: Option<&std::path::Path>,
@@ -117,6 +117,7 @@ impl crate::Root {
         let theme = self.theme;
         let ui = self.ui();
         let (path, colour) = indicator_look(&indicator, theme);
+        let quiet = matches!(indicator, Indicator::Checked);
         let glyph = match indicator {
             Indicator::Checking => crate::view::activity::turning(
                 path,
@@ -124,8 +125,15 @@ impl crate::Root {
                 rgb(colour),
                 animate,
             ),
+            // Only the ✓ hides: the slot stays visible, so the one move that
+            // reveals it already starts its hover (code review r1,
+            // bugs+impl-2; docs/traps.md, a cursor tooltip can miss the only
+            // move that reveals its control).
             _ => crate::icons::glyph(path, theme::space::WORKTREE_GLYPH)
                 .text_color(rgb(colour))
+                .when(quiet, |glyph| {
+                    glyph.invisible().group_hover(head, |glyph| glyph.visible())
+                })
                 .into_any_element(),
         };
         let state = match indicator {
@@ -134,7 +142,6 @@ impl crate::Root {
             Indicator::Checked => "Checked",
             Indicator::Failed(_) => "Failed",
         };
-        let quiet = matches!(indicator, Indicator::Checked);
         Some(
             div()
                 .id(gpui::SharedString::from(format!(
@@ -147,19 +154,62 @@ impl crate::Root {
                 .items_center()
                 .justify_center()
                 .size(theme::column::ACTION_TARGET)
-                .when(quiet, |slot| {
-                    slot.invisible().group_hover(head, |slot| slot.visible())
-                })
                 .hint_delay()
                 .tooltip(move |_window, app| {
                     let text = ui
                         .mr_indicator(&indicator, checked.map(|at| at.elapsed().as_secs() as i64));
-                    app.new(|_| crate::view::tooltip::Tooltip::text(text, theme))
-                        .into()
+                    // Reasons can run long — several problems, glab's own
+                    // words: a card that wraps them, as the MR card does
+                    // (code review r1, bugs+impl-3).
+                    if matches!(indicator, Indicator::Failed(_)) {
+                        app.new(|_| ProblemsHint { text, theme }).into()
+                    } else {
+                        app.new(|_| crate::view::tooltip::Tooltip::text(text, theme))
+                            .into()
+                    }
                 })
                 .child(glyph)
                 .into_any_element(),
         )
+    }
+}
+
+/// Why a repository's merge requests could not be checked, in a card as
+/// wide as the MR card at most: a reason longer than a line wraps inside it.
+pub(crate) struct ProblemsHint {
+    pub(crate) text: String,
+    pub(crate) theme: Theme,
+}
+
+/// A reason this long — in characters — is given the card's whole width to
+/// wrap against; a shorter one sits on one line in a card of its own size.
+const ONE_LINE: usize = 60;
+
+impl Render for ProblemsHint {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        use gpui_component::ActiveTheme as _;
+        let theme = self.theme;
+        let long = self.text.chars().count() > ONE_LINE;
+        crate::view::popup::card_look(theme)
+            .debug_selector(|| "project-header-mr-problems".into())
+            .px(px(12.0))
+            .py(px(8.0))
+            .max_w(px(CARD_WIDTH))
+            // A wrapped line needs a width its element has: a tooltip is
+            // laid out at its minimum size (docs/traps.md, *a line wraps only
+            // against a width its element has*).
+            .when(long, |card| card.w(px(CARD_WIDTH)))
+            .font_family(cx.theme().font_family.clone())
+            .text_size(theme::size::BODY)
+            .text_color(rgb(theme.text.primary))
+            .child(
+                div()
+                    .debug_selector(|| "project-header-mr-problems-text".into())
+                    .w_full()
+                    .min_w_0()
+                    .when(!long, |line| line.whitespace_nowrap())
+                    .child(self.text.clone()),
+            )
     }
 }
 

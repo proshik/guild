@@ -1203,3 +1203,73 @@ fn without_an_account_or_an_author_no_mr_is_mine() {
     forge.land(authored(&ask, None, Some(42)), later);
     assert_eq!(mine(&forge), Some(false));
 }
+
+/// Code review r1, adversarial-1: a repository whose worktrees push
+/// nowhere GitLab — GitHub — is refreshed, finds nothing to ask, and its
+/// header draws nothing: neither checking nor a claim that it checked.
+#[test]
+fn a_repository_not_on_gitlab_draws_no_indicator() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    let github = other("git@github.com:team/app.git", "/work/app", "feat");
+    forge.inputs(&repo(), vec![github.clone()], now);
+    assert_eq!(forge.status(&repo()).unwrap().indicator(), None, "queued");
+    let ask = forge.take_due(now).remove(0);
+    assert_eq!(forge.status(&repo()).unwrap().indicator(), None, "checking");
+    forge.land(
+        Answer {
+            repo: ask.repo,
+            candidates: ask.candidates,
+            generation: ask.generation,
+            resolutions: vec![(github, Resolution::Silent)],
+            batches: Vec::new(),
+            accounts: Vec::new(),
+        },
+        now,
+    );
+    assert_eq!(forge.status(&repo()).unwrap().indicator(), None, "checked");
+    assert!(
+        forge.indicators().iter().all(|(_, lit)| lit.is_none()),
+        "nothing to draw, nothing to notify"
+    );
+}
+
+/// A host that does not say GitLab in its name is drawn once glab is
+/// found to know it: from its first answer on.
+#[test]
+fn a_gitlab_by_another_name_is_drawn_from_its_first_answer() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    let own = other("git@git.example.org:team/app.git", "/work/app", "feat");
+    forge.inputs(&repo(), vec![own.clone()], now);
+    let ask = forge.take_due(now).remove(0);
+    assert_eq!(forge.status(&repo()).unwrap().indicator(), None);
+    forge.land(
+        Answer {
+            repo: ask.repo,
+            candidates: ask.candidates,
+            generation: ask.generation,
+            resolutions: vec![(
+                own,
+                Resolution::Asked {
+                    host: "git.example.org".into(),
+                    project: PROJECT.into(),
+                },
+            )],
+            batches: Vec::new(),
+            accounts: Vec::new(),
+        },
+        now,
+    );
+    assert_eq!(
+        forge.status(&repo()).unwrap().indicator(),
+        Some(guild_desktop::forge::Indicator::Checked)
+    );
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    forge.take_due(later);
+    assert_eq!(
+        forge.status(&repo()).unwrap().indicator(),
+        Some(guild_desktop::forge::Indicator::Checking)
+    );
+}

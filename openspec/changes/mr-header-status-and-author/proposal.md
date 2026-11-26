@@ -14,16 +14,19 @@ merge requests in the column are the person's own.
   Screens): an indicator before `⋯ +` that says *queued* (a clock), *checking*
   (turning arrows), *checked* (a faint ✓, only under the pointer on the
   header) or *couldn't refresh* (struck-through arrows in brass, the reasons in
-  its hover). Nothing is drawn while the setting is off or before the first
-  answer.
+  its hover). Nothing is drawn while the setting is off, and no ✓ before the
+  first answer; nothing at all for a repository whose worktrees push
+  somewhere other than GitLab.
 - **"You created this merge request"**: a faint person after the MR's number
   on its worktree row, with that hover, when the MR's author is the account
   glab is logged in with on the MR's host — the board *MR author — worktree
   row*. Another's MR has no mark.
 - **One account read per host per refresh**: `glab api --hostname <host> user`
   for a host whose batch found an MR, inside the same admission, deadline,
-  output cap, scrubbed environment and proxy as every other call. A failed
-  account read changes nothing but the mark: the MR is shown, without it.
+  output cap, scrubbed environment and proxy as every other call; the last
+  account read for a host is kept for the window's life. A failed account
+  read changes nothing but the mark: the last account read still marks, and
+  with none the MR is shown without it.
   Decision 56's "no account read" is revised.
 
 ## Capabilities

@@ -32,8 +32,14 @@ the header and the row draw.
 - **Checking turns with the activity ring's clock.** `view::activity::ring`
   becomes a turning glyph of any asset and size; it asks for frames only
   while visible and not under reduced motion.
-- **Checked under the pointer only**: the same `group_hover` as the head's
-  chevron, so it costs no notify.
+- **Checked under the pointer only**: the ✓ wears the same `group_hover`
+  as the head's chevron, so it costs no notify; its slot stays visible, so
+  the move that reveals it starts its hover (code review r1).
+- **Off GitLab, no indicator**: `RepoStatus::gitlab` — a worktree asked or
+  with a reason, or, before any answer, a host that says GitLab — keeps a
+  GitHub repository's header quiet through its refreshes (code review r1).
+- **A failure's reasons wrap**: in a card as wide as the MR card at most,
+  not the one-line tooltip (code review r1).
 
 ## Risks
 

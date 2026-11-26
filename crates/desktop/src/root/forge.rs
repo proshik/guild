@@ -416,8 +416,8 @@ pub(crate) fn refresh(
         // The account glab is logged in with, read once per host whose
         // batches found an MR, under what is left of the refresh's deadline
         // and through the same glab as its reads: the person's own MRs are
-        // marked by it. A failed read is nobody's problem — those MRs are
-        // shown without the mark.
+        // marked by it. A failed read is nobody's problem — the model's
+        // last account for the host still marks; with none, no mark.
         if let Ok(proxy) = &proxy {
             let mut found: Vec<&str> = batches
                 .iter()

@@ -591,9 +591,11 @@ here; the comment beside the citation carries the rule it names.
       list's `author.id` against `glab api --hostname <host> user`'s `id`,
       read once per host per refresh, only for a host whose batches found an
       MR, under what is left of the refresh's deadline and through the same
-      admission, caps, scrubbed environment and proxy as every read. A
-      failed account read is nobody's problem: the MR is shown without the
-      mark, and the last account read for the host still marks it. A person
+      admission, caps, scrubbed environment and proxy as every read, and
+      kept for the window's life until the next read on the host replaces
+      it. A failed account read is nobody's problem: the last account read
+      for the host still marks; with none read yet, the MR is shown without
+      the mark. A person
       after the MR's number says "You created this merge request",
       mr-header-status-and-author.
     - **REST, per branch**: every page of its MRs in every state, an open
@@ -616,7 +618,11 @@ here; the comment beside the citation carries the rule it names.
       column*: checking (turning arrows) over queued (a clock) over a
       problem of the last answer (struck-through arrows in brass, every
       problem in the hover) over checked (a faint ✓, only under the pointer
-      on the header); nothing before the first answer. Progress moves
+      on the header). No ✓ before the first answer — the first refresh is
+      queued and checking like any other — and nothing at all for a
+      repository off GitLab: one whose worktrees were all found to push
+      elsewhere, or, before its first answer, push to a host without
+      GitLab in its name. Progress moves
       outside an answer's landing, so the window compares every header's
       indicator with the one it last drew, mr-header-status-and-author.
       Only an absolute

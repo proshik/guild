@@ -153,6 +153,12 @@ pub struct RepoStatus<'a> {
     pub checked: Option<Instant>,
     /// What that answer could not ask, once each.
     pub problems: &'a [Problem],
+    /// Whether its merge requests live on GitLab as far as Guild knows: a
+    /// worktree was asked or has a reason not to be, or — before its first
+    /// answer — pushes to a host that says GitLab in its name. A repository
+    /// on GitHub is refreshed and finds nothing to ask; its header draws
+    /// nothing (code review r1, adversarial-1).
+    pub gitlab: bool,
 }
 
 /// What a repository's header draws of its merge requests' state — the
@@ -173,9 +179,13 @@ pub enum Indicator {
 
 impl RepoStatus<'_> {
     /// The header's indicator: checking over queued over a problem of the
-    /// last answer — the refresh due or out may clear it — over checked;
-    /// nothing before the first answer, or with nothing to ask.
+    /// last answer — the refresh due or out may clear it — over checked.
+    /// No ✓ before the first answer, though the first refresh is queued and
+    /// checking; nothing at all with nothing to ask or off GitLab.
     pub fn indicator(&self) -> Option<Indicator> {
+        if !self.gitlab {
+            return None;
+        }
         match self.progress {
             Progress::Checking => Some(Indicator::Checking),
             Progress::Queued => Some(Indicator::Queued),
@@ -645,10 +655,21 @@ impl Forge {
         } else {
             Progress::Idle
         };
+        let gitlab = !state.problems.is_empty()
+            || state
+                .candidates
+                .iter()
+                .any(|candidate| match state.resolutions.get(candidate) {
+                    Some(Resolution::Asked { .. } | Resolution::Why(_)) => true,
+                    Some(Resolution::Silent) => false,
+                    None => Remote::parse(&candidate.url)
+                        .is_some_and(|remote| looks_like_gitlab(&remote.host)),
+                });
         Some(RepoStatus {
             progress,
             checked: state.checked,
             problems: &state.problems,
+            gitlab,
         })
     }
 }

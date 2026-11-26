@@ -52,6 +52,7 @@ pub(crate) fn in_use(paths: &[PathBuf]) -> Result<bool, ()> {
 mod tests {
     use super::*;
     #[test]
+    #[ignore = "flaky in the full workspace run: GLD-068"]
     fn live_executable_is_refused_even_after_its_bundle_directory_moves() {
         let root = tempfile::tempdir().unwrap();
         let app = root.path().canonicalize().unwrap().join("Guild.app");

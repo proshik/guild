@@ -128,3 +128,56 @@ Hypotheses to check:
 
 Callers: `crates/desktop/src/update/recovery.rs:30` is the only one; it maps
 `Err` to `Failure::Conflict` and `Ok(true)` to a refusal.
+
+## Cause (established 2026-11-27)
+
+The guard was right; the fixture died. The test's "live Guild" was a copy
+of `/bin/sleep`, and a copy of a system binary keeps Apple's platform
+signature: macOS 26.5 kills such a copy with `SIGKILL (Code Signature
+Invalid)` some hundred milliseconds after it starts, whether or not anything
+is renamed. Alone the test finished before that; under a loaded `just check`
+the kill landed after `try_wait` had said "running" and before `in_use`
+looked at the pid, which by then was a zombie — `proc_pidpath` answers
+`ESRCH` for a zombie, and skipping it is correct.
+
+Evidence, gathered beside the other session's `just check` (load 7–23):
+
+- `~/Library/Logs/DiagnosticReports` held 131 `sleep-*.ips` since
+  2026-11-20, every one `procPath …/previous.app/sleep`, `SIGKILL (Code
+  Signature Invalid)`, either with no sender or killed later by the test
+  binary's own cleanup.
+- The test itself, instrumented to report the child when `in_use` said
+  `false`: 5 failures of 40 under load, and in all 5 the child had already
+  exited by signal 9, before the test's own `kill`. Unchanged test: 3 of 30
+  with no synthetic load, 4 of 30 beside 16 busy loops.
+- A C reproduction (copy, `posix_spawn`, rename, `proc_listpids`,
+  `proc_pidpath`, `ps`), run side by side under the same load:
+  - copy of `/bin/sleep`, nothing renamed, 500 ms after the start:
+    40 of 40 dead (34 of 40 in another run); 200 ms: 9 of 40;
+  - original `/bin/sleep`, the same timing: 0 of 40; a copy re-signed ad hoc
+    with `codesign --force --sign -`: 0 of 40 with and without the rename;
+  - every false answer (61 of 61 in one run) was a process `ps` showed as
+    `Z`, `PROC_PIDTBSDINFO` also refused, and `waitpid` reaped it at once;
+    no `ENOENT`, no stale or differently formed path and no live process
+    missing from `proc_listpids` was seen in any of about three thousand
+    runs, so the hypotheses above about the kernel's path, the canonicalize
+    fallback and the process list are not what failed.
+- A second, rarer effect: renaming the directory within the first
+  milliseconds of the process's life (while it is still being loaded) killed
+  even an ad-hoc copy — 3 of 40 renamed at once, 0 of 40 two milliseconds
+  later. The mechanism of either kill is not established; both are the
+  system's, not Guild's.
+
+The fix is in the test only: the fixture copies `/bin/cat`, re-signs it ad
+hoc, and renames the bundle only after the child has echoed a line back.
+With it, 0 of 200 runs failed (100 with no synthetic load, 100 beside 16
+busy loops at load 20). Without the re-signing the same test fails 40 of 40,
+at the echo, with `cat-*.ips` reports of the same `Code Signature Invalid`
+kill. `docs/traps.md` records the trap for other fixtures.
+
+`in_use` is unchanged, by the owner's decision: `ESRCH` is a process that is
+gone or a zombie, and `ENOENT` is a live process whose executable no longer
+exists at any path — such a process holds none of the recovery's slots, and
+refusing on it would block a recovery whenever any of the owner's programs
+outlived its own update (a `claude --chrome-native-host` did, on this
+machine, during the investigation).

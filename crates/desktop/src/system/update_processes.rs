@@ -51,34 +51,54 @@ pub(crate) fn in_use(paths: &[PathBuf]) -> Result<bool, ()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{BufRead, Write};
     #[test]
-    #[ignore = "flaky in the full workspace run: GLD-068"]
     fn live_executable_is_refused_even_after_its_bundle_directory_moves() {
         let root = tempfile::tempdir().unwrap();
         let app = root.path().canonicalize().unwrap().join("Guild.app");
         std::fs::create_dir(&app).unwrap();
-        let executable = app.join("sleep");
-        std::fs::copy("/bin/sleep", &executable).unwrap();
+        let executable = app.join("cat");
+        std::fs::copy("/bin/cat", &executable).unwrap();
+        // A copy of a platform binary keeps Apple's signature, and macOS kills it
+        // ("Code Signature Invalid") within a few hundred milliseconds of its start:
+        // under load that landed between the liveness check and `in_use`, which then
+        // rightly skipped a dead process (GLD-068). Re-signed ad hoc, it lives.
+        let signed = std::process::Command::new("/usr/bin/codesign")
+            .args(["--force", "--sign", "-"])
+            .arg(&executable)
+            .output()
+            .unwrap();
+        assert!(signed.status.success(), "{signed:?}");
         let mut child = std::process::Command::new(&executable)
-            // Keep the owned child alive throughout a loaded workspace test run.
-            // It is killed and reaped below on both success and assertion failure.
-            .arg("300")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
             .spawn()
             .unwrap();
         let moved = root.path().canonicalize().unwrap().join("previous.app");
         let result = || {
+            // The echo proves the child is past its start: a bundle renamed while
+            // the new process is still being loaded can kill even this copy.
+            let mut stdin = child.stdin.take().unwrap();
+            stdin.write_all(b"started\n").unwrap();
+            let mut line = String::new();
+            std::io::BufReader::new(child.stdout.take().unwrap())
+                .read_line(&mut line)
+                .unwrap();
+            assert_eq!(line, "started\n");
             assert!(in_use(std::slice::from_ref(&executable)).unwrap());
             std::fs::rename(&app, &moved).unwrap();
+            let seen = in_use(&[executable.clone(), moved.join("cat")]).unwrap();
             assert!(
                 child.try_wait().unwrap().is_none(),
-                "fixture child exited before the moved-path check"
+                "fixture child exited during the moved-path check"
             );
-            assert!(in_use(&[executable.clone(), moved.join("sleep")]).unwrap());
+            assert!(seen);
+            stdin
         };
         let checked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(result));
         let _ = child.kill();
         child.wait().unwrap();
-        checked.unwrap();
-        assert!(!in_use(&[executable.clone(), moved.join("sleep")]).unwrap());
+        drop(checked.unwrap());
+        assert!(!in_use(&[executable.clone(), moved.join("cat")]).unwrap());
     }
 }

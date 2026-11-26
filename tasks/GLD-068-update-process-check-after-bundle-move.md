@@ -34,23 +34,23 @@ and the test runs again in the full workspace run.
 
 ## Acceptance
 
-- [ ] WHEN the task is handed over THEN the root cause of the false
+- [x] WHEN the task is handed over THEN the root cause of the false
       `Ok(false)` is recorded in this file (or in `docs/traps.md` if it is a
       trap of the platform), with the evidence that established it — not
       only a fix that makes the symptom go away.
-- [ ] WHEN a process runs an executable whose bundle directory has been
+- [x] WHEN a process runs an executable whose bundle directory has been
       renamed THEN the recovery guard reports it as in use, under load as
       well as alone; or, if `proc_pidpath` cannot be made reliable, the guard
       identifies the live executable another way (for example by vnode or
       by device and inode taken before the move) and the recovery refuses
       while it runs.
-- [ ] WHEN the fix is in THEN `#[ignore = "flaky in the full workspace run:
+- [x] WHEN the fix is in THEN `#[ignore = "flaky in the full workspace run:
       GLD-068"]` is removed and the test passes in at least three repeated
       full `just check` runs under load comparable to the one that failed
       (load average around 10, another session's tests running).
-- [ ] WHEN the cause is in production code THEN a regression test pins it,
+- [x] WHEN the cause is in production code THEN a regression test pins it,
       failing before the fix for the right reason.
-- [ ] WHEN an error is the cause (a path that cannot be read, a process
+- [x] WHEN an error is the cause (a path that cannot be read, a process
       list that cannot be taken) THEN the guard answers `Err` — which the
       recovery turns into `Failure::Conflict` — rather than "not in use".
 
@@ -128,3 +128,75 @@ Hypotheses to check:
 
 Callers: `crates/desktop/src/update/recovery.rs:30` is the only one; it maps
 `Err` to `Failure::Conflict` and `Ok(true)` to a refusal.
+
+## Cause (established 2026-11-27)
+
+The guard was right; the fixture died. The test's "live Guild" was a copy
+of `/bin/sleep`, and a copy of a system binary keeps Apple's platform
+signature: macOS 26.5 kills such a copy with `SIGKILL (Code Signature
+Invalid)` some hundred milliseconds after it starts, whether or not anything
+is renamed. Alone the test finished before that; under a loaded `just check`
+the kill landed after `try_wait` had said "running" and before `in_use`
+looked at the pid, which by then was a zombie — `proc_pidpath` answers
+`ESRCH` for a zombie, and skipping it is correct.
+
+Evidence, gathered beside the other session's `just check` (load 7–23):
+
+- `~/Library/Logs/DiagnosticReports` held 131 `sleep-*.ips` since
+  2026-11-20, every one `procPath …/previous.app/sleep`, `SIGKILL (Code
+  Signature Invalid)`, either with no sender or killed later by the test
+  binary's own cleanup.
+- The test itself, instrumented to report the child when `in_use` said
+  `false`: 5 failures of 40 under load, and in all 5 the child had already
+  exited by signal 9, before the test's own `kill`. Unchanged test: 3 of 30
+  with no synthetic load, 4 of 30 beside 16 busy loops.
+- A C reproduction (copy, `posix_spawn`, rename, `proc_listpids`,
+  `proc_pidpath`, `ps`), run side by side under the same load:
+  - copy of `/bin/sleep`, nothing renamed, 500 ms after the start:
+    40 of 40 dead (34 of 40 in another run); 200 ms: 9 of 40;
+  - original `/bin/sleep`, the same timing: 0 of 40; a copy re-signed ad hoc
+    with `codesign --force --sign -`: 0 of 40 with and without the rename;
+  - every false answer (61 of 61 in one run) was a process `ps` showed as
+    `Z`, `PROC_PIDTBSDINFO` also refused, and `waitpid` reaped it at once;
+    no `ENOENT`, no stale or differently formed path and no live process
+    missing from `proc_listpids` was seen in any of about three thousand
+    runs, so the hypotheses above about the kernel's path, the canonicalize
+    fallback and the process list are not what failed.
+- A second, rarer effect: renaming the directory within the first
+  milliseconds of the process's life (while it is still being loaded) killed
+  even an ad-hoc copy — 3 of 40 renamed at once, 0 of 40 two milliseconds
+  later. The mechanism of either kill is not established; both are the
+  system's, not Guild's.
+
+The fix is in the test only: the fixture copies `/bin/cat`, re-signs it ad
+hoc, and renames the bundle only after the child has echoed a line back.
+With it, 0 of 200 runs failed (100 with no synthetic load, 100 beside 16
+busy loops at load 20). Without the re-signing the same test fails 40 of 40,
+at the echo, with `cat-*.ips` reports of the same `Code Signature Invalid`
+kill. `docs/traps.md` records the trap for other fixtures.
+
+`in_use` is unchanged, by the owner's decision: `ESRCH` is a process that is
+gone or a zombie, and `ENOENT` is a live process whose executable no longer
+exists at any path — such a process holds none of the recovery's slots, and
+refusing on it would block a recovery whenever any of the owner's programs
+outlived its own update (a `claude --chrome-native-host` did, on this
+machine, during the investigation).
+
+## Result
+
+- Acceptance 4 and 5 are met by their condition: neither the cause nor an
+  error is in production code, so `in_use` keeps no new test or `Err`. The
+  fixture's regression is pinned by the test itself: unsigned, it fails 40
+  of 40 at the echo, under load.
+- Six isolated `just check` runs (`GUILD_STATE_DIR` in a scratch folder,
+  `GUILD_NO_GLOBAL_HOOKS=1`, the session variables unset), the other
+  session's tests running beside most of them. The guard's test passed in
+  all six. Three runs were green. Three failed once each, in tests this
+  branch does not touch: `fixed_footer_glyph_corner_alignment` (an
+  `unwrap` on `None`, footer_tests.rs:1202) and
+  `a_failed_status_read_cancels_the_held_commit_and_keeps_the_ticks` (git's
+  `index.lock` exists, commit_tests.rs:1565), both with 8 synthetic busy
+  loops beside them (load median 51, peak 128); and
+  `the_sessions_page_lists_by_urgency_settles_and_takes_keys` (two Working
+  rows in the wrong order, sessions_tests.rs:130) with no synthetic load
+  (median 17, peak 34). They are left to their own tasks.

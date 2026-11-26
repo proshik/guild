@@ -158,9 +158,9 @@ fn saving_keeps_a_record_owned_by_a_workspace_not_in_memory() {
     guild_session::project_state::save(&project_path, &state).unwrap();
     guild_session::flush();
 
-    guild_session::persist::save(&desk, &global).unwrap();
+    guild_session::persist::save(&mut desk, &global).unwrap();
     guild_session::flush();
-    guild_session::persist::save(&desk, &global).unwrap();
+    guild_session::persist::save(&mut desk, &global).unwrap();
     guild_session::flush();
 
     let state = guild_session::project_state::load(&project_path);
@@ -198,9 +198,9 @@ fn a_legacy_record_is_migrated_without_being_duplicated() {
     .unwrap();
     guild_session::flush();
 
-    let loaded = guild_session::persist::load(&global);
+    let mut loaded = guild_session::persist::load(&global);
     assert_eq!(loaded.session(legacy_id).unwrap().workspace, workspace);
-    guild_session::persist::save(&loaded, &global).unwrap();
+    guild_session::persist::save(&mut loaded, &global).unwrap();
     guild_session::flush();
     let state = guild_session::project_state::load(&project_path);
     assert_eq!(
@@ -298,7 +298,7 @@ fn legacy_over_limit_workspaces_survive_save_edit_and_reopen() {
     }
     guild_session::project_state::save(&project_path, &state).unwrap();
     guild_session::flush();
-    guild_session::persist::save(&desk, &global).unwrap();
+    guild_session::persist::save(&mut desk, &global).unwrap();
     guild_session::flush();
     let reopened = guild_session::persist::load(&global);
     for (session, workspace) in sessions {
@@ -404,7 +404,7 @@ fn worktree_orders_are_workspace_local_and_preserve_front_on_roundtrip() {
     assert!(!desk.set_worktree_order(first, &repository, order.clone()));
     assert!(!desk.set_worktree_order(WorkspaceId::new(), &repository, order.clone()));
     let global = scratch.join("workspace.json");
-    guild_session::persist::save(&desk, &global).unwrap();
+    guild_session::persist::save(&mut desk, &global).unwrap();
     let mut restored = guild_session::persist::load(&global);
     restored.normalise();
     assert_eq!(
@@ -503,4 +503,138 @@ fn a_tab_list_folded_before_the_default_changed_stays_folded() {
     let workspace = reopened.active_workspace();
     assert!(reopened.worktree_tabs_folded(workspace, Path::new("/repo-feature")));
     assert!(reopened.worktree_tabs_folded(workspace, Path::new("/repo-other")));
+}
+
+/// The session ids a project's own file holds, read from the disk once
+/// every queued write has landed — not the writer's pending snapshot,
+/// which `project_state::load` would answer.
+fn records_on_disk(project: &Path) -> Vec<guild_session::SessionId> {
+    guild_session::flush();
+    let bytes = std::fs::read(project.join(".guild").join("state.json")).unwrap();
+    let state: ProjectState = serde_json::from_slice(&bytes).unwrap();
+    state.sessions.iter().map(|record| record.id).collect()
+}
+
+fn shell(name: &str, seat: (WorkspaceId, guild_session::ProjectId), path: &Path) -> SessionRecord {
+    SessionRecord::new(name.to_owned(), seat, path.to_path_buf(), Runs::Shell)
+}
+
+/// GLD-060, the second route: a folder away when the desk was read loads
+/// no records, and a save once it is back must not take that emptiness
+/// for what the seat holds.
+#[test]
+fn a_save_keeps_the_records_of_a_folder_that_was_away_when_the_desk_was_read() {
+    let root = Scratch::new("guild-gld060-away-");
+    let global = root.join("workspace.json");
+    let path = root.join("project");
+    std::fs::create_dir_all(&path).unwrap();
+
+    let mut desk = Desk::default();
+    desk.normalise();
+    let workspace = desk.active_workspace();
+    let project = desk.open_in(workspace, &path);
+    let kept = desk.add_session(shell("kept", (workspace, project), &path));
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    assert_eq!(records_on_disk(&path), vec![kept]);
+
+    // Guild starts while the volume is not mounted, and it is back
+    // before the next save.
+    let away = root.join("project.away");
+    std::fs::rename(&path, &away).unwrap();
+    let mut restarted = guild_session::persist::load(&global);
+    std::fs::rename(&away, &path).unwrap();
+    assert!(restarted.session(kept).is_none(), "nothing was read");
+
+    let added = restarted.add_session(shell("added", (workspace, project), &path));
+    guild_session::persist::save(&mut restarted, &global).unwrap();
+    assert_eq!(records_on_disk(&path), vec![kept, added]);
+    assert!(
+        restarted.session(kept).is_some(),
+        "and the record is in memory, for a restore to find"
+    );
+}
+
+/// GLD-060, the first route: a project closed in a workspace keeps that
+/// workspace's records on disk, and a later run that opens it there again
+/// without reading them — `guild session new` behind the person's work —
+/// must not save them away. Records the run did read still leave the file
+/// when they leave memory.
+#[test]
+fn a_save_keeps_the_records_of_a_seat_opened_again_without_reading_them() {
+    let root = Scratch::new("guild-gld060-reopened-");
+    let global = root.join("workspace.json");
+    let path = root.join("project");
+    std::fs::create_dir_all(&path).unwrap();
+
+    let mut desk = Desk::default();
+    desk.normalise();
+    let first = desk.active_workspace();
+    let second = desk.add_workspace("Second", None).unwrap();
+    let project = desk.open_in(second, &path);
+    let one = desk.add_session(shell("one", (second, project), &path));
+    let two = desk.add_session(shell("two", (second, project), &path));
+    guild_session::persist::save(&mut desk, &global).unwrap();
+
+    // Closed in the second workspace with `forget_sessions_on_close`
+    // off: the root is released, its records stay beside it.
+    assert_eq!(desk.leave(second, project), Released::Released);
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    assert_eq!(records_on_disk(&path), vec![one, two]);
+
+    // A restart in the first workspace, and the folder opened in the
+    // second again by a command that reads nothing.
+    let mut restarted = guild_session::persist::load(&global);
+    assert_eq!(restarted.active_workspace(), first);
+    let project = restarted.open_in(second, &path);
+    let added = restarted.add_session(shell("added", (second, project), &path));
+    guild_session::persist::save(&mut restarted, &global).unwrap();
+    assert_eq!(records_on_disk(&path), vec![one, two, added]);
+    assert!(restarted.session(one).is_some() && restarted.session(two).is_some());
+
+    // Read now: a record removed from memory leaves the file as before.
+    restarted.remove_session(one);
+    guild_session::persist::save(&mut restarted, &global).unwrap();
+    assert_eq!(records_on_disk(&path), vec![two, added]);
+}
+
+/// GLD-060: the same, for a root another workspace still holds. Its records
+/// in memory are the other workspace's, which is what the window's own
+/// import (`adopt_project`) took for "already read"; the seat opened again
+/// is read on its own.
+#[test]
+fn a_root_held_elsewhere_and_opened_again_keeps_the_seat_s_records() {
+    let root = Scratch::new("guild-gld060-elsewhere-");
+    let global = root.join("workspace.json");
+    let path = root.join("project");
+    std::fs::create_dir_all(&path).unwrap();
+    // Which file comes first is not the point: a record kept on disk is
+    // written before memory's.
+    let sorted = |mut ids: Vec<guild_session::SessionId>| {
+        ids.sort_by_key(ToString::to_string);
+        ids
+    };
+
+    let mut desk = Desk::default();
+    desk.normalise();
+    let first = desk.active_workspace();
+    let second = desk.add_workspace("Second", None).unwrap();
+    let project = desk.open_in(first, &path);
+    desk.open_in(second, &path);
+    let theirs = desk.add_session(shell("theirs", (first, project), &path));
+    let mine = desk.add_session(shell("mine", (second, project), &path));
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    assert_eq!(desk.leave(second, project), Released::Kept);
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    assert_eq!(sorted(records_on_disk(&path)), sorted(vec![theirs, mine]));
+
+    let mut restarted = guild_session::persist::load(&global);
+    assert!(restarted.session(mine).is_none());
+    restarted.open_in(second, &path);
+    let added = restarted.add_session(shell("added", (second, project), &path));
+    guild_session::persist::save(&mut restarted, &global).unwrap();
+    assert_eq!(
+        sorted(records_on_disk(&path)),
+        sorted(vec![theirs, mine, added])
+    );
+    assert!(restarted.session(mine).is_some());
 }

@@ -875,8 +875,8 @@ fn a_project_file_that_cannot_be_opened_survives_the_desk_saved_over_it() {
     let before = std::fs::read(&file).unwrap();
     std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o000)).unwrap();
 
-    let loaded = guild_session::persist::load(&global);
-    let saved = guild_session::persist::save(&loaded, &global);
+    let mut loaded = guild_session::persist::load(&global);
+    let saved = guild_session::persist::save(&mut loaded, &global);
     guild_session::flush();
     readable_again(&guild_session::project_state::dir(&project));
 

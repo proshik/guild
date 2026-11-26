@@ -19,6 +19,7 @@ use std::path::Path;
 use crate::desk::Desk;
 use crate::project_state;
 use crate::store::{Store, StoreError};
+use crate::workspace::Seat;
 
 /// Read a desk from the global file and every project beside it.
 ///
@@ -45,8 +46,17 @@ pub fn load(global: &Path) -> Desk {
         .collect();
 
     for (id, path) in directories {
+        // A folder away now answers no state, which is not the seat's
+        // records: its seats stay unread until `read_unread` finds it.
+        let present = path.is_dir();
         let state = project_state::load(&path);
         let holders = desk.holders(id);
+        if present && path.is_dir() {
+            desk.loaded.extend(holders.iter().map(|&workspace| Seat {
+                workspace,
+                project: id,
+            }));
+        }
         let first = holders.first().copied();
         // A record whose project has been forgotten would be invisible and
         // unreachable, so the project it was found beside is the one it
@@ -66,12 +76,80 @@ pub fn load(global: &Path) -> Desk {
     desk
 }
 
+/// Read the records of every held seat this run has not read yet — GLD-060.
+///
+/// Two seats are held without having been read: one added since the desk
+/// was read — a root opened again in a workspace that had closed it, whose
+/// records stayed beside the root — and one whose folder was away when it
+/// was read. Their records come into memory, where a restore looks for
+/// them, as `load` would have brought them; a record memory already holds
+/// is not read a second time. A folder still away, or a file that will not
+/// read, leaves its seats unread: [`save`] keeps their records on disk.
+pub fn read_unread(desk: &mut Desk) {
+    let waiting: Vec<_> = desk
+        .projects()
+        .filter_map(|project| {
+            let seats: Vec<_> = desk
+                .holders(project.id)
+                .into_iter()
+                .filter(|&workspace| {
+                    !desk.loaded.contains(&Seat {
+                        workspace,
+                        project: project.id,
+                    })
+                })
+                .collect();
+            (!seats.is_empty()).then(|| (project.id, project.path.clone(), seats))
+        })
+        .collect();
+    for (id, path, seats) in waiting {
+        let Some(state) = project_state::load_for_change(&path) else {
+            continue;
+        };
+        let first = desk.holders(id).first().copied();
+        let read: Vec<_> = state
+            .sessions
+            .into_iter()
+            .filter_map(|mut session| {
+                session.project = id;
+                if session.workspace.is_nil() {
+                    session.workspace = first?;
+                }
+                (seats.contains(&session.workspace) && desk.session(session.id).is_none())
+                    .then_some(session)
+            })
+            .collect();
+        if !read.is_empty() {
+            tracing::info!(
+                project = %path.display(),
+                sessions = read.len(),
+                "a seat's records were read after the desk was"
+            );
+        }
+        desk.absorb_earlier(id, read);
+        desk.loaded.extend(seats.into_iter().map(|workspace| Seat {
+            workspace,
+            project: id,
+        }));
+    }
+}
+
 /// Write the global file and each project's own.
 ///
 /// A project whose directory has gone keeps its sessions **in the global
 /// file**. Losing somebody's conversations because a disk was not mounted
 /// is not a migration, and the directory may well be back tomorrow.
-pub fn save(desk: &Desk, global: &Path) -> Result<(), StoreError> {
+///
+/// **A seat's records on disk are replaced only once this run has read
+/// them** — GLD-060. Unread seats are read first ([`read_unread`]), which
+/// is why the desk is taken mutably; one still unread keeps what its file
+/// holds, and memory's records of it are added by id. Without that, a seat
+/// memory never read was written as empty: the conversations a workspace
+/// kept in a root it had closed, or in a folder away at startup, left the
+/// file at the first save.
+pub fn save(desk: &mut Desk, global: &Path) -> Result<(), StoreError> {
+    read_unread(desk);
+    let desk = &*desk;
     let mut global_state = desk.clone();
     let sessions = global_state.take_sessions();
 
@@ -93,12 +171,24 @@ pub fn save(desk: &Desk, global: &Path) -> Result<(), StoreError> {
             .cloned()
             .collect();
 
+        let read: Vec<_> = holders
+            .iter()
+            .copied()
+            .filter(|&workspace| {
+                desk.loaded.contains(&Seat {
+                    workspace,
+                    project: project.id,
+                })
+            })
+            .collect();
+
         let mut state = project_state::load(&project.path);
-        // Only replace records owned by seats present in memory. Records of
+        // Only replace records owned by seats this run has read. Records of
         // a workspace which stopped holding this root stay on disk: adding
-        // the seat again makes those conversations reachable again.
+        // the seat again makes those conversations reachable again. So do
+        // those of a seat held but never read.
         state.sessions.retain(|session| {
-            !holders.contains(&session.workspace)
+            !read.contains(&session.workspace)
                 && !mine.iter().any(|replacement| replacement.id == session.id)
         });
         state.sessions.extend(mine);

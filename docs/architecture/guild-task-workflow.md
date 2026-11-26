@@ -3,10 +3,10 @@
 Small settled fixes and bounded UI trials need the request, expected
 result/constraints, implementation and targeted checks, not a separate
 specification or plan. For substantial or ambiguous changes, persist agreed
-behavior, scenarios and one implementation plan in OpenSpec when useful or
-explicitly required. The presence of `openspec/` alone does not require a contract
-or change. These instructions are not a Guild scheduler or runtime enforcement.
-When OpenSpec is selected, read [OpenSpec](../../openspec/README.md).
+behavior, scenarios, design decisions and one implementation plan in the
+task's own file, as [Repository task files](../../tasks/README.md) says; a
+rule that outlives the task goes into [Decisions](../decisions.md).
+These instructions are not a Guild scheduler or runtime enforcement.
 Static checks establish neither behavioral pilot PASS nor global readiness.
 
 ## Entry and discovery
@@ -39,11 +39,9 @@ select workflow policy. The skills neither inspect Rust nor patch bootstrap.
 
 Read the effective `development-workflow` policy
 for defaults/provenance and optional read-only legacy mapping; private `.guild`
-files are not required. Follow [OpenSpec preparation and validation](../../openspec/README.md)
-only when OpenSpec is selected. Otherwise skip OpenSpec commands, schema and
-archive steps. Without OpenSpec, use a concise existing document/task note only
-when persistence is useful or explicitly required. Existing but broken OpenSpec
-is a setup gap only for work that selects it. Superpowers
+files are not required. Guild's own development keeps a task's agreement and
+plan in its `tasks/GLD-*.md` file, with its Acceptance, Design and Plan
+sections, and keeps no separate specification tree. Superpowers
 supplies optional methods selected by task complexity, rather than mandatory
 brainstorming, duplicate artifacts, dispatch or phase gates. Missing Superpowers
 alone does not block work; project quality checks remain applicable.

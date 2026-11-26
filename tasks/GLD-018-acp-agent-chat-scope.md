@@ -7,7 +7,7 @@ priority: 3
 component: docs
 depends_on: [GLD-010]
 touches:
-  - openspec/changes/acp-agent-chat/**
+  - tasks/GLD-018-acp-agent-chat-scope.md
 harness: any
 reviews: {spec: 1, code: 0}
 created: "2026-11-07"
@@ -66,8 +66,8 @@ GLD-010's protocol, after it.
 **Not yet agreed with the person.** Beyond the points above, this is a
 candidate carried over from the former `docs/backlog/future-improvements.md`
 ("ACP-backed agent chat", recorded 2026-10-24); its scope and behaviour are to
-be agreed with the person before any work, and recorded in the task (or an
-OpenSpec change) in the same branch. **A visible UI change:** a mockup in Guild's design system and the
+be agreed with the person before any work, and recorded in this file
+in the same branch. **A visible UI change:** a mockup in Guild's design system and the
 person's decision come before code.
 
 ## Acceptance
@@ -100,8 +100,8 @@ person's decision come before code.
 
 ## Checks
 
-- The decision recorded in an OpenSpec change (`openspec validate <change>
-  --strict --no-interactive`) or in this file if no change is warranted.
+- The decision recorded in this file: its Design and Plan sections written
+  and agreed with the person.
 - No production code.
 
 ## Limits / non-goals

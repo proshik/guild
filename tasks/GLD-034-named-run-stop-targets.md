@@ -27,7 +27,7 @@ extending Run and Terminal Jobs rather than adding a third runner.
 former `docs/backlog/2026-10-17-product-improvements.md` (historical extension
 of "Worktree preparation" and the note on named run/stop scripts);
 its scope and behaviour are to be agreed with the person before any work, and
-recorded in the task (or an OpenSpec change) in the same branch. **A visible
+recorded in this file in the same branch. **A visible
 UI change:** a mockup in Guild's design system and the person's decision come
 before code.
 

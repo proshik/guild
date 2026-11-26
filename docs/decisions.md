@@ -597,7 +597,7 @@ here; the comment beside the citation carries the rule it names.
       for the host still marks; with none read yet, the MR is shown without
       the mark. A person
       after the MR's number says "You created this merge request",
-      mr-header-status-and-author.
+      GLD-063.
     - **REST, per branch**: every page of its MRs in every state, an open
       one over a merged or closed one and the newest of a state; for an
       open one its detail, approvals and every page of its discussions.
@@ -625,7 +625,7 @@ here; the comment beside the citation carries the rule it names.
       elsewhere, or, before its first answer, push to a host without
       GitLab in its name. Progress moves
       outside an answer's landing, so the window compares every header's
-      indicator with the one it last drew, mr-header-status-and-author.
+      indicator with the one it last drew, GLD-063.
       Only an absolute
       http or https `web_url` is an MR's link; anything else makes the
       record incomplete, so nothing but a web page is opened from GitLab's

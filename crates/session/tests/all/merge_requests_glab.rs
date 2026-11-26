@@ -1738,7 +1738,7 @@ fn a_tagged_empty_block_scalar_is_no_token() {
     );
 }
 
-// --- the author and the account (mr-header-status-and-author)
+// --- the author and the account (GLD-063)
 
 /// The list's `author.id` is the MR's author; a list without one says
 /// nothing of its author.

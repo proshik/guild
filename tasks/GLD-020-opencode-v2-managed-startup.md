@@ -29,7 +29,7 @@ qualified. The person now runs OpenCode 2.2.x.
 former `docs/backlog/future-improvements.md` ("OpenCode V2 managed-startup
 qualification", recorded 2026-10-26, deferred by the person); its scope and
 behaviour are to be agreed with the person before any work, and recorded in
-the task (or an OpenSpec change) in the same branch.
+this file in the same branch.
 
 ## Acceptance
 

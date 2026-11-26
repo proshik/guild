@@ -26,7 +26,7 @@ one.
 former `docs/backlog/2026-10-17-product-improvements.md` (historical P3 "CLI
 layout presets" and the note on saved/declarative layouts); its
 scope and behaviour are to be agreed with the person before any work, and
-recorded in the task (or an OpenSpec change) in the same branch.
+recorded in this file in the same branch.
 
 ## Acceptance
 

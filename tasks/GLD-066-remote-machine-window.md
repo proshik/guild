@@ -101,7 +101,7 @@ to its own machine's server.
 
 ## Context
 
-- GLD-010's `openspec/changes/guild-session-server/` — the remote window's
+- GLD-010's Design section — the remote window's
   boundaries.
 - GLD-065 (the ssh transport and saved machines), GLD-015 (input rights),
   GLD-014 (the optional project and worktree path).

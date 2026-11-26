@@ -22,8 +22,8 @@ anything beyond it earns its place.
 **Not yet agreed with the person.** This is a candidate carried over from the
 former `docs/backlog/2026-10-17-product-improvements.md` (historical P3
 "Changelists and shelf", not promoted); its scope and behaviour are to be
-agreed with the person before any work, and recorded in the task (or an
-OpenSpec change) in the same branch.
+agreed with the person before any work, and recorded in this file
+in the same branch.
 
 ## Acceptance
 

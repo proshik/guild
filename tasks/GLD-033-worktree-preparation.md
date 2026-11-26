@@ -27,7 +27,7 @@ copied from the main checkout.
 former `docs/backlog/2026-10-17-product-improvements.md` (P2 "Worktree
 preparation" and the note on setup scripts and explicit ignored-file
 copies); its scope and behaviour are to be agreed with the person before any
-work, and recorded in the task (or an OpenSpec change) in the same branch. **A
+work, and recorded in this file in the same branch. **A
 visible UI change:** a mockup in Guild's design system and the person's
 decision come before code.
 

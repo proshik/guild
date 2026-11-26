@@ -7,7 +7,7 @@ priority: 3
 component: docs
 depends_on: []
 touches:
-  - openspec/changes/agent-messages/**
+  - tasks/GLD-049-agent-messages-and-inboxes.md
 harness: any
 reviews: {spec: 1, code: 0}
 created: "2026-11-07"
@@ -27,7 +27,8 @@ approved a narrow direction (queued sends, waiting/stall events for the
 initiator, child-to-initiator reports). On 2026-11-22 they added mail between
 any sessions (answer 8). The draft OpenSpec change `agent-messages` is no
 longer in the repository; the person's answers of 2026-11-22 are recorded
-below, and the change is written again from them before implementation.
+below, and the design is written again from them, in this file's Design and
+Plan sections, before implementation.
 Feature tasks follow only once the person approves implementation.
 
 Originally this was a candidate carried over from the
@@ -35,8 +36,8 @@ former `docs/backlog/2026-10-17-product-improvements.md` (rows
 2026-10-16 (`agent answer`, sender identity), 2026-10-11 (attributed messages,
 no duplicate result delivery) and 2026-09-23 (durable inboxes with
 acknowledgements), and the note on peer messaging); its scope and behaviour
-are to be agreed with the person before any work, and recorded in the task (or
-an OpenSpec change) in the same branch.
+are to be agreed with the person before any work, and recorded in this file
+in the same branch.
 
 ## Acceptance
 
@@ -55,8 +56,8 @@ an OpenSpec change) in the same branch.
 
 ## Checks
 
-- The decision recorded in an OpenSpec change (`openspec validate <change>
-  --strict --no-interactive`) or in this file if no change is warranted.
+- The decision recorded in this file: its Design and Plan sections written
+  and agreed with the person.
 - No production code.
 
 ## Limits / non-goals

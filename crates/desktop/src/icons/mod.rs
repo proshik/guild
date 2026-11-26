@@ -307,7 +307,7 @@ pub fn workspace_path(name: &str) -> Option<&'static str> {
 /// `play`, `square` and `eraser`; a panel head's `ellipsis-vertical` and
 /// `minus`; the `check` in a checkbox; and `columns-2` on a divided tab.
 pub const UI: &[(&str, &[u8])] = &[
-    // mr-header-status-and-author: a repository's merge requests queued
+    // GLD-063: a repository's merge requests queued
     // or not refreshed, in its header; a merge request the person created.
     (
         "ui/mr-queued.svg",

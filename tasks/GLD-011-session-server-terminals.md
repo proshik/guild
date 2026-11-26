@@ -89,6 +89,6 @@ re-scope it.
 
 ## Context
 
-- GLD-010's `openspec/changes/guild-session-server/`.
+- GLD-010's Design and Plan sections.
 - `docs/runtime-ownership.md` — "Process lifetime", "Bounded transport
   ownership"; `docs/traps.md` — the terminal section.

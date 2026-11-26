@@ -7,7 +7,7 @@ priority: 2
 component: docs
 depends_on: []
 touches:
-  - openspec/changes/instruction-queue/**
+  - tasks/GLD-031-instruction-queue-and-delivery.md
 harness: any
 reviews: {spec: 1, code: 0}
 created: "2026-11-07"
@@ -26,7 +26,7 @@ former `docs/backlog/2026-10-17-product-improvements.md` (P2 "Visible
 instruction queue", the historical "reliable task delivery" note, and the
 rows 2026-10-06 (`prompt_stalled`, wait for the launched turn) and
 2026-10-05 (`send --steer`)); its scope and behaviour are to be agreed with
-the person before any work, and recorded in the task (or an OpenSpec change)
+the person before any work, and recorded in this file
 in the same branch. **A visible UI change:** a mockup in Guild's design system
 and the person's decision come before code.
 
@@ -46,8 +46,8 @@ and the person's decision come before code.
 
 ## Checks
 
-- The decision recorded in an OpenSpec change (`openspec validate <change>
-  --strict --no-interactive`) or in this file if no change is warranted.
+- The decision recorded in this file: its Design and Plan sections written
+  and agreed with the person.
 - No production code.
 
 ## Limits / non-goals

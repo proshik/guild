@@ -48,7 +48,7 @@ paths = ["crates/tui/**"]
 release = { rule = "tag", pattern = "nightly-*" }
 
 [components.docs]
-paths = ["docs/**", "openspec/**", "tasks/**", "AGENTS.md", "README.md", "CHANGELOG.md"]
+paths = ["docs/**", "tasks/**", "AGENTS.md", "README.md", "CHANGELOG.md"]
 release = { rule = "merge" }
 
 [components.tooling]

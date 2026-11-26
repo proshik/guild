@@ -52,6 +52,9 @@ created: "2026-11-07"
 ## Context
 ```
 
+A substantial or ambiguous task adds `## Design` and `## Plan`, after
+*Acceptance*.
+
 Machines read the front matter; people and agents read the body.
 `task.schema.json` pins the front matter, with `additionalProperties: false`,
 so a tool rejects a misspelt key instead of ignoring it.
@@ -95,7 +98,24 @@ and archiving a shipped plan waits on a release, which is not a task.
   window check — and what is deliberately not run.
 - **Limits / non-goals** — what the task must not do, and the deferred work
   that bounds it.
-- **Context** — links to code, OpenSpec changes, decisions and commits.
+- **Context** — links to code, decisions, other tasks and commits.
+
+A substantial or ambiguous task — one whose behaviour has to be agreed
+before it is built — also records that agreement here, and nowhere else:
+
+- **Acceptance** holds its scenarios: each WHEN/THEN is one agreed
+  behaviour, worded so a test can be written from it.
+- **Design** — the decisions the work rests on, each short, with the code
+  path it lands in, and the options rejected with the reason.
+- **Plan** — one implementation plan: ordered steps in dependency order,
+  each a checkbox closed by green tests and a commit. A disagreement with
+  the plan found during the work is written into the plan, not coded around
+  in silence. **The last step is always the decisions**: rules that outlive
+  this task are recorded in `docs/decisions.md` — a new numbered decision,
+  or an existing one amended — or the step says none arose, so a reviewer
+  can see it was considered.
+
+A small, settled task needs only its Acceptance list: no Design, no Plan.
 
 A body states facts about the code with a path and line where it can, and
 marks what the author has not verified.
@@ -275,6 +295,7 @@ CLI — gives each its own component and rule.
 A task that turns out too big for one merge is split before it is started:
 the original is cancelled or narrowed, and the parts get new ids.
 
-A `design` task's output is the decision recorded in OpenSpec (or the
-project's place for decisions); it changes no production code. Tasks that
-the decision changes are edited in the same branch.
+A `design` task's output is the decision recorded in its own file, under
+*Design* and *Plan*; it changes no production code. A rule that outlives it
+goes into the project's place for lasting decisions (`docs/decisions.md`
+here). Tasks that the decision changes are edited in the same branch.

@@ -75,7 +75,7 @@ status bar or the column — is decided on the Penpot mockup.
 
 ## Context
 
-- GLD-010's `openspec/changes/guild-session-server/`; GLD-066 (the
+- GLD-010's Design section; GLD-066 (the
   remote-machine window this list raises).
 - `crates/session/src/status.rs` — `Status::Waiting(Why)` *(code)*.
 - `crates/desktop/src/root/status.rs`, `crates/desktop/src/system.rs` — the

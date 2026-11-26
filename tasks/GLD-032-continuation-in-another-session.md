@@ -7,7 +7,7 @@ priority: 2
 component: docs
 depends_on: []
 touches:
-  - openspec/changes/session-continuation/**
+  - tasks/GLD-032-continuation-in-another-session.md
 harness: any
 reviews: {spec: 1, code: 0}
 created: "2026-11-07"
@@ -24,7 +24,7 @@ state; Guild's existing startup continuation (`session resume --from-file
 **Not yet agreed with the person.** This is a candidate carried over from the
 former `docs/backlog/2026-10-17-product-improvements.md` (P2 "Continuation in
 another session"); its scope and behaviour are to be agreed with the person
-before any work, and recorded in the task (or an OpenSpec change) in the same
+before any work, and recorded in this file in the same
 branch. **A visible UI change:** a mockup in Guild's design system and the
 person's decision come before code.
 
@@ -42,8 +42,8 @@ person's decision come before code.
 
 ## Checks
 
-- The decision recorded in an OpenSpec change (`openspec validate <change>
-  --strict --no-interactive`) or in this file if no change is warranted.
+- The decision recorded in this file: its Design and Plan sections written
+  and agreed with the person.
 - No production code.
 
 ## Limits / non-goals

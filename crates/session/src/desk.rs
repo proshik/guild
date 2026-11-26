@@ -379,6 +379,15 @@ pub struct Desk {
     /// away, removed before the folder came back. Never saved.
     #[serde(skip)]
     pub(crate) removed: std::collections::HashSet<SessionId>,
+    /// The seats of a root whose folder was away at the save that wrote
+    /// this file and which that run had read — GLD-060, review r2. Their
+    /// records in this file are the whole of them, so the next run takes
+    /// them from here and not from the older copy beside the root, which a
+    /// removal made while the folder was away never reached. Written by
+    /// [`crate::persist::save`] alone; empty, and absent from the file,
+    /// for every root whose folder was there.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) read_away: Vec<(WorkspaceId, ProjectId)>,
 }
 
 /// How many directories "Open Recent" keeps.

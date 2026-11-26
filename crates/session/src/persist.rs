@@ -29,6 +29,8 @@ use crate::workspace::Seat;
 /// is no separate migration step to forget to run.
 pub fn load(global: &Path) -> Desk {
     let mut desk: Desk = Store::new(global.to_path_buf()).load().unwrap_or_default();
+    // Seats the global file carries whole: read, wherever their folder is.
+    let read_away = std::mem::take(&mut desk.read_away);
 
     // Whatever an old file still holds. These are somebody's conversations,
     // so they are kept and re-homed rather than dropped.
@@ -47,16 +49,25 @@ pub fn load(global: &Path) -> Desk {
 
     for (id, path) in directories {
         // A folder away now answers no state, which is not the seat's
-        // records: its seats stay unread until `read_unread` finds it.
+        // records: its seats stay unread until `read_unread` finds it —
+        // all but those the global file carries whole (`read_away`).
         let present = path.is_dir();
         let state = project_state::load(&path);
         let holders = desk.holders(id);
-        if present && path.is_dir() {
-            desk.loaded.extend(holders.iter().map(|&workspace| Seat {
-                workspace,
-                project: id,
-            }));
-        }
+        let whole: Vec<_> = holders
+            .iter()
+            .copied()
+            .filter(|&workspace| read_away.contains(&(workspace, id)))
+            .collect();
+        let read = if present && path.is_dir() {
+            holders.clone()
+        } else {
+            whole.clone()
+        };
+        desk.loaded.extend(read.into_iter().map(|workspace| Seat {
+            workspace,
+            project: id,
+        }));
         let first = holders.first().copied();
         // A record whose project has been forgotten would be invisible and
         // unreachable, so the project it was found beside is the one it
@@ -66,7 +77,10 @@ pub fn load(global: &Path) -> Desk {
             if session.workspace.is_nil() {
                 session.workspace = first?;
             }
+            // A seat the global file carries whole has nothing to add
+            // from here: a record here and not there was removed.
             (holders.contains(&session.workspace)
+                && !whole.contains(&session.workspace)
                 && !carried.iter().any(|kept| kept.id == session.id))
             .then_some(session)
         }));
@@ -157,9 +171,24 @@ pub fn save(desk: &mut Desk, global: &Path) -> Result<(), StoreError> {
     let sessions = global_state.take_sessions();
 
     let mut homeless = Vec::new();
+    global_state.read_away.clear();
     for project in desk.projects() {
         let holders = desk.holders(project.id);
         if !project.path.is_dir() {
+            // What this run read of the root goes to the global file whole,
+            // and is said to be: the next run takes it from there.
+            global_state.read_away.extend(
+                holders
+                    .iter()
+                    .copied()
+                    .filter(|&workspace| {
+                        desk.loaded.contains(&Seat {
+                            workspace,
+                            project: project.id,
+                        })
+                    })
+                    .map(|workspace| (workspace, project.id)),
+            );
             homeless.extend(
                 sessions
                     .iter()

@@ -710,3 +710,98 @@ fn a_root_moved_into_a_workspace_that_had_closed_it_keeps_that_workspace_s_recor
     assert_eq!(desk.session(moved).unwrap().workspace, second);
     assert_eq!(desk.session(retained).unwrap().workspace, second);
 }
+
+/// GLD-060, review r2: the same removal, with a restart between it and the
+/// folder's return — in memory alone the removal would not outlive the run
+/// it was made in. The global file says the seat's records it carries are
+/// the whole of them, so the project's older copy is not read back: not
+/// when the folder comes back during a run, and not when it is back at the
+/// start of one.
+#[test]
+fn a_record_removed_while_its_folder_was_away_stays_removed_across_a_restart() {
+    for back_at_start in [false, true] {
+        let root = Scratch::new("guild-gld060-removed-restart-");
+        let global = root.join("workspace.json");
+        let path = root.join("project");
+        let away = root.join("project.away");
+        std::fs::create_dir_all(&path).unwrap();
+
+        let mut desk = Desk::default();
+        desk.normalise();
+        let workspace = desk.active_workspace();
+        let project = desk.open_in(workspace, &path);
+        let gone = desk.add_session(shell("gone", (workspace, project), &path));
+        let kept = desk.add_session(shell("kept", (workspace, project), &path));
+        guild_session::persist::save(&mut desk, &global).unwrap();
+        assert_eq!(records_on_disk(&path), vec![gone, kept]);
+
+        std::fs::rename(&path, &away).unwrap();
+        guild_session::persist::save(&mut desk, &global).unwrap();
+        guild_session::flush();
+        let mut second = guild_session::persist::load(&global);
+        second.remove_session(gone);
+        guild_session::persist::save(&mut second, &global).unwrap();
+        guild_session::flush();
+
+        let mut third = if back_at_start {
+            std::fs::rename(&away, &path).unwrap();
+            guild_session::persist::load(&global)
+        } else {
+            let third = guild_session::persist::load(&global);
+            std::fs::rename(&away, &path).unwrap();
+            third
+        };
+        guild_session::persist::save(&mut third, &global).unwrap();
+        assert!(
+            third.session(gone).is_none(),
+            "back at start: {back_at_start}"
+        );
+        assert!(
+            third.session(kept).is_some(),
+            "back at start: {back_at_start}"
+        );
+        assert_eq!(
+            records_on_disk(&path),
+            vec![kept],
+            "back at start: {back_at_start}"
+        );
+        let fourth = guild_session::persist::load(&global);
+        assert!(fourth.session(gone).is_none());
+        assert!(fourth.session(kept).is_some());
+    }
+}
+
+/// GLD-060, review r2: a seat this run never read, whose folder is away at
+/// a save, is not taken for complete by the next run — the global file
+/// carries only what this run made there, and the folder's own file keeps
+/// the rest.
+#[test]
+fn a_seat_never_read_is_not_complete_in_the_global_file() {
+    let root = Scratch::new("guild-gld060-unread-away-");
+    let global = root.join("workspace.json");
+    let path = root.join("project");
+    let away = root.join("project.away");
+    std::fs::create_dir_all(&path).unwrap();
+
+    let mut desk = Desk::default();
+    desk.normalise();
+    let workspace = desk.active_workspace();
+    let project = desk.open_in(workspace, &path);
+    let old = desk.add_session(shell("old", (workspace, project), &path));
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    guild_session::flush();
+
+    // Started while the folder is away; a session made there; saved while
+    // it is still away; restarted with the folder back.
+    std::fs::rename(&path, &away).unwrap();
+    let mut second = guild_session::persist::load(&global);
+    let new = second.add_session(shell("new", (workspace, project), &path));
+    guild_session::persist::save(&mut second, &global).unwrap();
+    guild_session::flush();
+    std::fs::rename(&away, &path).unwrap();
+
+    let mut third = guild_session::persist::load(&global);
+    assert!(third.session(old).is_some() && third.session(new).is_some());
+    guild_session::persist::save(&mut third, &global).unwrap();
+    assert_eq!(records_on_disk(&path), vec![old, new]);
+}

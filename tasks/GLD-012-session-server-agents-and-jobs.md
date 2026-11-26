@@ -18,6 +18,8 @@ touches:
   - crates/desktop/src/ide.rs
   - crates/desktop/src/ide/**
   - crates/desktop/src/terminal_job.rs
+  - crates/desktop/src/root/overlay.rs
+  - docs/overlays.md
   - docs/runtime-ownership.md
 harness: any
 reviews: {spec: 1, code: 2}
@@ -31,8 +33,9 @@ them moves there too, so it outlives a window reload and every client sees
 the same thing: the status board fed by OSC 7501 root records, the hook
 socket and identity (conversation binding, Codex durable identity), the
 managed-input latch and its epochs counted where bytes are written, and
-terminal jobs with their receipts. The window reads all of it from the
-server.
+terminal jobs with their receipts, and the overlay board, whose terminal
+overlays show those jobs (decided 2026-11-27, GLD-010). The window reads all
+of it from the server.
 
 Whether Claude's IDE server (`ide/`) moves here is GLD-010's answer:
 `CLAUDE_CODE_SSE_PORT` is fixed at launch, so if the window hosts it, IDE
@@ -51,7 +54,16 @@ integration breaks across a window restart.
       the existing managed-input tests pass against it.
 - [ ] WHEN a terminal job runs THEN it belongs to the server, its receipts
       are the server's, and `guild` sees the same job from any client.
-- [ ] `docs/runtime-ownership.md` says what the server owns and what the
+- [ ] WHEN a session opens an overlay with `guild overlay open` and the
+      window then reloads THEN the overlay is still there with its title,
+      content and hidden or shown state, and a terminal overlay still shows
+      its job's output. Today the board is window-local and such an overlay
+      is lost (`docs/overlays.md`).
+- [ ] WHEN two clients show the same session THEN both see its overlays,
+      and an update from the session reaches both. The 64-surface and 1 MiB
+      caps hold on the server.
+- [ ] `docs/runtime-ownership.md` and `docs/overlays.md` say what the server
+      owns and what the
       window still owns.
 
 ## Checks

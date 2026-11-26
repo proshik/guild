@@ -54,6 +54,13 @@ asked again):
   not that protocol: it joins one client to one agent, with no snapshot, no
   sequence numbers and no second observer. GLD-018 designs the Chat surface
   on top of this.
+- **(2026-11-27) A session's overlays are the server's.** The overlay board
+  (`guild_session::overlay::Board`, window-local today, `docs/overlays.md`)
+  moves to the server with the terminal jobs its terminal overlays show
+  (GLD-012). `guild overlay` from a session reaches its own machine's
+  server, and every client, a remote-machine window included, draws that
+  session's overlays. This narrows "only through the terminal emulator":
+  an overlay is text or a job's terminal, not files or git.
 - **Remote is ssh only.** The server has no TCP listener. Locally it is a
   0600 Unix socket; remotely the same byte stream goes through `ssh host
   guild server bridge`. A dropped connection is *disconnected*, never
@@ -131,7 +138,15 @@ asked again):
 - **The remote-machine window** (GLD-066): one per machine, terminal-only —
   no file links, no Claude IDE integration, no git, Run, Find in Files,
   Explorer or editor, no moving tabs between it and local windows; `guild`
-  inside a remote session talks only to its own machine's server.
+  inside a remote session talks only to its own machine's server. Its
+  sessions' overlays are shown (decided 2026-11-27).
+- **Overlays on the wire.** The board's records (id, owner, target, title,
+  content, visible) travel as a snapshot plus changes, like a session's
+  status. A terminal overlay names a job, and its bytes come through that
+  job's terminal stream, not as a copy. Whether showing, hiding and focus
+  are one state shared by all clients or each client's own is decided
+  here. Recommendation: whether a surface is open is shared, and focus is
+  each client's own.
 - **The shared waiting list** (GLD-067): local and remote `Waiting(Why)`
   sessions in one place; a click raises that machine's window on the
   session; the chime and the Dock badge counted once per session.
@@ -197,6 +212,9 @@ GLD-010, and not discovered in GLD-011. The result goes into `design.md`.
 - [ ] The conversation (ACP) session and the language servers' hosting are
       in the protocol outline, each with the task that builds it (created or
       re-scoped if none fits), and GLD-018 is edited to match.
+- [ ] Overlays are in the protocol outline: the board's snapshot and
+      changes, how a terminal overlay reaches its job's stream, and whether
+      visibility is shared or each client's own.
 - [ ] Lifetime: the server always owns sessions; by default it ends when the
       last client leaves (after the decided grace); outliving the window is a
       setting (GLD-013).

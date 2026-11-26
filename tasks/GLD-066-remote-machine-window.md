@@ -19,6 +19,8 @@ touches:
   - crates/desktop/src/root/menu.rs
   - crates/desktop/src/terminal/links.rs
   - crates/desktop/src/root/links.rs
+  - crates/desktop/src/view/overlay.rs
+  - crates/desktop/src/root/overlay.rs
   - crates/desktop/src/i18n/**
   - crates/desktop/tests/all/**
   - crates/session/src/**
@@ -59,6 +61,11 @@ to its own machine's server.
 - [ ] WHEN the person opens a session THEN it is a terminal tab drawn from
       the remote server's snapshot and stream, taking input through GLD-015's
       handover, with resize following GLD-015's rule.
+- [ ] WHEN a remote session has overlays (`guild overlay open` run there)
+      THEN its tab shows them as a local tab does: text, or a job's terminal
+      drawn from the remote job's stream. Closing or hiding them in this
+      window follows GLD-010's rule for visibility, and nothing about them
+      reaches a local window (decided 2026-11-27).
 - [ ] WHEN the window is a remote machine's THEN file links in output,
       Claude IDE integration, git, Run, Find in Files, the Explorer and the
       editor are absent, and a tab cannot be moved to or from a local window
@@ -102,3 +109,5 @@ to its own machine's server.
   the main one today *(code)*. `crates/desktop/src/remote/**` in `touches` is
   where the author expects the new module, not a decision.
 - `docs/penpot.md`; `AGENTS.md` — the Penpot and changelog rules.
+- `docs/overlays.md`, `guild_session::overlay` — overlays; the board moves
+  to the server in GLD-012 *(code)*.

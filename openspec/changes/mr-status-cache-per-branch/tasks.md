@@ -23,7 +23,7 @@
 - [x] 4.3 Measure the column frame before/after: `view::column::perf_bench` (root notify on a large column) and the notifies of a steady refresh; a release dev window, visible, at a time the user chooses
   - Test platform, 40 repositories / 200 rows / 480 tabs: an answer with the same MRs 11.04 ms → 0.01 ms; a changed one 11.45 ms (a root notify 11.24 ms). Native release window (`examples/forge-frames.rs`, GPUI profiler `Window::draw`): same MRs 40 frames of 10.8 ms median → no frame; changed MR 11.3 ms; one repository 2.6–2.8 ms.
 - [ ] 4.4 If the notify fix is not enough, measure and propose a per-element update with its cost — no code without agreement
-  - Proposed to the user with its estimate; awaiting a decision.
+  - **Deferred by the user's decision (2026-11-26): not now.** Not done. Measured: a changed MR still rebuilds the whole column — 11.3 ms a frame in a native release window with forty repositories and two hundred rows (11.45 ms on the test platform), against 2.7 ms for a one-repository column, the floor a per-row cached view could approach. Its cost — rows read many `Root` fields, and every row becoming a cached view risks stale regions (`docs/traps.md`, `view::region`) — was not taken on for this change.
 - [x] 4.5 Decision 56, CHANGELOG `### Fixed`; `just check`; commit
 
 ## 5. Review

@@ -939,3 +939,28 @@ fn no_mr_read_again_asks_for_no_frame() {
     let ask = forge.take_due(later).remove(0);
     assert!(!forge.land(answer(&ask, &[("feat", None)]), later));
 }
+
+/// GitLab's `updated_at` is kept but not drawn: a refresh that moves only
+/// it asks for no frame, and the MR kept is the newer read.
+#[test]
+fn a_change_nothing_draws_asks_for_no_frame() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    forge.land(answer(&ask, &[("feat", Some(5))]), now);
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let ask = forge.take_due(later).remove(0);
+    let mut touched = answer(&ask, &[("feat", Some(5))]);
+    if let Ok(branches) = &mut touched.batches[0].result
+        && let Ok(Some(mr)) = &mut branches[0].1
+    {
+        mr.updated_at = Some(1_800_000_000);
+    }
+    assert!(!forge.land(touched, later));
+    match forge.shown(Path::new("/work/app")) {
+        Shown::Mr { mr, .. } => assert_eq!(mr.updated_at, Some(1_800_000_000)),
+        other => panic!("{other:?}"),
+    }
+}

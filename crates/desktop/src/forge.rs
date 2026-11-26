@@ -292,7 +292,12 @@ impl Drawn {
             Shown::Nothing => Self::Nothing,
             Shown::Unknown { error, .. } => Self::Unknown((*error).clone()),
             Shown::Mr { mr, at, failure } => Self::Mr {
-                mr: Box::new((*mr).clone()),
+                // When GitLab last touched it is kept, not drawn: a change
+                // of that alone asks for no frame.
+                mr: Box::new(MergeRequest {
+                    updated_at: None,
+                    ..(*mr).clone()
+                }),
                 failure: failure.map(|(error, _)| (error.clone(), *at)),
             },
         }

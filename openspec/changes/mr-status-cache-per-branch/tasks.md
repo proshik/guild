@@ -28,4 +28,4 @@
 
 ## 5. Review
 
-- [ ] 5.1 revust with the configured profile (dry run first), at most two rounds; verify and fix findings in this branch
+- [x] 5.1 revust with the configured profile (dry run first), at most two rounds; verify and fix findings in this branch

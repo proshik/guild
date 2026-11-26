@@ -9,7 +9,7 @@ Guild makes worktrees, starts agents and shows who needs you first.
 
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](#license) [![Platform: macOS 13+ on Apple silicon](https://img.shields.io/badge/macOS-13%2B%20%C2%B7%20Apple%20silicon-111111?logo=apple)](#requirements) [![Rust 1.88+](https://img.shields.io/badge/rust-1.88%2B-orange?logo=rust)](rust-toolchain.toml) [![Built with GPUI](https://img.shields.io/badge/built%20with-GPUI-6e56cf)](https://crates.io/crates/gpui-kit) [![Agents: Claude Code, Codex, OpenCode](https://img.shields.io/badge/agents-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20OpenCode-d97757)](#requirements)
 
-[Install](#install) · [Features](#features) · [CLI](#drive-it-from-the-command-line) · [Docs](#documentation) · [Changelog](CHANGELOG.md)
+[Website](https://proshik.github.io/guild/) · [Install](#install) · [Features](#features) · [CLI](#drive-it-from-the-command-line) · [Docs](#documentation) · [Changelog](CHANGELOG.md)
 
 </div>
 
@@ -24,7 +24,7 @@ Guild makes worktrees, starts agents and shows who needs you first.
 
 Guild is a native macOS window for running many AI agents at once. It makes git worktrees, starts **Claude Code**, **Codex** and **OpenCode** in them, shows who needs you first, and answers a command line your agents can use too.
 
-It is an ADE — the window a person works in all day while the agents do the work: a file tree, an editor, diffs, git, and agent sessions in tabs. Agents run in the next tab, in the worktree they were given; you read what they did — the files, the diff, the commit — in the same window, and answer them there.
+It is the window a person works in all day while the agents do the work: a file tree, an editor, diffs, git, and agent sessions in tabs. Agents run in the next tab, in the worktree they were given; you read what they did — the files, the diff, the commit — in the same window, and answer them there.
 
 Each agent runs its own CLI, permission prompts and slash commands included, in a terminal of Guild's own. Nothing needs a server or an account: sessions, tabs and settings are files on your Mac. Guild is in daily use, and released as nightlies through its own Update button.
 
@@ -276,6 +276,7 @@ crates/
 
 ## Documentation
 
+- [Website](https://proshik.github.io/guild/) — the landing page, with every step of the window in video
 - [Guide: the window in detail](docs/guide.md) — every panel and menu, terminal sessions, the stack, and running Guild
 - [Project rules](AGENTS.md) — how work is done, the desktop crate's module map, and the boundaries that are easy to break unnoticed
 - [Decisions](docs/decisions.md) — the rules in force, under the numbers code cites

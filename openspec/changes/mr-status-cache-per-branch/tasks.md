@@ -18,8 +18,8 @@
 
 ## 4. Notify only on a visible change, and the measurement
 
-- [ ] 4.1 Failing tests: `land` of the same answer twice answers `false` the second time; a changed MR, a new failure, a new problem answer `true`; `poll_forge` does not notify `Root` for an unchanged answer
-- [ ] 4.2 `Forge::land` compares the repository's picture before and after
+- [x] 4.1 Failing tests: `land` of the same answer twice answers `false` the second time; a changed MR, a new failure, a new problem answer `true`; `poll_forge` does not notify `Root` for an unchanged answer
+- [x] 4.2 `Forge::land` compares the repository's picture before and after
 - [ ] 4.3 Measure the column frame before/after: `view::column::perf_bench` (root notify on a large column) and the notifies of a steady refresh; a release dev window, visible, at a time the user chooses
 - [ ] 4.4 If the notify fix is not enough, measure and propose a per-element update with its cost — no code without agreement
 - [ ] 4.5 Decision 56, CHANGELOG `### Fixed`; `just check`; commit

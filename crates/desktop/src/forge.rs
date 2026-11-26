@@ -28,6 +28,9 @@
 //!   branch whose read failed keeps its own last known MR, with its own
 //!   failure beside it, and one never read says it is unknown (code review
 //!   r1, adversarial-9); another branch's failure changes nothing of it.
+//! - **A frame only for a visible change**: [`Forge::land`] compares what
+//!   the repository's rows and state draw before and after, and an answer
+//!   that changes neither asks for no notify.
 //! - **What is not a branch's is the repository's**: glab missing, a host
 //!   not logged in or with a port, a batch that failed as a whole — glab's
 //!   proxy, the network policy, the deadline spent before it started — is
@@ -228,6 +231,74 @@ struct Repo {
     checked: Option<Instant>,
 }
 
+impl Repo {
+    /// What `candidate`'s row draws.
+    fn shown(&self, candidate: &Candidate) -> Shown<'_> {
+        match self.resolutions.get(candidate) {
+            Some(Resolution::Asked { host, project }) => {
+                let key = (host.clone(), project.clone(), candidate.branch.clone());
+                let failure = self.failures.get(&key);
+                match (self.found.get(&key), failure) {
+                    (Some((Some(mr), at)), failure) => Shown::Mr {
+                        mr,
+                        at: *at,
+                        failure: failure
+                            .filter(|(_, when)| when >= at)
+                            .map(|(why, when)| (why, *when)),
+                    },
+                    (None, Some((error, at))) => Shown::Unknown { error, at: *at },
+                    // Read with no MR, and the refresh after it failed:
+                    // unknown now, not a confirmed absence (code review
+                    // r2, bugs+impl-11).
+                    (Some((None, read)), Some((error, at))) if at >= read => {
+                        Shown::Unknown { error, at: *at }
+                    }
+                    _ => Shown::Nothing,
+                }
+            }
+            // A reason is the repository's, in its status, not the row's.
+            _ => Shown::Nothing,
+        }
+    }
+
+    /// What the repository draws, owned: every row's, and its state's
+    /// problems. Two answers whose pictures are equal need no frame.
+    fn picture(&self) -> (Vec<Drawn>, Vec<Problem>) {
+        let rows = self
+            .candidates
+            .iter()
+            .map(|candidate| Drawn::of(&self.shown(candidate)))
+            .collect();
+        (rows, self.problems.clone())
+    }
+}
+
+/// What a row draws, as far as a frame can tell: the times a read and a
+/// failure were made at are left out but for the one a drawn line ages
+/// from — a failure's line says how long ago the MR beside it was read.
+#[derive(Debug, PartialEq, Eq)]
+enum Drawn {
+    Nothing,
+    Unknown(Error),
+    Mr {
+        mr: Box<MergeRequest>,
+        failure: Option<(Error, Instant)>,
+    },
+}
+
+impl Drawn {
+    fn of(shown: &Shown<'_>) -> Self {
+        match shown {
+            Shown::Nothing => Self::Nothing,
+            Shown::Unknown { error, .. } => Self::Unknown((*error).clone()),
+            Shown::Mr { mr, at, failure } => Self::Mr {
+                mr: Box::new((*mr).clone()),
+                failure: failure.map(|(error, _)| (error.clone(), *at)),
+            },
+        }
+    }
+}
+
 /// Every repository's MRs and their refresh state.
 #[derive(Debug)]
 pub struct Forge {
@@ -420,7 +491,9 @@ impl Forge {
     }
 
     /// Take a refresh's answer in, if it still holds. Whether what the rows
-    /// draw may have changed.
+    /// or the repository's state draw changed: an answer that brings what
+    /// is already shown asks for no frame, since a notify of the root
+    /// rebuilds the whole column (`docs/traps.md`, `view::region`).
     pub fn land(&mut self, answer: Answer, now: Instant) -> bool {
         let Some(state) = self.repos.get_mut(&answer.repo) else {
             return false;
@@ -437,6 +510,7 @@ impl Forge {
             state.pending = true;
             return false;
         }
+        let before = state.picture();
         let mut problems = Vec::new();
         for (_, resolution) in &answer.resolutions {
             if let Resolution::Why(why) = resolution {
@@ -484,7 +558,9 @@ impl Forge {
         }
         state.problems = problems;
         state.checked = Some(now);
-        true
+        // What the repository's header would draw of its progress is not in
+        // the picture while nothing draws it.
+        state.picture() != before
     }
 
     /// What a worktree's row draws.
@@ -493,35 +569,9 @@ impl Forge {
             return Shown::Nothing;
         }
         for state in self.repos.values().filter(|state| !state.hidden) {
-            let Some(candidate) = state.candidates.iter().find(|c| c.worktree == worktree) else {
-                continue;
-            };
-            return match state.resolutions.get(candidate) {
-                Some(Resolution::Asked { host, project }) => {
-                    let key = (host.clone(), project.clone(), candidate.branch.clone());
-                    let failure = state.failures.get(&key);
-                    match (state.found.get(&key), failure) {
-                        (Some((Some(mr), at)), failure) => Shown::Mr {
-                            mr,
-                            at: *at,
-                            failure: failure
-                                .filter(|(_, when)| when >= at)
-                                .map(|(why, when)| (why, *when)),
-                        },
-                        (None, Some((error, at))) => Shown::Unknown { error, at: *at },
-                        // Read with no MR, and the refresh after it failed:
-                        // unknown now, not a confirmed absence (code review
-                        // r2, bugs+impl-11).
-                        (Some((None, read)), Some((error, at))) if at >= read => {
-                            Shown::Unknown { error, at: *at }
-                        }
-                        _ => Shown::Nothing,
-                    }
-                }
-                // A reason is the repository's, in its status, not the
-                // row's.
-                _ => Shown::Nothing,
-            };
+            if let Some(candidate) = state.candidates.iter().find(|c| c.worktree == worktree) {
+                return state.shown(candidate);
+            }
         }
         Shown::Nothing
     }

@@ -674,6 +674,11 @@ here; the comment beside the citation carries the rule it names.
       refresh stopped and that refresh's answer dropped — and shown again
       its rows draw what was known at once while it is asked in the
       background. Only the setting going off forgets.
+    - **A landed answer notifies the window only when what it draws
+      changed** — each row's MR and its own failure, and the repository's
+      problems: a notify of the root rebuilds the whole column
+      (`docs/traps.md`), and a refresh every two minutes that read the same
+      MRs used to be one such frame per repository each time.
     - **A setting, on by default** (Projects → Git), starts no new glab
       child when off; one already running finishes and its answer is
       dropped. `↑N`, the commits a push would send, is git's — refs only,

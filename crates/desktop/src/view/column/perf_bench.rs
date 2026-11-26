@@ -14,7 +14,10 @@
 //! worktree's list of tabs is open under its row. It prints the median, p90 and max of
 //! a frame after a notify of the root, a wheel step over the column, a
 //! notify of the column's region alone — what a working ring's tick is —
-//! and of building the column's elements without laying them out.
+//! and of building the column's elements without laying them out. With
+//! `BENCH_FORGE=1` every worktree but the main one has a merge request
+//! drawn, and it also prints a frame after a refresh's answer lands the
+//! way `poll_forge` lands one — the same MRs again, then a changed one.
 //!
 //! **A test window draws itself** at the end of `flush_effects`, so each
 //! sample is a whole event-to-frame cycle. The test platform is slower than
@@ -150,6 +153,12 @@ fn measure_column_frames(cx: &mut TestAppContext) {
             for (i, w) in list.iter_mut().enumerate() {
                 w.committed = Some(1_700_000_000 + i as i64);
                 w.lines = Some((120 + i as u32, 30));
+                w.main_branch = i == 0;
+                w.push = w.branch.clone().map(|branch| crate::git::worktrees::Pushed {
+                    remote: "origin".into(),
+                    url: Some(format!("git@gitlab.example.com:team/repository-{r}.git")),
+                    branch,
+                });
             }
             lists.push((common, list));
         }
@@ -217,6 +226,76 @@ fn measure_column_frames(cx: &mut TestAppContext) {
         cx.update(|window, _| window.refresh());
         draw(cx);
     }
+    let forge = env("BENCH_FORGE", 0) != 0;
+    // Every repository's answer, landed once: the badges are drawn.
+    let mr = |iid: u64| guild_session::merge_requests::status::MergeRequest {
+        iid,
+        title: format!("Change {iid}"),
+        web_url: format!("https://gitlab.example.com/team/app/-/merge_requests/{iid}"),
+        state: guild_session::merge_requests::status::State::Open,
+        target_branch: "main".into(),
+        draft: false,
+        conflict: false,
+        mergeable: false,
+        needs_rebase: false,
+        checking: false,
+        block: None,
+        approvals: None,
+        unresolved_threads: Some(2),
+        pipeline: None,
+        updated_at: None,
+        finished_at: None,
+    };
+    let answer = |ask: &crate::forge::Ask, iid: u64| {
+        let project = |c: &crate::forge::Candidate| {
+            c.url
+                .trim_start_matches("git@gitlab.example.com:")
+                .trim_end_matches(".git")
+                .to_owned()
+        };
+        let resolutions = ask
+            .candidates
+            .iter()
+            .map(|c| {
+                (
+                    c.clone(),
+                    crate::forge::Resolution::Asked {
+                        host: "gitlab.example.com".into(),
+                        project: project(c),
+                    },
+                )
+            })
+            .collect();
+        crate::forge::Answer {
+            repo: ask.repo.clone(),
+            candidates: ask.candidates.clone(),
+            generation: ask.generation,
+            resolutions,
+            batches: vec![crate::forge::Batch {
+                host: "gitlab.example.com".into(),
+                project: project(&ask.candidates[0]),
+                result: Ok(ask
+                    .candidates
+                    .iter()
+                    .map(|c| (c.branch.clone(), Ok(Some(mr(iid)))))
+                    .collect()),
+            }],
+        }
+    };
+    let mut clock = Instant::now();
+    if forge {
+        root.update(cx, |root, cx| {
+            root.settings.gitlab_merge_requests = true;
+            root.forge_model_mut().set_enabled(true, clock);
+            root.forge_reconcile();
+            let model = root.forge_model_mut();
+            for ask in model.take_due(clock) {
+                model.land(answer(&ask, 1), clock);
+            }
+            cx.notify();
+        });
+        cx.run_until_parked();
+    }
     let rows: usize = root.read_with(cx, |r, _| {
         r.column_groups_for(r.active_workspace)
             .iter()
@@ -224,9 +303,40 @@ fn measure_column_frames(cx: &mut TestAppContext) {
             .sum()
     });
     println!(
-        "fixture: repos={repos} rows={rows} session tabs={} working={working} expanded={expanded}",
+        "fixture: repos={repos} rows={rows} session tabs={} working={working} expanded={expanded} forge={forge}",
         repos * worktrees * tabs
     );
+
+    // A refresh's answer landing as `poll_forge` lands it: a notify of the
+    // root when `land` says the rows may have changed.
+    if forge {
+        let repositories: Vec<std::path::PathBuf> = (0..repos)
+            .map(|r| dir.path().join(format!("repository-{r}")).join(".git"))
+            .collect();
+        for (label, changed) in [
+            ("forge answer, same MRs", false),
+            ("forge answer, changed", true),
+        ] {
+            let mut samples = Vec::new();
+            for i in 0..40 {
+                clock += Duration::from_secs(200);
+                let repo = &repositories[i % repos];
+                let iid = if changed { 2 + i as u64 } else { 1 };
+                let start = Instant::now();
+                root.update(cx, |root, cx| {
+                    let model = root.forge_model_mut();
+                    model.trigger(Some(repo), crate::forge::Trigger::Tick, clock);
+                    let ask = model.take_due(clock).remove(0);
+                    if model.land(answer(&ask, iid), clock) {
+                        cx.notify();
+                    }
+                });
+                cx.run_until_parked();
+                samples.push(start.elapsed());
+            }
+            stats(label, samples);
+        }
+    }
 
     // A notify of the root: the root renders, and so does every region,
     // since each observes the root — the column rebuilt with it. Not a

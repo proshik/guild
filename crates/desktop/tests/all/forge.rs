@@ -873,3 +873,69 @@ fn the_status_says_queued_and_its_problems_in_words() {
         "glab not found"
     );
 }
+
+// --- a frame only for a visible change
+
+/// `land` says the rows may have changed only when what they or the
+/// repository's state draw did: the same MRs again ask for no frame.
+#[test]
+fn an_answer_that_changes_nothing_drawn_asks_for_no_frame() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let mut at = now;
+    let mut next = |forge: &mut Forge| {
+        at += Duration::from_secs(200);
+        forge.trigger(None, Trigger::Tick, at);
+        (forge.take_due(at).remove(0), at)
+    };
+    let ask = forge.take_due(now).remove(0);
+    assert!(
+        forge.land(answer(&ask, &[("feat", Some(5))]), now),
+        "a first MR"
+    );
+    let (ask, at1) = next(&mut forge);
+    assert!(
+        !forge.land(answer(&ask, &[("feat", Some(5))]), at1),
+        "the same MR, read again"
+    );
+    let (ask, at2) = next(&mut forge);
+    assert!(
+        forge.land(answer(&ask, &[("feat", Some(6))]), at2),
+        "another MR"
+    );
+    let (ask, at3) = next(&mut forge);
+    assert!(forge.land(failing(&ask), at3), "a failure beside it");
+    let (ask, at4) = next(&mut forge);
+    assert!(
+        !forge.land(failing(&ask), at4),
+        "the same failure again: drawn the same, aged from the same read"
+    );
+    let (ask, at5) = next(&mut forge);
+    assert!(
+        forge.land(answer(&ask, &[("feat", Some(6))]), at5),
+        "the failure gone"
+    );
+    let (ask, at6) = next(&mut forge);
+    let mut whole = answer(&ask, &[]);
+    whole.batches[0].result = Err(Error::TimedOut);
+    assert!(forge.land(whole, at6), "a problem of the repository's");
+    let (ask, at7) = next(&mut forge);
+    let mut whole = answer(&ask, &[]);
+    whole.batches[0].result = Err(Error::TimedOut);
+    assert!(!forge.land(whole, at7), "the same problem again");
+}
+
+/// A branch with no MR read again with no MR asks for no frame either.
+#[test]
+fn no_mr_read_again_asks_for_no_frame() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    forge.land(answer(&ask, &[("feat", None)]), now);
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let ask = forge.take_due(later).remove(0);
+    assert!(!forge.land(answer(&ask, &[("feat", None)]), later));
+}

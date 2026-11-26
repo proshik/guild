@@ -130,6 +130,9 @@ impl Root {
         if enabled {
             self.forge_take_in_the_column(now);
         }
+        // Whether a landed answer changed what the rows or a repository's
+        // state draw — not merely that one landed: each notify of the root
+        // rebuilds the whole column.
         let mut changed = false;
         // Land, on or off: a thread that ended releases its job.
         let mut landed = Vec::new();
@@ -629,6 +632,130 @@ mod tests {
         settle(&root, cx);
         let asked = calls(&dir);
         assert!(asked.iter().any(|c| c.contains("team%2Fb")), "{asked:?}");
+    }
+
+    /// A reply that brings exactly what the rows show already does not
+    /// notify the root — every notify of the root rebuilds the whole
+    /// column (docs/traps.md) — and one that changes a row does.
+    #[gpui::test]
+    fn an_unchanged_reply_does_not_notify_the_root(cx: &mut gpui::TestAppContext) {
+        if !crate::root::isolation::isolated_test(concat!(
+            module_path!(),
+            "::an_unchanged_reply_does_not_notify_the_root"
+        )) {
+            return;
+        }
+        let (_dir, glab) = stand_in("");
+        let base = tempfile::tempdir().unwrap();
+        let a = base.path().join("a");
+        std::fs::create_dir_all(&a).unwrap();
+        let common = a.join(".git");
+        let root = cx.update(|cx| {
+            crate::editor::init(cx);
+            let mut desk = guild_session::Desk::default();
+            desk.normalise();
+            let one = desk.active_workspace();
+            let project = desk.open_in(one, &a);
+            desk.set_repository(project, Some(common.clone()));
+            cx.new(|cx| {
+                let mut root = Root::from_state(Default::default(), desk, cx);
+                root.isolated_render = true;
+                root.settings.gitlab_merge_requests = true;
+                root.forge.stand_in = Some((glab.clone(), signed_in()));
+                root.worktrees
+                    .insert(common.clone(), vec![worktree(&a, "feat", "app")]);
+                root
+            })
+        });
+        let notified = std::rc::Rc::new(std::cell::Cell::new(0usize));
+        let seen = notified.clone();
+        cx.update(|cx| {
+            cx.observe(&root, move |_, _| seen.set(seen.get() + 1))
+                .detach()
+        });
+        let mr = |iid: u64| guild_session::merge_requests::status::MergeRequest {
+            iid,
+            title: "A".into(),
+            web_url: format!("https://gitlab.example.com/team/app/-/merge_requests/{iid}"),
+            state: guild_session::merge_requests::status::State::Open,
+            target_branch: "main".into(),
+            draft: false,
+            conflict: false,
+            mergeable: true,
+            needs_rebase: false,
+            checking: false,
+            block: None,
+            approvals: None,
+            unresolved_threads: Some(0),
+            pipeline: None,
+            updated_at: None,
+            finished_at: None,
+        };
+        // A reply waiting in its job's channel, landed by the next poll.
+        let reply = |root: &mut Root, iid: u64, at: Instant| {
+            root.forge.jobs.clear();
+            let model = &mut root.forge.model;
+            model.abandon(&common);
+            model.trigger(None, Trigger::Tick, at);
+            let ask = model.take_due(at).remove(0);
+            let (send, answer) = mpsc::channel();
+            send.send(Answer {
+                repo: ask.repo.clone(),
+                candidates: ask.candidates.clone(),
+                generation: ask.generation,
+                resolutions: ask
+                    .candidates
+                    .iter()
+                    .map(|c| {
+                        (
+                            c.clone(),
+                            Resolution::Asked {
+                                host: "gitlab.example.com".into(),
+                                project: "team/app".into(),
+                            },
+                        )
+                    })
+                    .collect(),
+                batches: vec![Batch {
+                    host: "gitlab.example.com".into(),
+                    project: "team/app".into(),
+                    result: Ok(vec![("feat".into(), Ok(Some(mr(iid))))]),
+                }],
+            })
+            .unwrap();
+            root.forge.jobs.insert(
+                common.clone(),
+                Job {
+                    cancel: Arc::new(Cancel::default()),
+                    answer,
+                    thread: None,
+                },
+            );
+        };
+        // The setting read, the column taken in, a refresh started.
+        root.update(cx, |root, cx| root.poll_forge(cx));
+        cx.run_until_parked();
+        let start = Instant::now();
+        let mut landed = |iid: u64, at: Instant| {
+            notified.set(0);
+            root.update(cx, |root, cx| {
+                reply(root, iid, at);
+                root.poll_forge(cx);
+            });
+            cx.run_until_parked();
+            notified.get()
+        };
+        assert_eq!(landed(1, start), 1, "the first MR is drawn");
+        assert_eq!(
+            landed(1, start + std::time::Duration::from_secs(200)),
+            0,
+            "the same MR again asks for no frame"
+        );
+        assert_eq!(
+            landed(2, start + std::time::Duration::from_secs(400)),
+            1,
+            "another MR is drawn"
+        );
     }
 
     /// The worktree on the repository's main branch is not asked: glab is

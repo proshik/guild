@@ -1,12 +1,14 @@
 # The landing site: builds site/ (Hugo and the Hextra theme) and deploys it to GitHub Pages.
 #
-# It runs only when started by hand, from the Actions tab or with
-# `gh workflow run pages.yml`, while the repository is private and Pages is
-# not turned on: a push-triggered run would fail at the deploy on every push
-# to main. Once Pages is on (Settings → Pages → Source: GitHub Actions), a
-# `push` trigger on main for the paths below can be added:
-#   site/**, assets/icon.svg, crates/desktop/assets/fonts/**,
-#   .github/workflows/pages.yml, tools/get-hugo.sh
+# It runs on a push to main that touches what the build reads:
+#   site/**                         the site itself
+#   assets/icon.svg                 the logo and the favicon, mounted from the
+#                                   repository by site/hugo.yaml
+#   crates/desktop/assets/fonts/**  the window's faces, mounted the same way
+#   tools/get-hugo.sh               the Hugo version and its checksum
+#   justfile                        the `site` recipe that builds it
+#   .github/workflows/pages.yml     this workflow
+# and by hand, from the Actions tab or with `gh workflow run pages.yml`.
 #
 # Hugo is the version tools/get-hugo.sh pins and checks against its SHA-256;
 # the theme is a Hugo module pinned in site/go.mod and fetched with the go
@@ -15,6 +17,15 @@
 name: pages
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - assets/icon.svg
+      - crates/desktop/assets/fonts/**
+      - tools/get-hugo.sh
+      - justfile
+      - .github/workflows/pages.yml
   workflow_dispatch:
 
 permissions:

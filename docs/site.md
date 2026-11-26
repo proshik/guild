@@ -85,6 +85,7 @@ which screen capture records when they pass over the window.
 ## Publishing
 
 `.github/workflows/pages.yml` builds the site and deploys it to GitHub Pages.
-It runs only when started by hand while the repository is private and Pages is
-off. Turning it on is Settings → Pages → Source: GitHub Actions; the paths for
-a `push` trigger are listed at the top of the workflow.
+It runs on a push to main that touches what the build reads — the paths are
+listed, with the reason for each, at the top of the workflow — and by hand from
+the Actions tab or with `gh workflow run pages.yml`. Pages is on, with Settings →
+Pages → Source: GitHub Actions.

@@ -1,4 +1,4 @@
-/* Hallmark · v2.0.0 · redesign: full · genre: modern-minimal · theme: brand (Guild's own Light and Dark palettes, brass, Inter / JetBrains Mono) · draw: ffffb9 · built: Hextra theme · shape: Bento Grid (the page laid out as the window lays out its areas: cards six apart on the backdrop) · hero: Settled, the whole window beside the words, the column listing many sessions · nav: edge-aligned (the draw's search-led bar swapped: Hextra's search indexes no home page) · footer: colophon block · signature: the Guild window itself, and the column's rows as the phase switcher · imagery: screenshots and video of the running product · copy: README, CHANGELOG, code */
+/* Hallmark · v2.0.0 · redesign: full · genre: modern-minimal · theme: brand (Guild's own Light and Dark palettes, brass, Inter / JetBrains Mono) · draw: ffffb9 · built: Hextra theme · shape: Bento Grid (the page laid out as the window lays out its areas: cards six apart on the backdrop) · hero: Stacked, the words on the page's edge and the whole window under them, wider than the text, the column listing many sessions · nav: edge-aligned (the draw's search-led bar swapped: Hextra's search indexes no home page) · footer: colophon block · signature: the Guild window itself, and the column's rows as the phase switcher · imagery: screenshots and video of the running product · copy: README, CHANGELOG, code */
 /* critique: a developer tool's page that borrows the window's own anatomy (backdrop, cards, rows, keys) instead of a generic feature layout; one accent, the window's brass; no figures but the code's own */
 /* Hallmark · waive 1 · Inter is the face crates/desktop/assets/fonts ships and the window draws its interface in · the page speaks in the window's own interface face, so a visitor sees the same letters in the screenshots and around them */
 /* Hallmark · dismissed 74 · #f8fafc is the app surface of the window's own Light palette in crates/desktop/src/theme/palettes.rs */
@@ -270,18 +270,16 @@ samp {
   color: var(--color-ink-muted);
 }
 
-/* Hero, Settled: the words on five columns, the whole window on seven */
+/* Hero, Stacked: the words left on the page's edge, the whole window under them, as wide as
+   the viewport allows up to --hero-window, centred, so it starts on the first screen */
 .g-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: var(--space-3xl);
-  align-items: center;
-  min-height: calc(100dvh - var(--nav-height));
+  --hero-window: 96rem;
+  width: 100%;
   padding-block: var(--space-xl) var(--space-2xl);
 }
 .g-hero__title {
   margin: 0;
-  max-width: 11ch;
+  max-width: 24ch;
   text-wrap: balance;
   font-family: var(--font-display);
   font-size: var(--text-display);
@@ -293,14 +291,18 @@ samp {
   min-width: 0;
 }
 .g-hero__lead {
-  max-width: 30ch;
+  max-width: 68ch;
   margin-top: var(--space-lg);
+  text-wrap: pretty;
   font-size: var(--text-lead);
   line-height: 1.5;
   color: var(--color-ink-2);
 }
+/* wider than the text column on a wide screen: the page's gutter on each side, never past it */
 .g-hero__window {
-  min-width: 0;
+  --w: max(100%, min(100vw - 3rem, var(--hero-window)));
+  width: var(--w);
+  margin: var(--space-2xl) calc((100% - var(--w)) / 2) 0;
 }
 .g-hero__window .g-shot img {
   box-shadow: 0 1.5rem 4rem -1.25rem var(--color-shadow);
@@ -877,7 +879,6 @@ samp {
 }
 
 @media (max-width: 60rem) {
-  .g-hero,
   .g-cli__body,
   .g-phases.is-tabs .g-phases__body,
   .g-catalog,
@@ -885,10 +886,8 @@ samp {
   .g-colophon {
     grid-template-columns: minmax(0, 1fr);
   }
-  .g-hero {
-    min-height: 0;
-    gap: var(--space-xl);
-    padding-top: var(--space-2xl);
+  .g-hero__window {
+    margin-top: var(--space-xl);
   }
   .g-bento__grid {
     grid-template-columns: minmax(0, 1fr);

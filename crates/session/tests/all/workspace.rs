@@ -638,3 +638,75 @@ fn a_root_held_elsewhere_and_opened_again_keeps_the_seat_s_records() {
     );
     assert!(restarted.session(mine).is_some());
 }
+
+/// GLD-060, review r1: a record the desk held from the global file while
+/// its folder was away, removed before the folder is back, is not read
+/// again from the copy its project's file still has.
+#[test]
+fn a_record_removed_while_its_folder_was_away_is_not_read_back() {
+    let root = Scratch::new("guild-gld060-removed-away-");
+    let global = root.join("workspace.json");
+    let path = root.join("project");
+    let away = root.join("project.away");
+    std::fs::create_dir_all(&path).unwrap();
+
+    let mut desk = Desk::default();
+    desk.normalise();
+    let workspace = desk.active_workspace();
+    let project = desk.open_in(workspace, &path);
+    let gone = desk.add_session(shell("gone", (workspace, project), &path));
+    let kept = desk.add_session(shell("kept", (workspace, project), &path));
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    assert_eq!(records_on_disk(&path), vec![gone, kept]);
+
+    // The volume goes: the records go to the global file, and a restart
+    // while it is still away reads them from there.
+    std::fs::rename(&path, &away).unwrap();
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    guild_session::flush();
+    let mut restarted = guild_session::persist::load(&global);
+    assert!(restarted.session(gone).is_some());
+    restarted.remove_session(gone);
+    guild_session::persist::save(&mut restarted, &global).unwrap();
+
+    std::fs::rename(&away, &path).unwrap();
+    guild_session::persist::save(&mut restarted, &global).unwrap();
+    assert!(restarted.session(gone).is_none(), "not read back");
+    assert_eq!(records_on_disk(&path), vec![kept]);
+}
+
+/// GLD-060, review r1: a root moved into a workspace that had closed it
+/// lands on records that workspace kept beside it and this run never
+/// read; the save after the move keeps them, and the moved ones too.
+#[test]
+fn a_root_moved_into_a_workspace_that_had_closed_it_keeps_that_workspace_s_records() {
+    let root = Scratch::new("guild-gld060-moved-");
+    let global = root.join("workspace.json");
+    let path = root.join("project");
+    std::fs::create_dir_all(&path).unwrap();
+    let sorted = |mut ids: Vec<guild_session::SessionId>| {
+        ids.sort_by_key(ToString::to_string);
+        ids
+    };
+
+    let mut desk = Desk::default();
+    desk.normalise();
+    let first = desk.active_workspace();
+    let second = desk.add_workspace("Second", None).unwrap();
+    let project = desk.open_in(first, &path);
+    desk.open_in(second, &path);
+    let moved = desk.add_session(shell("moved", (first, project), &path));
+    let retained = desk.add_session(shell("retained", (second, project), &path));
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    assert_eq!(desk.leave(second, project), Released::Kept);
+    guild_session::persist::save(&mut desk, &global).unwrap();
+
+    assert!(desk.move_projects(first, second, &[project]));
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    assert_eq!(
+        sorted(records_on_disk(&path)),
+        sorted(vec![moved, retained])
+    );
+    assert_eq!(desk.session(moved).unwrap().workspace, second);
+    assert_eq!(desk.session(retained).unwrap().workspace, second);
+}

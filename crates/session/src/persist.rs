@@ -83,8 +83,9 @@ pub fn load(global: &Path) -> Desk {
 /// records stayed beside the root — and one whose folder was away when it
 /// was read. Their records come into memory, where a restore looks for
 /// them, as `load` would have brought them; a record memory already holds
-/// is not read a second time. A folder still away, or a file that will not
-/// read, leaves its seats unread: [`save`] keeps their records on disk.
+/// is not read a second time, nor one this run removed. A folder still
+/// away, or a file that will not read, leaves its seats unread: [`save`]
+/// keeps their records on disk.
 pub fn read_unread(desk: &mut Desk) {
     let waiting: Vec<_> = desk
         .projects()
@@ -115,8 +116,10 @@ pub fn read_unread(desk: &mut Desk) {
                 if session.workspace.is_nil() {
                     session.workspace = first?;
                 }
-                (seats.contains(&session.workspace) && desk.session(session.id).is_none())
-                    .then_some(session)
+                (seats.contains(&session.workspace)
+                    && desk.session(session.id).is_none()
+                    && !desk.removed.contains(&session.id))
+                .then_some(session)
             })
             .collect();
         if !read.is_empty() {
@@ -186,9 +189,11 @@ pub fn save(desk: &mut Desk, global: &Path) -> Result<(), StoreError> {
         // Only replace records owned by seats this run has read. Records of
         // a workspace which stopped holding this root stay on disk: adding
         // the seat again makes those conversations reachable again. So do
-        // those of a seat held but never read.
+        // those of a seat held but never read — except a record this run
+        // removed, whose copy here is older than the removal.
         state.sessions.retain(|session| {
             !read.contains(&session.workspace)
+                && !desk.removed.contains(&session.id)
                 && !mine.iter().any(|replacement| replacement.id == session.id)
         });
         state.sessions.extend(mine);

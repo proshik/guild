@@ -191,7 +191,9 @@ impl Root {
                 .get(&repo)
                 .into_iter()
                 .flatten()
-                .filter(|tree| tree.shown() && rows.contains(&tree.path))
+                // The main branch is never asked: no glab call, nothing on
+                // its row.
+                .filter(|tree| tree.shown() && !tree.main_branch && rows.contains(&tree.path))
                 .filter_map(|tree| {
                     let push = tree.push.as_ref()?;
                     Some(Candidate {
@@ -627,6 +629,58 @@ mod tests {
         settle(&root, cx);
         let asked = calls(&dir);
         assert!(asked.iter().any(|c| c.contains("team%2Fb")), "{asked:?}");
+    }
+
+    /// The worktree on the repository's main branch is not asked: glab is
+    /// called for the feature branch only, and the main branch's row has
+    /// nothing to show.
+    #[gpui::test]
+    fn the_main_branch_is_not_asked(cx: &mut gpui::TestAppContext) {
+        if !crate::root::isolation::isolated_test(concat!(
+            module_path!(),
+            "::the_main_branch_is_not_asked"
+        )) {
+            return;
+        }
+        let (dir, glab) = stand_in("");
+        let base = tempfile::tempdir().unwrap();
+        let (a, b) = (base.path().join("a"), base.path().join("b"));
+        std::fs::create_dir_all(&a).unwrap();
+        let common = a.join(".git");
+        let root = cx.update(|cx| {
+            crate::editor::init(cx);
+            let mut desk = guild_session::Desk::default();
+            desk.normalise();
+            let one = desk.active_workspace();
+            let project = desk.open_in(one, &a);
+            desk.set_repository(project, Some(common.clone()));
+            cx.new(|cx| {
+                let mut root = Root::from_state(Default::default(), desk, cx);
+                root.isolated_render = true;
+                root.settings.gitlab_merge_requests = true;
+                root.forge.stand_in = Some((glab.clone(), signed_in()));
+                let main = crate::git::worktrees::Worktree {
+                    main_branch: true,
+                    ..worktree(&a, "main", "app")
+                };
+                root.worktrees
+                    .insert(common.clone(), vec![main, worktree(&b, "feat", "app")]);
+                root
+            })
+        });
+        settle(&root, cx);
+        let asked = calls(&dir);
+        assert!(
+            asked.iter().any(|c| c.contains("source_branch=feat")),
+            "{asked:?}"
+        );
+        assert!(
+            !asked.iter().any(|c| c.contains("source_branch=main")),
+            "{asked:?}"
+        );
+        root.read_with(cx, |root, _| {
+            assert_eq!(root.forge_shown(&a), Shown::Nothing);
+        });
     }
 
     /// bugs+impl-6: a reply and the worktree list that replaced its

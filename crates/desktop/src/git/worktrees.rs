@@ -63,6 +63,11 @@ pub struct Worktree {
     /// The commits on its branch a push would send, `↑N`, counted from refs
     /// only — GLD-063. `None` where there is no remote to compare with.
     pub ahead: Option<u32>,
+    /// Its branch is the repository's main branch, by
+    /// [`crate::git::main_branch`]'s rule — `origin/HEAD`'s local branch,
+    /// else `main` or `master` — whose merge request is never asked,
+    /// GLD-063. **Not filled in by the parser**: the snapshot reads it.
+    pub main_branch: bool,
 }
 
 /// Where a worktree's branch would be pushed.

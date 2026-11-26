@@ -1106,6 +1106,14 @@ fn counted(
     // without them and nothing else.
     if !cancelled.is_some_and(|c| c.load(std::sync::atomic::Ordering::Acquire)) {
         let _ = crate::git::worktrees::destinations(root, &mut list);
+        // The main branch, by the rule a new worktree starts from, is never
+        // asked for an MR: marked here, off the window's thread. A refusal
+        // marks nothing, and the branch is asked as any other.
+        if let Some(main) = crate::git::main_branch(root) {
+            for tree in &mut list {
+                tree.main_branch = tree.branch.as_deref() == Some(main.as_str());
+            }
+        }
     }
     list
 }
@@ -1946,6 +1954,46 @@ mod tests {
             .expect("git commit");
         assert!(committed.success());
         folder
+    }
+
+    /// GLD-063: the worktree on the repository's main branch — by
+    /// `git::main_branch`'s rule, `origin/HEAD`'s local branch first — is
+    /// marked in the snapshot, off the window's thread, and no other is.
+    #[test]
+    fn the_snapshot_marks_the_main_branch_s_worktree() {
+        let folder = scratch("main-branch");
+        let dir = folder.path().join("repo");
+        git::run(&dir, &["branch", "-m", "main"]).unwrap();
+        let feat = folder.path().join("wt-feat");
+        // A fixture's worktree, spelled here only: the crate's own is
+        // `Write::WorktreeAdd`.
+        let added = std::process::Command::new("git")
+            .args(["worktree", "add", "-q", "-b", "feat"])
+            .arg(&feat)
+            .current_dir(&dir)
+            .status()
+            .unwrap();
+        assert!(added.success());
+        let marked = |counted: &mut Counted| {
+            let (_, list) = counted.read(&dir, true, None).unwrap().unwrap();
+            list.iter()
+                .filter(|tree| tree.main_branch)
+                .map(|tree| tree.branch.clone().unwrap())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(marked(&mut Counted::default()), vec!["main".to_owned()]);
+        // `origin/HEAD` naming `feat` makes it the main branch instead.
+        git::run(&dir, &["update-ref", "refs/remotes/origin/feat", "HEAD"]).unwrap();
+        git::run(
+            &dir,
+            &[
+                "symbolic-ref",
+                "refs/remotes/origin/HEAD",
+                "refs/remotes/origin/feat",
+            ],
+        )
+        .unwrap();
+        assert_eq!(marked(&mut Counted::default()), vec!["feat".to_owned()]);
     }
 
     #[test]

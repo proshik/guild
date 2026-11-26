@@ -581,7 +581,11 @@ here; the comment beside the citation carries the rule it names.
       front of the path, since glab puts it in its API base; the MR by the source
       project and the upstream's **remote** branch name (`Ahead`'s rule), so
       a local `bar` tracking `origin/foo` is looked up as `foo`. A fork's MR
-      into its parent is not looked up.
+      into its parent is not looked up. **The repository's main branch is
+      not asked** — `git::main_branch`'s rule, the one a new worktree
+      starts from: `origin/HEAD`'s local branch, else `main` or `master` —
+      read with the worktree snapshot off the window's thread: no glab call,
+      no MR and no failure on its row.
     - **REST, per branch**: every page of its MRs in every state, an open
       one over a merged or closed one and the newest of a state; for an
       open one its detail, approvals and every page of its discussions.

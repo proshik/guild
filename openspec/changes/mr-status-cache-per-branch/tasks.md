@@ -12,9 +12,9 @@
 
 ## 3. The default branch is not asked
 
-- [ ] 3.1 Failing test: a Root whose repository shows worktrees on `main` (marked default) and `feat` asks glab for `feat` only
-- [ ] 3.2 `Worktree::main_branch`, filled in `root/git.rs::counted` from `git::main_branch`; excluded in `forge_take_in_the_column`; a git-level test that a real repository with `origin/HEAD` marks the right worktree
-- [ ] 3.3 Decision 56, CHANGELOG `### Changed`; `just check`; commit
+- [x] 3.1 Failing test: a Root whose repository shows worktrees on `main` (marked default) and `feat` asks glab for `feat` only
+- [x] 3.2 `Worktree::main_branch`, filled in `root/git.rs::counted` from `git::main_branch`; excluded in `forge_take_in_the_column`; a git-level test that a real repository with `origin/HEAD` marks the right worktree
+- [x] 3.3 Decision 56, CHANGELOG `### Changed`; `just check`; commit
 
 ## 4. Notify only on a visible change, and the measurement
 

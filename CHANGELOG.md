@@ -10,6 +10,7 @@ would notice adds its line under `Unreleased` in its own branch.
 ### Changed
 
 - Switching to another workspace and back no longer blanks the merge request icons in the column: the ones last read show at once, and they are brought up to date in the background.
+- The repository's main branch is no longer asked for a merge request: its row shows the plain branch icon, and GitLab gets one request fewer per repository.
 - A worktree's row no longer explains a missing merge request icon with "glab not found" or "glab is not logged in": that is about the whole repository, not one branch, and the row keeps the merge request it last read.
 
 ### Fixed

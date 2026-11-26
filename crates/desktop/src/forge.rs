@@ -211,6 +211,9 @@ pub struct Answer {
     pub resolutions: Vec<(Candidate, Resolution)>,
     /// The batches read.
     pub batches: Vec<Batch>,
+    /// The account glab is logged in with, per host whose batches found an
+    /// MR and whose account read held: `(host, id)`.
+    pub accounts: Vec<(String, u64)>,
 }
 
 /// What a row draws for its worktree.
@@ -234,6 +237,8 @@ pub enum Shown<'a> {
         at: Instant,
         /// The branch's last failure, when it came after that read.
         failure: Option<(&'a Error, Instant)>,
+        /// Its author is the account glab is logged in with on its host.
+        mine: bool,
     },
 }
 
@@ -261,6 +266,9 @@ struct Repo {
     problems: Vec<Problem>,
     /// When the last answer landed.
     checked: Option<Instant>,
+    /// glab's account per host, as last read: a refresh whose read failed
+    /// keeps it, so one failure does not take the mark off.
+    accounts: HashMap<String, u64>,
 }
 
 impl Repo {
@@ -277,6 +285,7 @@ impl Repo {
                         failure: failure
                             .filter(|(_, when)| when >= at)
                             .map(|(why, when)| (why, *when)),
+                        mine: mr.author.is_some() && mr.author == self.accounts.get(host).copied(),
                     },
                     (None, Some((error, at))) => Shown::Unknown { error, at: *at },
                     // Read with no MR, and the refresh after it failed:
@@ -315,6 +324,7 @@ enum Drawn {
     Mr {
         mr: Box<MergeRequest>,
         failure: Option<(Error, Instant)>,
+        mine: bool,
     },
 }
 
@@ -323,7 +333,12 @@ impl Drawn {
         match shown {
             Shown::Nothing => Self::Nothing,
             Shown::Unknown { error, .. } => Self::Unknown((*error).clone()),
-            Shown::Mr { mr, at, failure } => Self::Mr {
+            Shown::Mr {
+                mr,
+                at,
+                failure,
+                mine,
+            } => Self::Mr {
                 // When GitLab last touched it is kept, not drawn: a change
                 // of that alone asks for no frame.
                 mr: Box::new(MergeRequest {
@@ -331,6 +346,7 @@ impl Drawn {
                     ..(*mr).clone()
                 }),
                 failure: failure.map(|(error, _)| (error.clone(), *at)),
+                mine: *mine,
             },
         }
     }
@@ -380,6 +396,7 @@ impl Forge {
             repo.failures.clear();
             repo.problems.clear();
             repo.checked = None;
+            repo.accounts.clear();
             repo.pending = enabled;
             repo.last = None;
         }
@@ -593,6 +610,7 @@ impl Forge {
                 }),
             }
         }
+        state.accounts.extend(answer.accounts);
         state.problems = problems;
         state.checked = Some(now);
         // What the repository's header would draw of its progress is not in

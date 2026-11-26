@@ -356,6 +356,7 @@ pub(crate) fn refresh(
     // A host GitLab answered 401 for is signed out for the rest of the
     // refresh: one probe, not one per project (code review r2, bugs+impl-2).
     let mut signed_out: Vec<String> = Vec::new();
+    let mut accounts = Vec::new();
     if let Ok(program) = located {
         let count = asked.len();
         for (index, (host, project, branches)) in asked.into_iter().enumerate() {
@@ -382,15 +383,12 @@ pub(crate) fn refresh(
                 Ok(Some(_)) if glab_proxy(hosts, &host) => Err(Error::Failed(format!(
                     "glab has a proxy of its own for {host}, which would override Guild's network settings"
                 ))),
-                Ok(proxy) => {
-                    let proxy = proxy.clone();
-                    Glab::at(program.clone())
-                        .with_cancel(cancel.clone())
-                        .with_prepare(Arc::new(move |command| {
-                            crate::network::apply_policy(command, proxy.as_ref());
-                        }))
-                        .read_until(&host, &project, &branches, batch_deadline)
-                }
+                Ok(proxy) => glab(&program, proxy, &cancel).read_until(
+                    &host,
+                    &project,
+                    &branches,
+                    batch_deadline,
+                ),
             };
             match result {
                 Ok(found) => batches.push(Batch {
@@ -415,6 +413,30 @@ pub(crate) fn refresh(
                 }),
             }
         }
+        // The account glab is logged in with, read once per host whose
+        // batches found an MR, under what is left of the refresh's deadline
+        // and through the same glab as its reads: the person's own MRs are
+        // marked by it. A failed read is nobody's problem — those MRs are
+        // shown without the mark.
+        if let Ok(proxy) = &proxy {
+            let mut found: Vec<&str> = batches
+                .iter()
+                .filter(|batch| {
+                    matches!(&batch.result, Ok(branches)
+                        if branches.iter().any(|(_, read)| matches!(read, Ok(Some(_)))))
+                })
+                .map(|batch| batch.host.as_str())
+                .collect();
+            found.dedup();
+            for host in found {
+                if cancel.is_raised() {
+                    break;
+                }
+                if let Ok(id) = glab(&program, proxy, &cancel).account(host, deadline) {
+                    accounts.push((host.to_owned(), id));
+                }
+            }
+        }
     }
     Answer {
         repo: ask.repo,
@@ -422,7 +444,23 @@ pub(crate) fn refresh(
         generation: ask.generation,
         resolutions,
         batches,
+        accounts,
     }
+}
+
+/// glab at `program`, stopped by `cancel`, its children under Guild's
+/// proxy: every call of a refresh goes through one of these.
+fn glab(
+    program: &Path,
+    proxy: &Option<guild_session::network::Proxy>,
+    cancel: &Arc<Cancel>,
+) -> Glab {
+    let proxy = proxy.clone();
+    Glab::at(program.to_path_buf())
+        .with_cancel(cancel.clone())
+        .with_prepare(Arc::new(move |command| {
+            crate::network::apply_policy(command, proxy.as_ref());
+        }))
 }
 
 /// Whether glab keeps a proxy of its own for a glab host.
@@ -578,6 +616,111 @@ mod tests {
             );
         }
     }
+    /// A merged MR on each project's `feat`, written by account 42; `user`
+    /// answers as `user` says.
+    fn authored_stand_in(user: &str) -> (tempfile::TempDir, PathBuf) {
+        stand_in(&format!(
+            r#"case "$*" in
+  *" user") {user};;
+  *"team%2Fone/merge_requests?source_branch"*) echo '[{{"iid":1,"title":"One","web_url":"https://gitlab.example.com/team/one/-/merge_requests/1","sha":"h1","source_branch":"feat","target_branch":"main","source_project_id":7,"project_id":7,"state":"merged","author":{{"id":42}}}}]'; exit 0;;
+  *"team%2Ftwo/merge_requests?source_branch"*) echo '[{{"iid":2,"title":"Two","web_url":"https://gitlab.example.com/team/two/-/merge_requests/2","sha":"h2","source_branch":"feat","target_branch":"main","source_project_id":8,"project_id":8,"state":"merged","author":{{"id":42}}}}]'; exit 0;;
+esac"#
+        ))
+    }
+
+    /// mr-header-status-and-author: the account is read once per host,
+    /// however many of its projects found an MR, with the host pinned.
+    #[test]
+    fn the_account_is_read_once_per_host() {
+        let (dir, glab) = authored_stand_in(r#"echo '{"id":42}'; exit 0"#);
+        let (ask, hosts) = two_projects();
+        let answer = refresh(
+            ask,
+            Ok(glab),
+            &hosts,
+            Ok(None),
+            Arc::new(Cancel::default()),
+            std::time::Duration::from_secs(20),
+        );
+        assert_eq!(answer.accounts, vec![("gitlab.example.com".into(), 42)]);
+        let asked = calls(&dir);
+        assert_eq!(
+            asked
+                .iter()
+                .filter(|c| c.as_str() == "api --include --hostname gitlab.example.com user")
+                .count(),
+            1,
+            "{asked:?}"
+        );
+    }
+
+    /// No MR found on a host: its account is not asked.
+    #[test]
+    fn no_mr_found_asks_no_account() {
+        let (dir, glab) = stand_in(r#"case "$*" in *" user") echo '{"id":42}'; exit 0;; esac"#);
+        let (ask, hosts) = two_projects();
+        let answer = refresh(
+            ask,
+            Ok(glab),
+            &hosts,
+            Ok(None),
+            Arc::new(Cancel::default()),
+            std::time::Duration::from_secs(20),
+        );
+        assert!(answer.accounts.is_empty());
+        assert!(
+            !calls(&dir).iter().any(|c| c.ends_with(" user")),
+            "{:?}",
+            calls(&dir)
+        );
+    }
+
+    /// The account read fails: the MRs are answered, without an account —
+    /// and nothing of it is a problem of the repository.
+    #[test]
+    fn a_failed_account_read_leaves_the_mrs() {
+        let (_dir, glab) =
+            authored_stand_in("echo 'glab: 500 Internal Server Error (HTTP 500)' >&2; exit 1");
+        let (ask, hosts) = two_projects();
+        let answer = refresh(
+            ask,
+            Ok(glab),
+            &hosts,
+            Ok(None),
+            Arc::new(Cancel::default()),
+            std::time::Duration::from_secs(20),
+        );
+        assert!(answer.accounts.is_empty());
+        assert_eq!(answer.batches.len(), 2, "{:?}", answer.batches);
+        for batch in &answer.batches {
+            let read = batch.result.as_ref().expect("the batch holds");
+            assert!(
+                matches!(&read[0].1, Ok(Some(mr)) if mr.author == Some(42)),
+                "{read:?}"
+            );
+        }
+        let mut forge = crate::forge::Forge::new(true);
+        let now = Instant::now();
+        let (ask, _) = two_projects();
+        forge.inputs(&ask.repo, ask.candidates.clone(), now);
+        let asked = forge.take_due(now).remove(0);
+        assert!(forge.land(
+            Answer {
+                generation: asked.generation,
+                ..answer
+            },
+            now
+        ));
+        assert!(forge.status(&asked.repo).unwrap().problems.is_empty());
+        match forge.shown(Path::new("/work/one")) {
+            Shown::Mr { mr, mine, .. } => {
+                assert_eq!(mr.iid, 1);
+                assert!(!mine, "no account, no mark");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
     use gpui::AppContext as _;
 
     fn worktree(path: &Path, branch: &str, project: &str) -> crate::git::worktrees::Worktree {
@@ -739,6 +882,7 @@ mod tests {
             pipeline: None,
             updated_at: None,
             finished_at: None,
+            author: None,
         };
         // A reply waiting in its job's channel, landed by the next poll.
         let reply = |root: &mut Root, iid: u64, at: Instant| {
@@ -752,6 +896,7 @@ mod tests {
                 repo: ask.repo.clone(),
                 candidates: ask.candidates.clone(),
                 generation: ask.generation,
+                accounts: Vec::new(),
                 resolutions: ask
                     .candidates
                     .iter()
@@ -979,6 +1124,7 @@ mod tests {
                 pipeline: None,
                 updated_at: None,
                 finished_at: None,
+                author: None,
             };
             let asked = |candidate: &Candidate| {
                 (
@@ -994,6 +1140,7 @@ mod tests {
                     repo: ask.repo.clone(),
                     candidates: ask.candidates.clone(),
                     generation: ask.generation,
+                    accounts: Vec::new(),
                     resolutions: ask.candidates.iter().map(asked).collect(),
                     batches: vec![Batch {
                         host: "gitlab.example.com".into(),
@@ -1012,6 +1159,7 @@ mod tests {
                 repo: ask.repo.clone(),
                 candidates: ask.candidates.clone(),
                 generation: ask.generation,
+                accounts: Vec::new(),
                 resolutions: ask.candidates.iter().map(asked).collect(),
                 batches: vec![Batch {
                     host: "gitlab.example.com".into(),

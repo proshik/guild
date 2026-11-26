@@ -7,10 +7,10 @@
 
 ## 2. "You created this merge request"
 
-- [ ] 2.1 Failing tests: the list's `author.id` is read (`merge_requests_glab.rs`); `Glab::account` reads `user`'s `id` through a stand-in glab and fails on garbage; the model marks an MR mine only when the host's account equals its author, keeps the last account when a read fails, and never marks without one; `refresh` reads the account once per host and only where an MR was found, and a failing read leaves the MR
-- [ ] 2.2 `MergeRequest::author`, `Glab::account`, `Answer::accounts`, `Shown::Mr::mine`, the picture
-- [ ] 2.3 Lucide `user` in `assets/ui` and `icons::UI`; the row's mark and hover; a view test
-- [ ] 2.4 Decision 56 revised; CHANGELOG `### Added`; `just check`; commit
+- [x] 2.1 Failing tests: the list's `author.id` is read (`merge_requests_glab.rs`); `Glab::account` reads `user`'s `id` through a stand-in glab and fails on garbage; the model marks an MR mine only when the host's account equals its author, keeps the last account when a read fails, and never marks without one; `refresh` reads the account once per host and only where an MR was found, and a failing read leaves the MR
+- [x] 2.2 `MergeRequest::author`, `Glab::account`, `Answer::accounts`, `Shown::Mr::mine`, the picture
+- [x] 2.3 Lucide `user` in `assets/ui` and `icons::UI`; the row's mark and hover; a view test
+- [x] 2.4 Decision 56 revised; CHANGELOG `### Added`; `just check`; commit
 
 ## 3. Verification and Penpot
 

@@ -245,6 +245,7 @@ fn measure_column_frames(cx: &mut TestAppContext) {
         pipeline: None,
         updated_at: None,
         finished_at: None,
+        author: None,
     };
     let answer = |ask: &crate::forge::Ask, iid: u64| {
         let project = |c: &crate::forge::Candidate| {
@@ -270,6 +271,7 @@ fn measure_column_frames(cx: &mut TestAppContext) {
             repo: ask.repo.clone(),
             candidates: ask.candidates.clone(),
             generation: ask.generation,
+            accounts: Vec::new(),
             resolutions,
             batches: vec![crate::forge::Batch {
                 host: "gitlab.example.com".into(),

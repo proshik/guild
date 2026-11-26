@@ -353,6 +353,7 @@ mod tests {
             pipeline: Some(status::Pipeline::Missing),
             updated_at: None,
             finished_at: None,
+            author: None,
         };
         let failure = "Read 2m ago · the refresh after it failed: glab: 500 Internal Server \
                        Error (HTTP 500) while reading the merge request's discussions"

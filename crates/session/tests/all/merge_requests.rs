@@ -31,6 +31,7 @@ fn ready() -> MergeRequest {
         pipeline: Some(Pipeline::Passed),
         updated_at: Some(0),
         finished_at: None,
+        author: None,
     }
 }
 
@@ -295,6 +296,7 @@ fn merged_and_closed_say_only_what_happened() {
     let merged = MergeRequest {
         state: State::Merged,
         finished_at: Some(100),
+        author: None,
         ..ready()
     };
     let lines = checklist(&merged, Some(3));

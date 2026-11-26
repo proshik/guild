@@ -47,6 +47,7 @@ fn mr(iid: u64) -> MergeRequest {
         pipeline: None,
         updated_at: None,
         finished_at: None,
+        author: None,
     }
 }
 
@@ -77,6 +78,7 @@ fn answer(forge_ask: &guild_desktop::forge::Ask, found: &[(&str, Option<u64>)]) 
                 .map(|(branch, iid)| ((*branch).to_owned(), Ok(iid.map(mr))))
                 .collect()),
         }],
+        accounts: Vec::new(),
     }
 }
 
@@ -1119,4 +1121,85 @@ fn the_header_s_hover_and_the_author_s_mark_are_said_in_both_languages() {
     );
     assert_eq!(en.mr_mine(), "You created this merge request");
     assert_eq!(ru.mr_mine(), "Вы создали этот MR");
+}
+
+// --- "You created this merge request" (mr-header-status-and-author)
+
+/// An answer whose MR was written by `author`, with glab's account on the
+/// host as `account` says.
+fn authored(
+    forge_ask: &guild_desktop::forge::Ask,
+    author: Option<u64>,
+    account: Option<u64>,
+) -> Answer {
+    let mut out = answer(forge_ask, &[("feat", Some(5))]);
+    if let Ok(branches) = &mut out.batches[0].result
+        && let Ok(Some(mr)) = &mut branches[0].1
+    {
+        mr.author = author;
+    }
+    out.accounts = account
+        .map(|id| (HOST.to_owned(), id))
+        .into_iter()
+        .collect();
+    out
+}
+
+fn mine(forge: &Forge) -> Option<bool> {
+    match forge.shown(Path::new("/work/app")) {
+        Shown::Mr { mine, .. } => Some(mine),
+        _ => None,
+    }
+}
+
+/// An MR is the person's when its author is the account glab is logged in
+/// with on its host; a refresh whose account read failed keeps the last
+/// account; another account takes the mark off — and each is a change a
+/// frame draws.
+#[test]
+fn an_mr_is_mine_when_its_author_is_glab_s_account() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    assert!(forge.land(authored(&ask, Some(42), Some(42)), now));
+    assert_eq!(mine(&forge), Some(true));
+
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let ask = forge.take_due(later).remove(0);
+    assert!(
+        !forge.land(authored(&ask, Some(42), None), later),
+        "an account read that failed changes nothing drawn"
+    );
+    assert_eq!(mine(&forge), Some(true));
+
+    let again = later + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, again);
+    let ask = forge.take_due(again).remove(0);
+    assert!(forge.land(authored(&ask, Some(42), Some(7)), again));
+    assert_eq!(mine(&forge), Some(false));
+}
+
+/// Without an account read for the host, or without an author, no MR is
+/// the person's, and neither is a problem of the repository.
+#[test]
+fn without_an_account_or_an_author_no_mr_is_mine() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    forge.land(authored(&ask, Some(42), None), now);
+    assert_eq!(
+        mine(&forge),
+        Some(false),
+        "the MR is shown, without the mark"
+    );
+    assert!(forge.status(&repo()).unwrap().problems.is_empty());
+
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let ask = forge.take_due(later).remove(0);
+    forge.land(authored(&ask, None, Some(42)), later);
+    assert_eq!(mine(&forge), Some(false));
 }

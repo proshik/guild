@@ -575,7 +575,8 @@ here; the comment beside the citation carries the rule it names.
     is `glab api --hostname <host> <endpoint>`, the person's own glab login
     for that host, GLD-063.
     - **The adapter is the removed MR panel's reader** (`69c459cf`) cut down
-      to reads: no writes, no account read, no `projects/:id` discovery. Host
+      to reads: no writes, no `projects/:id` discovery, and one account read
+      (below). Host
       and project come from the worktree's push remote — its push URL, a
       `pushurl` included — with the host's glab `subfolder` cut from the
       front of the path, since glab puts it in its API base; the MR by the source
@@ -586,6 +587,15 @@ here; the comment beside the citation carries the rule it names.
       starts from: `origin/HEAD`'s local branch, else `main` or `master` —
       read with the worktree snapshot off the window's thread: no glab call,
       no MR and no failure on its row.
+    - **The person's own MR is marked, by one account read per host**: the
+      list's `author.id` against `glab api --hostname <host> user`'s `id`,
+      read once per host per refresh, only for a host whose batches found an
+      MR, under what is left of the refresh's deadline and through the same
+      admission, caps, scrubbed environment and proxy as every read. A
+      failed account read is nobody's problem: the MR is shown without the
+      mark, and the last account read for the host still marks it. A person
+      after the MR's number says "You created this merge request",
+      mr-header-status-and-author.
     - **REST, per branch**: every page of its MRs in every state, an open
       one over a merged or closed one and the newest of a state; for an
       open one its detail, approvals and every page of its discussions.
@@ -601,7 +611,15 @@ here; the comment beside the citation carries the rule it names.
       the refresh's deadline spent before the batch started. The rows keep
       their last known MRs and draw no reason; `Forge::status` says the
       repository's progress (queued, checking), when it was last answered
-      and these problems, for its header. Only an absolute
+      and these problems, and **the repository's header draws it** — one
+      indicator before `⋯ +`, the approved Penpot board *MR header status —
+      column*: checking (turning arrows) over queued (a clock) over a
+      problem of the last answer (struck-through arrows in brass, every
+      problem in the hover) over checked (a faint ✓, only under the pointer
+      on the header); nothing before the first answer. Progress moves
+      outside an answer's landing, so the window compares every header's
+      indicator with the one it last drew, mr-header-status-and-author.
+      Only an absolute
       http or https `web_url` is an MR's link; anything else makes the
       record incomplete, so nothing but a web page is opened from GitLab's
       answer.

@@ -49,6 +49,7 @@ fn mr() -> MergeRequest {
         pipeline: None,
         updated_at: None,
         finished_at: None,
+        author: None,
     }
 }
 
@@ -108,6 +109,7 @@ fn a_worktree_s_merge_request_is_drawn_opened_and_explained(cx: &mut TestAppCont
                     repo: ask.repo,
                     candidates: ask.candidates,
                     generation: ask.generation,
+                    accounts: Vec::new(),
                     resolutions: vec![(
                         crate::forge::Candidate {
                             worktree: folder.clone(),
@@ -193,6 +195,7 @@ fn a_worktree_s_merge_request_is_drawn_opened_and_explained(cx: &mut TestAppCont
                 repo: ask.repo,
                 candidates: ask.candidates.clone(),
                 generation: ask.generation,
+                accounts: Vec::new(),
                 resolutions: vec![(
                     ask.candidates[0].clone(),
                     crate::forge::Resolution::Asked {
@@ -370,6 +373,7 @@ fn the_repository_header_draws_its_merge_requests_state(cx: &mut TestAppContext)
                 repo: ask.repo.clone(),
                 candidates: ask.candidates.clone(),
                 generation: ask.generation,
+                accounts: Vec::new(),
                 resolutions: vec![(
                     candidate.clone(),
                     crate::forge::Resolution::Why(crate::forge::Why::NotLoggedIn(
@@ -412,6 +416,7 @@ fn the_repository_header_draws_its_merge_requests_state(cx: &mut TestAppContext)
                 repo: ask.repo.clone(),
                 candidates: ask.candidates.clone(),
                 generation: ask.generation,
+                accounts: Vec::new(),
                 resolutions: vec![(
                     candidate.clone(),
                     crate::forge::Resolution::Asked {
@@ -439,4 +444,129 @@ fn the_repository_header_draws_its_merge_requests_state(cx: &mut TestAppContext)
     });
     cx.run_until_parked();
     only(cx, "none");
+}
+
+/// mr-header-status-and-author: a merge request whose author is glab's
+/// account wears a person after its number, with its hover; another's
+/// wears none.
+#[gpui::test]
+fn the_person_s_own_merge_request_is_marked(cx: &mut TestAppContext) {
+    if !crate::root::isolation::isolated_test(concat!(
+        module_path!(),
+        "::the_person_s_own_merge_request_is_marked"
+    )) {
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let folder = dir.path().to_path_buf();
+    let common = folder.join(".git");
+    let url = "git@gitlab.example.com:team/app.git";
+    let candidate = crate::forge::Candidate {
+        worktree: folder.clone(),
+        url: url.into(),
+        branch: "feat".into(),
+    };
+    let mut made = None;
+    let (_, cx) = cx.add_window_view(|window, cx| {
+        crate::editor::init(cx);
+        let mut desk = Desk::default();
+        desk.normalise();
+        let workspace = desk.active_workspace();
+        let project = desk.open_in(workspace, &folder);
+        let root = cx.new(|cx| {
+            let mut root = Root::from_state(Default::default(), desk, cx);
+            root.isolated_render = true;
+            root.settings.gitlab_merge_requests = true;
+            let now = std::time::Instant::now();
+            let model = root.forge_model_mut();
+            model.set_enabled(true, now);
+            model.inputs(&common, vec![candidate.clone()], now);
+            root
+        });
+        let row = Row::Opened {
+            project,
+            title: crate::column::Title {
+                name: "feat".into(),
+                primary: false,
+            },
+            branch: Some("feat".into()),
+            committed: Some(1),
+            lines: None,
+        };
+        let view = cx.new(|_| Host {
+            root,
+            row,
+            workspace,
+        });
+        made = Some(view.clone());
+        gpui_component::Root::new(view, window, cx)
+    });
+    cx.simulate_resize(gpui::size(px(232.), px(200.)));
+    let host = made.unwrap();
+    let land = |cx: &mut gpui::VisualTestContext, author: u64, account: u64, at: u64| {
+        host.update(cx, |host, cx| {
+            host.root.update(cx, |root, cx| {
+                let now = std::time::Instant::now() + std::time::Duration::from_secs(at);
+                let model = root.forge_model_mut();
+                model.trigger(None, crate::forge::Trigger::Tick, now);
+                let ask = model.take_due(now).remove(0);
+                model.land(
+                    crate::forge::Answer {
+                        repo: ask.repo,
+                        candidates: ask.candidates,
+                        generation: ask.generation,
+                        resolutions: vec![(
+                            candidate.clone(),
+                            crate::forge::Resolution::Asked {
+                                host: "gitlab.example.com".into(),
+                                project: "team/app".into(),
+                            },
+                        )],
+                        batches: vec![crate::forge::Batch {
+                            host: "gitlab.example.com".into(),
+                            project: "team/app".into(),
+                            result: Ok(vec![(
+                                "feat".into(),
+                                Ok(Some(MergeRequest {
+                                    author: Some(author),
+                                    ..mr()
+                                })),
+                            )]),
+                        }],
+                        accounts: vec![("gitlab.example.com".into(), account)],
+                    },
+                    now,
+                );
+                cx.notify();
+            });
+        });
+        cx.run_until_parked();
+    };
+    land(cx, 42, 42, 0);
+    let mark = cx
+        .debug_bounds("worktree-mr-author")
+        .expect("the person's own MR is marked");
+    let number = cx.debug_bounds("activity-age").unwrap();
+    assert!(number.right() <= mark.left(), "after the number");
+    cx.simulate_mouse_move(mark.center(), None, gpui::Modifiers::default());
+    cx.executor()
+        .advance_clock(std::time::Duration::from_secs(2));
+    cx.run_until_parked();
+    assert!(
+        cx.debug_bounds("guild-control-tooltip").is_some(),
+        "its hover"
+    );
+    cx.simulate_mouse_move(
+        gpui::point(px(1.), px(199.)),
+        None,
+        gpui::Modifiers::default(),
+    );
+    cx.run_until_parked();
+
+    land(cx, 7, 42, 200);
+    assert!(
+        cx.debug_bounds("worktree-mr-author").is_none(),
+        "another's MR is not marked"
+    );
+    assert!(cx.debug_bounds("worktree-mr-glyph").is_some());
 }

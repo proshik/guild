@@ -555,6 +555,21 @@ impl Glab {
         Ok(Some(mr))
     }
 
+    /// The id of the account glab is logged in with on `host` — GitLab's
+    /// `user` — under the caller's deadline, through the same admission,
+    /// caps, environment and preparation as every read. An answer without
+    /// an id is an error, never an account.
+    pub fn account(&self, host: &str, deadline: Instant) -> Result<u64, Error> {
+        if self.cancel.is_raised() {
+            return Err(Error::Stopped);
+        }
+        if Instant::now() >= deadline {
+            return Err(Error::TimedOut);
+        }
+        let account: Account = self.read_json(host, "user", deadline)?;
+        Ok(account.id)
+    }
+
     fn approvals(
         &self,
         host: &str,
@@ -961,6 +976,14 @@ struct Listed {
     merged_at: Option<String>,
     #[serde(default)]
     closed_at: Option<String>,
+    #[serde(default)]
+    author: Option<Account>,
+}
+
+/// An account as GitLab names one: `author` in a list, `user` itself.
+#[derive(Debug, Clone, Deserialize)]
+struct Account {
+    id: u64,
 }
 
 impl Listed {
@@ -1009,6 +1032,7 @@ impl Listed {
             pipeline: None,
             updated_at: updated,
             finished_at: finished,
+            author: self.author.map(|author| author.id),
         }
     }
 }

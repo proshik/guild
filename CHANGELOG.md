@@ -10,6 +10,7 @@ would notice adds its line under `Unreleased` in its own branch.
 ### Added
 
 - A repository's header in the column says where its merge requests stand: a clock while a check is waiting, turning arrows while GitLab is being asked, and struck-through arrows in brass when they could not be checked — glab missing or not logged in, a network or proxy problem — with the reason in its hover. When all is well nothing is shown; point at the header to see a faint ✓ and when they were last checked.
+- A merge request you created shows a small person after its number in the column, with "You created this merge request" in its hover. Guild asks glab which account you are logged in with on that GitLab, once per check.
 
 ### Changed
 

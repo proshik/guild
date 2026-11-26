@@ -149,6 +149,7 @@ fn mr(iid: u64) -> MergeRequest {
         pipeline: None,
         updated_at: None,
         finished_at: None,
+        author: None,
     }
 }
 
@@ -163,6 +164,7 @@ fn answer(ask: &Ask, iid: u64) -> Answer {
         repo: ask.repo.clone(),
         candidates: ask.candidates.clone(),
         generation: ask.generation,
+        accounts: Vec::new(),
         resolutions: ask
             .candidates
             .iter()

@@ -1989,12 +1989,21 @@ impl Root {
         } else {
             gpui::rgb(theme.surface.panel)
         };
-        let age = match &shown {
-            crate::forge::Shown::Mr { mr, .. } => {
-                Some(ui.mr_meta(mr.iid, age.as_deref().unwrap_or_default()))
-            }
-            _ => age,
+        // The person's own MR wears a person after its number — the
+        // approved Penpot board *MR author — worktree row* — so the line
+        // is split there: `!294 👤 · 1m ago`.
+        let (age, after_mark) = match &shown {
+            crate::forge::Shown::Mr { mr, mine: true, .. } => (
+                Some(ui.mr_meta(mr.iid, "")),
+                age.as_deref().map(|age| format!("\u{b7} {age}")),
+            ),
+            crate::forge::Shown::Mr { mr, .. } => (
+                Some(ui.mr_meta(mr.iid, age.as_deref().unwrap_or_default())),
+                None,
+            ),
+            _ => (age, None),
         };
+        let mine = matches!(shown, crate::forge::Shown::Mr { mine: true, .. });
         let mr_slot = self.worktree_mr_slot(&shown, ahead, ring, folder_look.is_some(), &folder);
         // The chevron over the list of this worktree's tabs, and their
         // number while it is collapsed.
@@ -2316,11 +2325,43 @@ impl Root {
                                     .child(
                                         div()
                                             .min_w_0()
-                                            .truncate()
+                                            .when(!mine, |age| age.truncate())
+                                            .when(mine, |number| number.flex_none())
                                             .text_color(rgb(theme.text.faint))
                                             .debug_selector(|| "activity-age".into())
                                             .child(age.unwrap_or_default()),
                                     )
+                                    .when(mine, |line| {
+                                        line.child(
+                                            div()
+                                                .id(SharedString::from(format!(
+                                                    "worktree-mr-author-{}",
+                                                    row_key(workspace, row)
+                                                )))
+                                                .debug_selector(|| "worktree-mr-author".into())
+                                                .flex()
+                                                .flex_none()
+                                                .items_center()
+                                                .hint_delay()
+                                                .hint(ui.mr_mine(), theme)
+                                                .child(
+                                                    crate::icons::glyph(
+                                                        "ui/mr-author.svg",
+                                                        theme::size::META,
+                                                    )
+                                                    .text_color(rgb(theme.text.faint)),
+                                                ),
+                                        )
+                                    })
+                                    .when_some(after_mark, |line, rest| {
+                                        line.child(
+                                            div()
+                                                .min_w_0()
+                                                .truncate()
+                                                .text_color(rgb(theme.text.faint))
+                                                .child(rest),
+                                        )
+                                    })
                                     .when_some(ahead, |line, n| {
                                         line.child(
                                             div()

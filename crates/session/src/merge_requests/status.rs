@@ -114,6 +114,8 @@ pub struct MergeRequest {
     pub updated_at: Option<i64>,
     /// When it was merged or closed, seconds since the epoch.
     pub finished_at: Option<i64>,
+    /// Its author's account id on its host, when the answer said it.
+    pub author: Option<u64>,
 }
 
 /// The icon's colour: the MR's overall verdict.

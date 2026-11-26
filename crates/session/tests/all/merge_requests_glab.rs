@@ -1737,3 +1737,74 @@ fn a_tagged_empty_block_scalar_is_no_token() {
         Login::SignedIn("tagged.filled.example".into())
     );
 }
+
+// --- the author and the account (mr-header-status-and-author)
+
+/// The list's `author.id` is the MR's author; a list without one says
+/// nothing of its author.
+#[test]
+fn an_mr_s_author_is_read_from_its_list() {
+    let stand = Stand::new();
+    stand.open("feat", 294);
+    let mut with_author = listed(294, "feat", "opened");
+    with_author["author"] = serde_json::json!({"id": 42, "username": "me"});
+    stand.answer(&stand.list("feat", 1), serde_json::json!([with_author]));
+    stand.answer(
+        &stand.list("other", 1),
+        serde_json::json!([listed(7, "other", "merged")]),
+    );
+    let read = stand
+        .glab()
+        .read(HOST, PROJECT, &branches(&["feat", "other"]))
+        .and_then(whole)
+        .unwrap();
+    assert_eq!(read[0].1.as_ref().unwrap().author, Some(42));
+    assert_eq!(read[1].1.as_ref().unwrap().author, None);
+}
+
+/// The account glab is logged in with on a host: `user`'s `id`, asked with
+/// the host pinned, as every other read.
+#[test]
+fn the_account_is_glab_s_user_on_the_host() {
+    let stand = Stand::new();
+    stand.answer("user", serde_json::json!({"id": 42, "username": "me"}));
+    let account = stand
+        .glab()
+        .account(HOST, Instant::now() + Duration::from_secs(10));
+    assert_eq!(account, Ok(42));
+    assert_eq!(
+        stand.calls(),
+        vec![format!("api --include --hostname {HOST} user")]
+    );
+}
+
+/// An answer without an id, a failure or a stall is an error, never an
+/// account.
+#[test]
+fn an_account_glab_cannot_say_is_an_error() {
+    let stand = Stand::new();
+    stand.answer("user", serde_json::json!({"username": "me"}));
+    assert!(
+        stand
+            .glab()
+            .account(HOST, Instant::now() + Duration::from_secs(10))
+            .is_err()
+    );
+    let stand = Stand::new();
+    stand.fail("user", "glab: 500 Internal Server Error (HTTP 500)");
+    assert!(
+        stand
+            .glab()
+            .account(HOST, Instant::now() + Duration::from_secs(10))
+            .is_err()
+    );
+    let stand = Stand::new();
+    stand.answer("user", serde_json::json!({"id": 42}));
+    stand.stall("user", 5.0);
+    assert_eq!(
+        stand
+            .glab()
+            .account(HOST, Instant::now() + Duration::from_millis(300)),
+        Err(Error::TimedOut)
+    );
+}

@@ -625,9 +625,11 @@ fn files_naming(token: &str) -> std::collections::BTreeSet<String> {
     walk(&src, &mut files);
     files
         .into_iter()
+        // Asked of the path under `src/`: a checkout's own folder may be
+        // named `…-tests`, and every file would be left out.
         .filter(|path| {
-            let name = path.to_string_lossy();
-            !name.contains("tests") && !name.contains("/src/theme/")
+            let name = path.strip_prefix(&src).unwrap().to_string_lossy();
+            !name.contains("tests") && !name.starts_with("theme/")
         })
         .filter(|path| {
             std::fs::read_to_string(path).unwrap().lines().any(|line| {

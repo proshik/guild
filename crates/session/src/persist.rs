@@ -51,15 +51,19 @@ pub fn load(global: &Path) -> Desk {
         // A folder away now answers no state, which is not the seat's
         // records: its seats stay unread until `read_unread` finds it —
         // all but those the global file carries whole (`read_away`).
-        let present = path.is_dir();
-        let state = project_state::load(&path);
+        // And a file that is there and would not read is not a read either:
+        // its records are not in memory, though no save will write over
+        // them this run (`StoreError::NotRead`).
+        let read_file = project_state::load_for_change(&path);
+        let read_it = read_file.is_some();
+        let state = read_file.unwrap_or_default();
         let holders = desk.holders(id);
         let whole: Vec<_> = holders
             .iter()
             .copied()
             .filter(|&workspace| read_away.contains(&(workspace, id)))
             .collect();
-        let read = if present && path.is_dir() {
+        let read = if read_it {
             holders.clone()
         } else {
             whole.clone()
@@ -174,21 +178,23 @@ pub fn save(desk: &mut Desk, global: &Path) -> Result<(), StoreError> {
     global_state.read_away.clear();
     for project in desk.projects() {
         let holders = desk.holders(project.id);
+        let read: Vec<_> = holders
+            .iter()
+            .copied()
+            .filter(|&workspace| {
+                desk.loaded.contains(&Seat {
+                    workspace,
+                    project: project.id,
+                })
+            })
+            .collect();
+        // Whenever a root's records go to the global file instead of its
+        // own — its folder away, or its file refusing the write — what
+        // this run read of it goes there whole, and is said to be: the
+        // next run takes those seats from there, not from the older file.
+        let whole = read.iter().map(|&workspace| (workspace, project.id));
         if !project.path.is_dir() {
-            // What this run read of the root goes to the global file whole,
-            // and is said to be: the next run takes it from there.
-            global_state.read_away.extend(
-                holders
-                    .iter()
-                    .copied()
-                    .filter(|&workspace| {
-                        desk.loaded.contains(&Seat {
-                            workspace,
-                            project: project.id,
-                        })
-                    })
-                    .map(|workspace| (workspace, project.id)),
-            );
+            global_state.read_away.extend(whole);
             homeless.extend(
                 sessions
                     .iter()
@@ -201,17 +207,6 @@ pub fn save(desk: &mut Desk, global: &Path) -> Result<(), StoreError> {
             .iter()
             .filter(|session| session.project == project.id && holders.contains(&session.workspace))
             .cloned()
-            .collect();
-
-        let read: Vec<_> = holders
-            .iter()
-            .copied()
-            .filter(|&workspace| {
-                desk.loaded.contains(&Seat {
-                    workspace,
-                    project: project.id,
-                })
-            })
             .collect();
 
         let mut state = project_state::load(&project.path);
@@ -234,6 +229,7 @@ pub fn save(desk: &mut Desk, global: &Path) -> Result<(), StoreError> {
             } else {
                 tracing::warn!(project = %project.path.display(), %err, "a project's state was not saved");
             }
+            global_state.read_away.extend(whole);
             homeless.extend(
                 sessions
                     .iter()

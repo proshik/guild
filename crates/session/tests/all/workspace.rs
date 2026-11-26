@@ -805,3 +805,91 @@ fn a_seat_never_read_is_not_complete_in_the_global_file() {
     guild_session::persist::save(&mut third, &global).unwrap();
     assert_eq!(records_on_disk(&path), vec![old, new]);
 }
+
+/// Make a project's state file unreadable — an IO failure, as a descriptor
+/// limit is — or readable again.
+fn readable(project: &Path, yes: bool) {
+    use std::os::unix::fs::PermissionsExt;
+    let mode = if yes { 0o644 } else { 0o000 };
+    std::fs::set_permissions(
+        project.join(".guild").join("state.json"),
+        std::fs::Permissions::from_mode(mode),
+    )
+    .unwrap();
+}
+
+/// GLD-060, review r3: a seat whose file could not be read at the start is
+/// not read, and a save that then finds its folder away does not tell the
+/// next run that the global file holds the whole of it — which would hide
+/// the folder's records from that run.
+#[test]
+fn a_file_that_could_not_be_read_is_not_taken_for_read() {
+    let root = Scratch::new("guild-gld060-not-read-");
+    let global = root.join("workspace.json");
+    let path = root.join("project");
+    let away = root.join("project.away");
+    std::fs::create_dir_all(&path).unwrap();
+
+    let mut desk = Desk::default();
+    desk.normalise();
+    let workspace = desk.active_workspace();
+    let project = desk.open_in(workspace, &path);
+    let one = desk.add_session(shell("one", (workspace, project), &path));
+    let two = desk.add_session(shell("two", (workspace, project), &path));
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    assert_eq!(records_on_disk(&path), vec![one, two]);
+
+    readable(&path, false);
+    let mut second = guild_session::persist::load(&global);
+    assert!(second.session(one).is_none(), "the file did not read");
+    std::fs::rename(&path, &away).unwrap();
+    guild_session::persist::save(&mut second, &global).unwrap();
+    guild_session::flush();
+    std::fs::rename(&away, &path).unwrap();
+    readable(&path, true);
+
+    let third = guild_session::persist::load(&global);
+    assert!(third.session(one).is_some() && third.session(two).is_some());
+    assert_eq!(records_on_disk(&path), vec![one, two]);
+}
+
+/// GLD-060, review r3: a save the project's file refused — it could not be
+/// read this run — sends the records to the global file like a folder away
+/// does, and says the same of the seats it had read, so a record removed
+/// meanwhile does not come back from that file at the next start.
+#[test]
+fn a_save_refused_by_an_unread_file_keeps_the_seat_whole() {
+    let root = Scratch::new("guild-gld060-refused-");
+    let global = root.join("workspace.json");
+    let path = root.join("project");
+    let away = root.join("project.away");
+    std::fs::create_dir_all(&path).unwrap();
+
+    let mut desk = Desk::default();
+    desk.normalise();
+    let workspace = desk.active_workspace();
+    let project = desk.open_in(workspace, &path);
+    let gone = desk.add_session(shell("gone", (workspace, project), &path));
+    let kept = desk.add_session(shell("kept", (workspace, project), &path));
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    assert_eq!(records_on_disk(&path), vec![gone, kept]);
+
+    // Removed while the folder is away.
+    std::fs::rename(&path, &away).unwrap();
+    desk.remove_session(gone);
+    guild_session::persist::save(&mut desk, &global).unwrap();
+    guild_session::flush();
+
+    // Back at the next start, its file unreadable: the save is refused.
+    std::fs::rename(&away, &path).unwrap();
+    readable(&path, false);
+    let mut second = guild_session::persist::load(&global);
+    assert!(second.session(gone).is_none() && second.session(kept).is_some());
+    guild_session::persist::save(&mut second, &global).unwrap();
+    guild_session::flush();
+    readable(&path, true);
+
+    let third = guild_session::persist::load(&global);
+    assert!(third.session(gone).is_none(), "not read back");
+    assert!(third.session(kept).is_some());
+}

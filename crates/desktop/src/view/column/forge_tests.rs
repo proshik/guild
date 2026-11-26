@@ -395,68 +395,8 @@ fn the_repository_header_draws_its_merge_requests_state(cx: &mut TestAppContext)
         .advance_clock(std::time::Duration::from_secs(2));
     cx.run_until_parked();
     assert!(
-        cx.debug_bounds("project-header-mr-problems").is_some(),
+        cx.debug_bounds("guild-control-tooltip").is_some(),
         "the reason in the hover"
-    );
-    cx.simulate_mouse_move(
-        gpui::point(px(600.), px(450.)),
-        None,
-        gpui::Modifiers::default(),
-    );
-    cx.run_until_parked();
-
-    // Code review r1, bugs+impl-3: a reason too long for one line wraps
-    // inside a card no wider than the MR card, never past the window.
-    root.update(cx, |root, cx| {
-        let later = std::time::Instant::now() + std::time::Duration::from_secs(130);
-        let model = root.forge_model_mut();
-        model.trigger(None, crate::forge::Trigger::Tick, later);
-        let ask = model.take_due(later).remove(0);
-        model.land(
-            crate::forge::Answer {
-                repo: ask.repo.clone(),
-                candidates: ask.candidates.clone(),
-                generation: ask.generation,
-                resolutions: vec![(
-                    candidate.clone(),
-                    crate::forge::Resolution::Asked {
-                        host: "gitlab.example.com".into(),
-                        project: "team/app".into(),
-                    },
-                )],
-                batches: vec![crate::forge::Batch {
-                    host: "gitlab.example.com".into(),
-                    project: "team/app".into(),
-                    result: Err(guild_session::merge_requests::glab::Error::Failed(
-                        "glab has a proxy of its own for gitlab.example.com, which would \
-                         override Guild's network settings, and the deadline was spent"
-                            .into(),
-                    )),
-                }],
-                accounts: Vec::new(),
-            },
-            later,
-        );
-        cx.notify();
-    });
-    cx.run_until_parked();
-    only(cx, "Failed");
-    let failed = cx.debug_bounds("project-header-mr-Failed").unwrap();
-    cx.simulate_mouse_move(failed.center(), None, gpui::Modifiers::default());
-    cx.executor()
-        .advance_clock(std::time::Duration::from_secs(2));
-    cx.run_until_parked();
-    let card = cx
-        .debug_bounds("project-header-mr-problems")
-        .expect("the reasons' card");
-    let text = cx
-        .debug_bounds("project-header-mr-problems-text")
-        .expect("the reasons");
-    assert!(card.size.width <= px(420.), "{card:?}");
-    assert!(text.size.height > px(30.), "the reasons wrap: {text:?}");
-    assert!(
-        text.bottom() <= card.bottom() && text.right() <= card.right(),
-        "{text:?} outside {card:?}"
     );
     cx.simulate_mouse_move(
         gpui::point(px(600.), px(450.)),

@@ -158,58 +158,15 @@ impl crate::Root {
                 .tooltip(move |_window, app| {
                     let text = ui
                         .mr_indicator(&indicator, checked.map(|at| at.elapsed().as_secs() as i64));
-                    // Reasons can run long — several problems, glab's own
-                    // words: a card that wraps them, as the MR card does
-                    // (code review r1, bugs+impl-3).
-                    if matches!(indicator, Indicator::Failed(_)) {
-                        app.new(|_| ProblemsHint { text, theme }).into()
-                    } else {
-                        app.new(|_| crate::view::tooltip::Tooltip::text(text, theme))
-                            .into()
-                    }
+                    // One line, as the approved board draws it: the person
+                    // kept it over a wrapping card (code review r1,
+                    // bugs+impl-3, declined 2026-11-26).
+                    app.new(|_| crate::view::tooltip::Tooltip::text(text, theme))
+                        .into()
                 })
                 .child(glyph)
                 .into_any_element(),
         )
-    }
-}
-
-/// Why a repository's merge requests could not be checked, in a card as
-/// wide as the MR card at most: a reason longer than a line wraps inside it.
-pub(crate) struct ProblemsHint {
-    pub(crate) text: String,
-    pub(crate) theme: Theme,
-}
-
-/// A reason this long — in characters — is given the card's whole width to
-/// wrap against; a shorter one sits on one line in a card of its own size.
-const ONE_LINE: usize = 60;
-
-impl Render for ProblemsHint {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        use gpui_component::ActiveTheme as _;
-        let theme = self.theme;
-        let long = self.text.chars().count() > ONE_LINE;
-        crate::view::popup::card_look(theme)
-            .debug_selector(|| "project-header-mr-problems".into())
-            .px(px(12.0))
-            .py(px(8.0))
-            .max_w(px(CARD_WIDTH))
-            // A wrapped line needs a width its element has: a tooltip is
-            // laid out at its minimum size (docs/traps.md, *a line wraps only
-            // against a width its element has*).
-            .when(long, |card| card.w(px(CARD_WIDTH)))
-            .font_family(cx.theme().font_family.clone())
-            .text_size(theme::size::BODY)
-            .text_color(rgb(theme.text.primary))
-            .child(
-                div()
-                    .debug_selector(|| "project-header-mr-problems-text".into())
-                    .w_full()
-                    .min_w_0()
-                    .when(!long, |line| line.whitespace_nowrap())
-                    .child(self.text.clone()),
-            )
     }
 }
 

@@ -38,8 +38,9 @@ the header and the row draw.
 - **Off GitLab, no indicator**: `RepoStatus::gitlab` — a worktree asked or
   with a reason, or, before any answer, a host that says GitLab — keeps a
   GitHub repository's header quiet through its refreshes (code review r1).
-- **A failure's reasons wrap**: in a card as wide as the MR card at most,
-  not the one-line tooltip (code review r1).
+- **A failure's reasons stay on one line**, the approved board's tooltip:
+  code review r1 proposed a wrapping card for long reasons, and the person
+  kept the one line (2026-11-26).
 
 ## Risks
 

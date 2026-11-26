@@ -23,8 +23,8 @@ created: "2026-11-07"
 open choice. Decision 56 reads each worktree's merge request through `glab`,
 only reads, and holds no token of Guild's own. The column and the status bar
 show the MR, its state and its pipeline, and they say when there is none.
-The failing job's log was not delivered and is dropped here. If it is wanted,
-it becomes a task of its own with a new id.
+The failing job's log was not delivered and is dropped here. It is now
+GLD-069.
 
 From the window, see the merge request of the branch in front, its pipeline's
 checks and the log of a failing job — without opening a browser. Read-only.

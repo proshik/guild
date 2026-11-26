@@ -231,7 +231,9 @@ values. Removals go in a separate call (see the rules above).
 
 On 2026-11-21, after decision 54's row tokens, the counts were 531 / 74 / 74;
 on 2026-11-22, after the Sessions mode's three activity gaps, 534 / 74 / 74;
-on 2026-11-26, after GLD-063's nine `view.forge.*` measures, 543 / 74 / 74.
+on 2026-11-26, after GLD-063's nine `view.forge.*` measures, 543 / 74 / 74;
+and later that day, once the column edge stopped drawing a line and
+`space.column_resize_line` went, 542 / 74 / 74.
 
 ---
 

@@ -16,6 +16,11 @@
 //!   switch made from Guild — the worktree list after that write: until it
 //!   lands, no reply publishes and nothing is asked (code review r1,
 //!   bugs+impl-5).
+//! - **A repository the column stops showing is hidden, not forgotten**:
+//!   its last known MRs stay in memory — never on disk — while it is
+//!   neither asked nor drawn, its refresh out stopped and that refresh's
+//!   answer dropped; shown again, its rows draw them at once and it is
+//!   asked in the background. Only the setting going off forgets them.
 //! - **A resolution belongs to the candidate it was made for**: a worktree
 //!   whose destination changed keeps nothing of the old one (code review
 //!   r1, bugs+impl-6).
@@ -164,8 +169,9 @@ struct Repo {
     epoch: u64,
     /// A write was made, and the worktree list after it has not landed.
     awaiting: bool,
-    /// The column no longer shows it; kept while a refresh is out.
-    gone: bool,
+    /// The column no longer shows it: kept, with its last known MRs,
+    /// neither asked nor drawn until it is shown again.
+    hidden: bool,
     resolutions: HashMap<Candidate, Resolution>,
     found: HashMap<BranchKey, (Option<MergeRequest>, Instant)>,
     failures: HashMap<(String, String), (Error, Instant)>,
@@ -216,6 +222,11 @@ impl Forge {
             repo.pending = enabled;
             repo.last = None;
         }
+        // Off forgets: a hidden repository with nothing out goes whole.
+        if !enabled {
+            self.repos
+                .retain(|_, repo| !repo.hidden || repo.in_flight.is_some());
+        }
         true
     }
 
@@ -226,7 +237,12 @@ impl Forge {
         candidates.sort();
         candidates.dedup();
         let entry = self.repos.entry(repo.to_path_buf()).or_default();
-        entry.gone = false;
+        if entry.hidden {
+            // Shown again: its last known MRs draw at once, and it is asked
+            // in the background — after the refresh still out, if one is.
+            entry.hidden = false;
+            entry.pending = true;
+        }
         if entry.candidates == candidates {
             return;
         }
@@ -245,32 +261,27 @@ impl Forge {
         }
     }
 
-    /// Forget the repositories the column no longer shows. One whose
-    /// refresh is still out is kept, with nothing to show, until that
-    /// refresh ends; those are returned, for their owner to stop.
+    /// Hide the repositories the column no longer shows: each keeps its
+    /// last known MRs in memory, is neither asked nor drawn, and draws them
+    /// again the moment it is shown. Those with a refresh still out are
+    /// returned, for their owner to stop.
     pub fn retain(&mut self, keep: impl Fn(&Path) -> bool) -> Vec<PathBuf> {
         let mut out = Vec::new();
-        self.repos.retain(|path, repo| {
-            if keep(path) {
-                return true;
+        for (path, repo) in &mut self.repos {
+            if keep(path) || repo.hidden {
+                continue;
             }
-            if repo.in_flight.is_none() {
-                return false;
-            }
-            if !repo.gone {
-                repo.gone = true;
+            repo.hidden = true;
+            repo.pending = false;
+            if repo.in_flight.is_some() {
                 // The refresh out loses its right to publish, though it is
-                // still owned until its thread ends: a reopen with the same
+                // still owned until its thread ends: a return with the same
                 // candidates must not take its answer (code review r2,
                 // bugs+impl-7).
                 repo.epoch += 1;
-                repo.candidates.clear();
-                repo.resolutions.clear();
-                repo.pending = false;
                 out.push(path.clone());
             }
-            true
-        });
+        }
         out
     }
 
@@ -280,7 +291,7 @@ impl Forge {
             return;
         }
         for (path, state) in &mut self.repos {
-            if repo.is_some_and(|only| only != path.as_path()) {
+            if state.hidden || repo.is_some_and(|only| only != path.as_path()) {
                 continue;
             }
             let since = state.last.map(|at| now.saturating_duration_since(at));
@@ -321,7 +332,7 @@ impl Forge {
         let generation = self.generation;
         let mut asks = Vec::new();
         for (repo, state) in &mut self.repos {
-            if !state.pending || state.in_flight.is_some() || state.awaiting {
+            if state.hidden || !state.pending || state.in_flight.is_some() || state.awaiting {
                 continue;
             }
             state.pending = false;
@@ -402,7 +413,7 @@ impl Forge {
         if !self.enabled {
             return Shown::Nothing;
         }
-        for state in self.repos.values() {
+        for state in self.repos.values().filter(|state| !state.hidden) {
             let Some(candidate) = state.candidates.iter().find(|c| c.worktree == worktree) else {
                 continue;
             };

@@ -653,6 +653,11 @@ here; the comment beside the citation carries the rule it names.
       repository keeps its own answers and failures, and an answer belongs
       to the whole candidate — worktree, URL and branch — so a moved
       destination keeps nothing of the old one.
+    - **A repository the column stops showing keeps its last known MRs in
+      memory**, never on disk: a workspace switch hides it — not asked, its
+      refresh stopped and that refresh's answer dropped — and shown again
+      its rows draw what was known at once while it is asked in the
+      background. Only the setting going off forgets.
     - **A setting, on by default** (Projects → Git), starts no new glab
       child when off; one already running finishes and its answer is
       dropped. `↑N`, the commits a push would send, is git's — refs only,

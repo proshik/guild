@@ -171,8 +171,9 @@ impl Root {
 
     /// The candidates of the repositories the active workspace's column
     /// shows, and only those (code review r2, docs+tests-4): a repository
-    /// open only in another workspace leaves the model, its refresh
-    /// stopped, until that workspace is the one shown.
+    /// open only in another workspace is hidden in the model — its refresh
+    /// stopped, its last known MRs kept — until that workspace is the one
+    /// shown.
     fn forge_take_in_the_column(&mut self, now: Instant) {
         let workspace = self.desk.active_workspace();
         let mut shown: Vec<PathBuf> = Vec::new();
@@ -203,8 +204,9 @@ impl Root {
             self.forge.model.inputs(&repo, candidates, now);
             shown.push(repo);
         }
-        // A repository that left the column stops its refresh; the job is
-        // kept until its thread ends, and none starts beside it.
+        // A repository that left the column is hidden and stops its
+        // refresh; the job is kept until its thread ends, and none starts
+        // beside it.
         for gone in self
             .forge
             .model

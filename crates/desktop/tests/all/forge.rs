@@ -639,3 +639,84 @@ fn a_failure_after_an_empty_read_is_unknown() {
         other => panic!("{other:?}"),
     }
 }
+
+// --- the cache across a workspace switch
+
+/// A repository that leaves the column keeps its last known MRs: shown
+/// again, its rows draw them at once, and it is asked in the background.
+#[test]
+fn a_repository_shown_again_draws_its_last_mrs_and_is_asked() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    forge.land(answer(&ask, &[("feat", Some(5))]), now);
+    assert!(forge.retain(|_| false).is_empty(), "nothing out to stop");
+    assert_eq!(
+        shown_iid(&forge, "/work/app"),
+        None,
+        "not drawn while hidden"
+    );
+    let later = now + Duration::from_secs(600);
+    for trigger in [Trigger::Focus, Trigger::Tick] {
+        forge.trigger(None, trigger, later);
+    }
+    assert!(
+        forge.take_due(later).is_empty(),
+        "a hidden repository is not asked"
+    );
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], later);
+    assert_eq!(
+        shown_iid(&forge, "/work/app"),
+        Some(5),
+        "at once, before any answer"
+    );
+    let asks = forge.take_due(later);
+    assert_eq!(asks.len(), 1, "and asked again in the background");
+    forge.land(answer(&asks[0], &[("feat", Some(6))]), later);
+    assert_eq!(shown_iid(&forge, "/work/app"), Some(6));
+}
+
+/// An answer that lands after its repository left the column never
+/// publishes — not while hidden, not after its return — and the last known
+/// MR stays.
+#[test]
+fn an_answer_landing_after_its_repository_left_never_publishes() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    forge.land(answer(&ask, &[("feat", Some(5))]), now);
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let out = forge.take_due(later).remove(0);
+    assert_eq!(
+        forge.retain(|_| false),
+        vec![repo()],
+        "its refresh is stopped"
+    );
+    assert!(!forge.land(answer(&out, &[("feat", Some(9))]), later));
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], later);
+    assert_eq!(
+        shown_iid(&forge, "/work/app"),
+        Some(5),
+        "the last known, not the late one"
+    );
+    assert_eq!(forge.take_due(later).len(), 1);
+}
+
+/// Off forgets a hidden repository's MRs too.
+#[test]
+fn off_forgets_a_hidden_repository() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    forge.land(answer(&ask, &[("feat", Some(5))]), now);
+    forge.retain(|_| false);
+    forge.set_enabled(false, now);
+    forge.set_enabled(true, now);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    assert_eq!(shown_iid(&forge, "/work/app"), None);
+    assert_eq!(forge.take_due(now).len(), 1);
+}

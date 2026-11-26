@@ -7,6 +7,10 @@ would notice adds its line under `Unreleased` in its own branch.
 
 ## [Unreleased]
 
+### Changed
+
+- Switching to another workspace and back no longer blanks the merge request icons in the column: the ones last read show at once, and they are brought up to date in the background.
+
 ## [nightly-2026-11-26-b20911a] - 2026-11-26
 
 ### Changed

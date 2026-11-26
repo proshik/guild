@@ -40,7 +40,7 @@ merge requests in the column are the person's own.
 ## Non-goals
 
 - No click on the indicator: the header's click still folds it.
-- No account cache beyond one refresh, no new setting.
+- No account kept past the window's life, nor on disk; no new setting.
 - No per-row redraw (deferred by the user in `mr-status-cache-per-branch` 4.4).
 
 ## Impact

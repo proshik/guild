@@ -25,8 +25,8 @@ the header and the row draw.
   found an MR, under the refresh's deadline — through `Glab::call`, so
   admission, caps, the scrubbed environment and the proxy are the reads'.
   `Answer::accounts` carries what was read; the model keeps the last account
-  per host, so one failed read does not blink the mark off. An answer with no
-  account for a host never makes an MR "mine".
+  per host for the window's life, so one failed read does not blink the
+  mark off. With no account ever read for a host, no MR on it is "mine".
 - **`author` is provider-neutral**: `MergeRequest::author: Option<u64>`, the
   account id on the MR's host, from the list's `author.id`.
 - **Checking turns with the activity ring's clock.** `view::activity::ring`
@@ -43,6 +43,11 @@ the header and the row draw.
 
 ## Risks
 
-- A login changed to another account mid-refresh marks by the old account
-  until the next refresh: acceptable, the next refresh reads it again.
+- A login changed to another account marks by the old one until a refresh
+  reads the new one; a failed read keeps the old one meanwhile. Acceptable:
+  every refresh that finds an MR asks again.
+- A host a 401 signed out is asked nothing more in that refresh, its
+  account included (code review r2).
+- A problem is drawn only while the repository has something to ask: with
+  its last worktree gone, no answer would clear it (code review r2).
 - One more glab call per host per refresh, only where an MR was found.

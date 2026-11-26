@@ -655,16 +655,18 @@ impl Forge {
         } else {
             Progress::Idle
         };
-        let gitlab = !state.problems.is_empty()
-            || state
-                .candidates
-                .iter()
-                .any(|candidate| match state.resolutions.get(candidate) {
-                    Some(Resolution::Asked { .. } | Resolution::Why(_)) => true,
-                    Some(Resolution::Silent) => false,
-                    None => Remote::parse(&candidate.url)
-                        .is_some_and(|remote| looks_like_gitlab(&remote.host)),
-                });
+        // With nothing left to ask, no answer will come to clear a problem:
+        // nothing is drawn (code review r2, bugs+impl-1).
+        let gitlab = !state.candidates.is_empty()
+            && (!state.problems.is_empty()
+                || state.candidates.iter().any(|candidate| {
+                    match state.resolutions.get(candidate) {
+                        Some(Resolution::Asked { .. } | Resolution::Why(_)) => true,
+                        Some(Resolution::Silent) => false,
+                        None => Remote::parse(&candidate.url)
+                            .is_some_and(|remote| looks_like_gitlab(&remote.host)),
+                    }
+                }));
         Some(RepoStatus {
             progress,
             checked: state.checked,

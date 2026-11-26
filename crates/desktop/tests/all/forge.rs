@@ -1273,3 +1273,28 @@ fn a_gitlab_by_another_name_is_drawn_from_its_first_answer() {
         Some(guild_desktop::forge::Indicator::Checking)
     );
 }
+
+/// Code review r2, bugs+impl-1: a problem of the last answer is not drawn
+/// once the repository has nothing left to ask — its last worktree went —
+/// since no answer will come to clear it.
+#[test]
+fn a_problem_goes_with_the_last_worktree() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let ask = forge.take_due(now).remove(0);
+    let mut out = answer(&ask, &[]);
+    out.resolutions[0].1 = Resolution::Why(Why::NotLoggedIn(HOST.into()));
+    out.batches.clear();
+    forge.land(out, now);
+    assert!(matches!(
+        forge.status(&repo()).unwrap().indicator(),
+        Some(guild_desktop::forge::Indicator::Failed(_))
+    ));
+    forge.inputs(&repo(), Vec::new(), now);
+    assert_eq!(forge.status(&repo()).unwrap().indicator(), None);
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    assert!(forge.take_due(later).is_empty());
+    assert_eq!(forge.status(&repo()).unwrap().indicator(), None);
+}

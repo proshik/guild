@@ -590,7 +590,7 @@ here; the comment beside the citation carries the rule it names.
     - **The person's own MR is marked, by one account read per host**: the
       list's `author.id` against `glab api --hostname <host> user`'s `id`,
       read once per host per refresh, only for a host whose batches found an
-      MR, under what is left of the refresh's deadline and through the same
+      MR and that no 401 signed out in that refresh, under what is left of the refresh's deadline and through the same
       admission, caps, scrubbed environment and proxy as every read, and
       kept for the window's life until the next read on the host replaces
       it. A failed account read is nobody's problem: the last account read
@@ -620,7 +620,8 @@ here; the comment beside the citation carries the rule it names.
       problem in the hover) over checked (a faint ✓, only under the pointer
       on the header). No ✓ before the first answer — the first refresh is
       queued and checking like any other — and nothing at all for a
-      repository off GitLab: one whose worktrees were all found to push
+      repository with nothing left to ask, whose problem no answer would
+      clear, or off GitLab: one whose worktrees were all found to push
       elsewhere, or, before its first answer, push to a host without
       GitLab in its name. Progress moves
       outside an answer's landing, so the window compares every header's

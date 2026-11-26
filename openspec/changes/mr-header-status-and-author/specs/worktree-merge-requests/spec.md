@@ -13,7 +13,7 @@ requests' state, from the repository's state alone, before its `⋯` and `+`:
   while the pointer is on the header, whose hover says how long ago;
 - otherwise nothing.
 Nothing SHALL be drawn while the setting is off, the repository has no
-state, or the repository is off GitLab: every worktree resolved as pushing
+state or nothing left to ask, or the repository is off GitLab: every worktree resolved as pushing
 elsewhere, or — before its first answer — none pushing to a host with GitLab
 in its name. A problem of the repository SHALL NOT be drawn on a worktree's row.
 
@@ -42,7 +42,7 @@ A worktree row's MR SHALL carry a faint person after its number, with the
 hover "You created this merge request", when GitLab's `author.id` of the MR
 equals the `id` of the account glab is logged in with on the MR's host. The
 account SHALL be read once per host per refresh, only for a host whose batch
-found an MR, through the same admission, deadline, output cap, scrubbed
+found an MR and that no 401 signed out in that refresh, through the same admission, deadline, output cap, scrubbed
 environment and proxy as every other call, and the last account read for a
 host SHALL be kept until another read replaces it. A failed or unreadable
 account read SHALL NOT be a problem of the repository: the last account read

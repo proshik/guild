@@ -426,6 +426,9 @@ pub(crate) fn refresh(
                         if branches.iter().any(|(_, read)| matches!(read, Ok(Some(_)))))
                 })
                 .map(|batch| batch.host.as_str())
+                // A host a 401 signed out is asked nothing more in this
+                // refresh (code review r2, bugs+impl-2).
+                .filter(|host| !signed_out.iter().any(|out| out == host))
                 .collect();
             found.dedup();
             for host in found {
@@ -651,6 +654,35 @@ esac"#
                 .count(),
             1,
             "{asked:?}"
+        );
+    }
+
+    /// Code review r2, bugs+impl-2: a host found signed out by a 401 is
+    /// asked nothing more in that refresh — not its account either, though
+    /// an earlier project on it found an MR.
+    #[test]
+    fn a_host_signed_out_mid_refresh_is_not_asked_its_account() {
+        let (dir, glab) = stand_in(
+            r#"case "$*" in
+  *" user") echo '{"id":42}'; exit 0;;
+  *"team%2Fone/merge_requests?source_branch"*) echo '[{"iid":1,"title":"One","web_url":"https://gitlab.example.com/team/one/-/merge_requests/1","sha":"h1","source_branch":"feat","target_branch":"main","source_project_id":7,"project_id":7,"state":"merged","author":{"id":42}}]'; exit 0;;
+  *"team%2Ftwo/"*) echo 'glab: 401 Unauthorized (HTTP 401)' >&2; exit 1;;
+esac"#,
+        );
+        let (ask, hosts) = two_projects();
+        let answer = refresh(
+            ask,
+            Ok(glab),
+            &hosts,
+            Ok(None),
+            Arc::new(Cancel::default()),
+            std::time::Duration::from_secs(20),
+        );
+        assert!(answer.accounts.is_empty());
+        assert!(
+            !calls(&dir).iter().any(|c| c.ends_with(" user")),
+            "{:?}",
+            calls(&dir)
         );
     }
 

@@ -1,0 +1,60 @@
+{{- /*
+What else the window does, by area: a strip of tabs, the way a dock names its tools in its head,
+over one table per area. Without script every area is shown in turn under its own heading. The
+body is landing/area blocks of landing/entry rows.
+
+@param {string} id    Anchor of the section.
+@param {string} title The heading.
+@param {string} lead  The line under it.
+*/ -}}
+{{- $id := .Get "id" -}}
+<section class="g-catalog" id="{{ $id }}" aria-labelledby="{{ $id }}-title">
+  <div class="g-head g-head--side">
+    <h2 id="{{ $id }}-title" class="g-h2">{{ .Get "title" }}</h2>
+    {{- with .Get "lead" }}<p class="g-lead">{{ . }}</p>{{ end }}
+  </div>
+  <div class="g-catalog__body">
+    <div class="g-catalog__tabs" role="tablist" aria-label="{{ .Get "title" }}" hidden>
+      {{- range $i, $a := .Store.Get "areas" }}
+      <button class="g-tab" type="button" role="tab" id="{{ $a.id }}-tab" aria-controls="{{ $a.id }}"
+        aria-selected="{{ if eq $i 0 }}true{{ else }}false{{ end }}" tabindex="{{ if eq $i 0 }}0{{ else }}-1{{ end }}">{{ $a.name }}</button>
+      {{- end }}
+    </div>
+    {{ .Inner }}
+  </div>
+  <script>
+  (() => {
+    const root = document.currentScript.closest('.g-catalog');
+    const tabs = [...root.querySelectorAll('[role=tab]')];
+    const panels = [...root.querySelectorAll('.g-area')];
+    if (!tabs.length || tabs.length !== panels.length) return;
+    root.classList.add('is-tabs');
+    root.querySelector('[role=tablist]').hidden = false;
+    const select = i => {
+      tabs.forEach((t, j) => {
+        const on = j === i;
+        t.setAttribute('aria-selected', on);
+        t.tabIndex = on ? 0 : -1;
+        panels[j].hidden = !on;
+      });
+    };
+    panels.forEach((p, i) => {
+      p.setAttribute('role', 'tabpanel');
+      p.setAttribute('aria-labelledby', tabs[i].id);
+      p.tabIndex = 0;
+    });
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => select(i));
+      t.addEventListener('keydown', e => {
+        const k = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+        if (k === undefined) return;
+        e.preventDefault();
+        const n = (k + tabs.length) % tabs.length;
+        select(n);
+        tabs[n].focus();
+      });
+    });
+    select(0);
+  })();
+  </script>
+</section>

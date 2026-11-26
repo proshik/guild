@@ -1,0 +1,9 @@
+{{- /*
+One question of landing/interview, with its answer in Markdown.
+
+@param {string} q The question.
+*/ -}}
+<div class="g-qa">
+  <h3 class="g-qa__q">{{ .Get "q" }}</h3>
+  <div class="g-qa__a">{{ .Inner | strings.TrimSpace | $.Page.RenderString (dict "display" "block") }}</div>
+</div>

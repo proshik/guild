@@ -1,0 +1,14 @@
+{{- /*
+One area of landing/catalog: its name and a table of landing/entry rows.
+
+@param {string} id   Anchor of the panel.
+@param {string} name The area's name, on its tab.
+*/ -}}
+{{- .Parent.Store.Add "areas" (slice (dict "id" (.Get "id") "name" (.Get "name"))) -}}
+<div class="g-area" id="{{ .Get "id" }}">
+  <h3 class="g-area__name">{{ .Get "name" }}</h3>
+  <table class="g-index__table">
+    <thead><tr><th scope="col">{{ T "colFeature" }}</th><th scope="col">{{ T "colWhat" }}</th><th scope="col">{{ T "colWhere" }}</th></tr></thead>
+    <tbody>{{ .Inner }}</tbody>
+  </table>
+</div>

@@ -1,0 +1,12 @@
+{{- /* The download, the source beside it, and what Guild runs on. */ -}}
+<div class="g-actions">
+  <a class="g-btn g-btn--primary" href="https://github.com/proshik/guild/releases">
+    {{- partial "utils/icon.html" (dict "name" "download" "attributes" "height=18 aria-hidden=true") -}}
+    <span>{{ T "download" }}</span>
+  </a>
+  <a class="g-btn g-btn--chip" href="https://github.com/proshik/guild">
+    {{- partial "utils/icon.html" (dict "name" "github" "attributes" "height=18 aria-hidden=true") -}}
+    <span>{{ T "source" }}</span>
+  </a>
+</div>
+<p class="g-note">{{ T "platformNote" }}</p>

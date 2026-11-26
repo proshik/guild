@@ -302,6 +302,29 @@ desktop-release: prepare-diagrams
 
 
 
+# The landing site in site/ is Hugo and the Hextra theme, a Hugo module pinned in
+# site/go.mod. Hugo is the version tools/get-hugo.sh pins and checks; the theme is
+# fetched with `go`, so Go must be installed. HUGO_BASEURL, when set, is the address
+# the site is built for.
+#
+# Build the landing site into site/public.
+site:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    hugo="{{justfile_directory()}}/tools/hugo"
+    [ -x "$hugo" ] || { echo "site: $hugo not found; run ./tools/get-hugo.sh" >&2; exit 1; }
+    cd "{{justfile_directory()}}/site"
+    "$hugo" build --gc --minify --panicOnWarning ${HUGO_BASEURL:+--baseURL "$HUGO_BASEURL"}
+
+# Serve the landing site from memory at http://localhost:1313, rebuilt on change.
+site-serve:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    hugo="{{justfile_directory()}}/tools/hugo"
+    [ -x "$hugo" ] || { echo "site-serve: $hugo not found; run ./tools/get-hugo.sh" >&2; exit 1; }
+    cd "{{justfile_directory()}}/site"
+    "$hugo" server --renderToMemory --panicOnWarning
+
 # Check that the active toolchain is the one from rust-toolchain.toml, not brew's.
 toolchain:
     @rustup show active-toolchain

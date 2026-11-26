@@ -1,0 +1,969 @@
+/* Hallmark · v2.0.0 · redesign: full · genre: modern-minimal · theme: brand (Guild's own Light and Dark palettes, brass, Inter / JetBrains Mono) · draw: ffffb9 · built: Hextra theme · shape: Bento Grid (the page laid out as the window lays out its areas: cards six apart on the backdrop) · hero: Settled, the whole window beside the words, the column listing many sessions · nav: edge-aligned (the draw's search-led bar swapped: Hextra's search indexes no home page) · footer: colophon block · signature: the Guild window itself, and the column's rows as the phase switcher · imagery: screenshots and video of the running product · copy: README, CHANGELOG, code */
+/* critique: a developer tool's page that borrows the window's own anatomy (backdrop, cards, rows, keys) instead of a generic feature layout; one accent, the window's brass; no figures but the code's own */
+/* Hallmark · waive 1 · Inter is the face crates/desktop/assets/fonts ships and the window draws its interface in · the page speaks in the window's own interface face, so a visitor sees the same letters in the screenshots and around them */
+/* Hallmark · dismissed 74 · #f8fafc is the app surface of the window's own Light palette in crates/desktop/src/theme/palettes.rs */
+/* Hallmark · answered F15 · the bento's cards stand six pixels apart because the window's areas do; every other multi-column section shares the 2rem column gap */
+
+/* Guild's landing on top of Hextra's compiled styles. Hextra owns the navbar, the theme switch
+   and the code blocks; this file owns the home page. The colours are
+   crates/desktop/src/theme/palettes.rs's Light and Dark, and the faces are the window's own,
+   served from crates/desktop/assets/fonts through a module mount. */
+
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../../fonts/Inter-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../../fonts/Inter-SemiBold.ttf") format("truetype"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("../../fonts/JetBrainsMono-Regular.ttf") format("truetype"); }
+
+/* Tokens. Hextra derives its primary scale from --primary-*; the rest is the page's own. Hextra's
+   theme switch sets color-scheme on <html>, which picks each light-dark() pair: the first value
+   is the window's Light palette, the second its Dark. */
+:root,
+.dark {
+  --primary-hue: 41deg;
+  --primary-saturation: 100%;
+  --primary-lightness: 30%;
+}
+.dark {
+  --primary-lightness: 52%;
+}
+:root {
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* surface: app, sunken, panel, card, backdrop; text: primary, secondary, tertiary */
+  --color-paper-light: #f8fafc;
+  --color-paper-dark: #191a1c;
+  --color-paper: light-dark(var(--color-paper-light), var(--color-paper-dark));
+  --color-paper-2: light-dark(#f0f4f8, #1d1e21);
+  --color-panel: light-dark(#e7edf3, #212326);
+  --color-card: light-dark(#ffffff, #26282c);
+  --color-backdrop: light-dark(#dbe3ec, #131416);
+  --color-ink: light-dark(#172337, #bcbec4);
+  --color-ink-2: light-dark(#33465d, #9fa2a8);
+  --color-ink-muted: light-dark(#52657c, #8b8e94);
+  --color-rule: light-dark(#cbd5e1, #33353b);
+  --color-frame: light-dark(rgb(23 35 55 / 0.14), rgb(188 190 196 / 0.16));
+  --color-shadow: light-dark(rgb(23 35 55 / 0.28), rgb(0 0 0 / 0.6));
+  /* accent: brass and brass_bg */
+  --color-accent: light-dark(#805900, #c29e4a);
+  --color-accent-hover: light-dark(#5f4200, #d6b465);
+  --color-accent-bg: light-dark(#e7e0ce, #3e3726);
+  --color-accent-ink: light-dark(#172337, #bcbec4);
+  --color-button: light-dark(#172337, #bcbec4);
+  --color-button-hover: light-dark(#33465d, #d4d6db);
+  --color-button-ink: light-dark(#f8fafc, #191a1c);
+  --color-focus: light-dark(#805900, #c29e4a);
+  --color-selection: light-dark(rgb(128 89 0 / 0.2), rgb(194 158 74 / 0.3));
+
+  --text-display: clamp(2.5rem, 1.5rem + 2.8vw, 4.25rem);
+  --text-section: clamp(2.125rem, 1.4rem + 2.2vw, 3.25rem);
+  --text-figure: clamp(4rem, 2.4rem + 5vw, 7.5rem);
+  --text-title: clamp(1.25rem, 1.1rem + 0.4vw, 1.5625rem);
+  --text-lead: clamp(1.125rem, 1rem + 0.4vw, 1.3125rem);
+  --text-md: 1.0625rem;
+  --text-sm: 0.9375rem;
+
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 3.5rem;
+  --space-3xl: 5rem;
+  --section-gap-s: clamp(4.5rem, 3rem + 4vw, 7.5rem);
+  --section-gap: clamp(5.5rem, 3.5rem + 5vw, 9rem);
+  --gap-columns: 2rem;
+  /* the window's measures: areas six apart, a card's corner 14, the window's 11 */
+  --gap-areas: 6px;
+  --radius-card: 0.875rem;
+  --radius-window: 0.6875rem;
+  --radius-row: 0.5rem;
+  --radius-control: 0.625rem;
+  --nav-height: 4rem;
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+html {
+  scrollbar-color: var(--color-rule) transparent;
+}
+body {
+  font-family: var(--font-body);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+/* Hextra paints the navbar from its own white and dark; here they are the page's paper. */
+.hextra-nav-container-blur {
+  --hx-color-white: var(--color-paper-light);
+  --hx-color-dark: var(--color-paper-dark);
+}
+::selection {
+  background: var(--color-selection);
+}
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+}
+
+/* Shared parts */
+.g-h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-section);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.028em;
+  color: var(--color-ink);
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+.g-head {
+  max-width: 44rem;
+}
+.g-lead {
+  margin-top: var(--space-md);
+  font-size: var(--text-lead);
+  line-height: 1.5;
+  color: var(--color-ink-2);
+}
+.g-more {
+  display: inline-block;
+  margin-top: var(--space-md);
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
+}
+.g-more:hover {
+  color: var(--color-accent-hover);
+}
+.g-tile__line a,
+.g-qa__a a,
+.g-close__steps a,
+.g-colophon__text a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+.g-tile__line a:hover,
+.g-qa__a a:hover,
+.g-close__steps a:hover {
+  color: var(--color-accent-hover);
+}
+.g-more:focus-visible,
+.g-btn:focus-visible,
+.g-qa__a a:focus-visible,
+.g-close__steps a:focus-visible,
+.g-colophon a:focus-visible,
+.g-tile__line a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+  transition: none;
+}
+.g-tile__line code,
+.g-qa__a code,
+.g-index__table code,
+.g-phase__lead code,
+.g-detail code {
+  font-size: 0.88em;
+  white-space: nowrap;
+}
+
+/* The window: one capture per theme, framed as the window is, on its own corner radius */
+.g-shot {
+  display: block;
+  min-width: 0;
+}
+.g-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-window);
+  outline: 1px solid var(--color-frame);
+  outline-offset: -1px;
+}
+.g-shot .g-shot__dark,
+.dark .g-shot .g-shot__light {
+  display: none;
+}
+.dark .g-shot .g-shot__dark {
+  display: block;
+}
+.g-shot--slot {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 10;
+  padding: var(--space-lg);
+  border-radius: var(--radius-window);
+  border: 1px dashed var(--color-rule);
+  background: var(--color-paper-2);
+}
+.g-shot__slot {
+  max-width: 36ch;
+  font-size: var(--text-sm);
+  text-align: center;
+  color: var(--color-ink-muted);
+}
+.g-clip {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-window);
+  outline: 1px solid var(--color-frame);
+  outline-offset: -1px;
+  background: var(--color-backdrop);
+}
+.g-clip--dark,
+.dark .g-clip--light {
+  display: none;
+}
+.dark .g-clip--dark {
+  display: block;
+}
+
+/* Buttons: one filled primary, and an outlined chip beside it */
+.g-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+}
+.g-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 3rem;
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+}
+.g-btn--primary {
+  color: var(--color-button-ink);
+  background: var(--color-button);
+}
+.g-btn--primary:hover {
+  background: var(--color-button-hover);
+}
+.g-btn--chip {
+  color: var(--color-ink);
+  border-color: var(--color-rule);
+}
+.g-btn--chip:hover {
+  border-color: var(--color-ink-muted);
+}
+.g-btn:active {
+  transform: translateY(1px);
+}
+.g-note {
+  margin-top: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
+
+/* Hero, Settled: the words on five columns, the whole window on seven */
+.g-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--space-3xl);
+  align-items: center;
+  min-height: calc(100dvh - var(--nav-height));
+  padding-block: var(--space-xl) var(--space-2xl);
+}
+.g-hero__title {
+  margin: 0;
+  max-width: 11ch;
+  text-wrap: balance;
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.038em;
+  color: var(--color-ink);
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+.g-hero__lead {
+  max-width: 30ch;
+  margin-top: var(--space-lg);
+  font-size: var(--text-lead);
+  line-height: 1.5;
+  color: var(--color-ink-2);
+}
+.g-hero__window {
+  min-width: 0;
+}
+.g-hero__window .g-shot img {
+  box-shadow: 0 1.5rem 4rem -1.25rem var(--color-shadow);
+}
+
+/* The command line: the real commands in a card like the window's terminal, beside the clip */
+.g-cli {
+  padding-top: var(--section-gap-s);
+}
+.g-cli__body {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--gap-columns);
+  align-items: start;
+  margin-top: var(--space-2xl);
+}
+.g-cli__commands {
+  padding: var(--space-lg);
+  border-radius: var(--radius-card);
+  background: var(--color-card);
+  box-shadow: 0 0 0 1px var(--color-frame);
+}
+.g-cli__list {
+  margin: 0;
+}
+.g-cmd {
+  padding-block: var(--space-sm);
+}
+.g-cmd + .g-cmd {
+  border-top: 1px solid var(--color-rule);
+}
+.g-cmd dt code {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+.g-cmd dt code::before {
+  content: "$ ";
+  color: var(--color-accent);
+}
+.g-cmd dd {
+  margin: 0.25rem 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+.g-cmd dd code,
+.g-cli__note code,
+.g-lead code {
+  font-size: 0.88em;
+}
+.g-cli__note {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-rule);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--color-ink-2);
+}
+
+/* Bento: the window's backdrop, its cards six apart, in mixed spans */
+.g-bento {
+  margin-top: var(--section-gap);
+  padding-block: var(--section-gap-s);
+  box-shadow: 0 0 0 100vmax var(--color-backdrop);
+  clip-path: inset(0 -100vmax);
+  background: var(--color-backdrop);
+}
+.g-bento__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: auto;
+  gap: var(--gap-areas);
+  margin-top: var(--space-2xl);
+}
+.g-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  border-radius: var(--radius-card);
+  background: var(--color-card);
+  min-width: 0;
+  overflow: hidden;
+}
+.g-tile--lead {
+  grid-column: span 7;
+  grid-row: span 2;
+  justify-content: space-between;
+}
+.g-tile--side {
+  grid-column: span 5;
+}
+/* a side card holds its figure at the top and its words at the foot */
+.g-tile--side .g-tile__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.g-tile--side .g-tile__figure {
+  margin-bottom: auto;
+  padding-bottom: var(--space-lg);
+}
+.g-tile--half {
+  grid-column: span 6;
+}
+.g-tile__shot {
+  margin: calc(-1 * var(--space-xl)) calc(-1 * var(--space-xl)) 0 0;
+}
+.g-tile__shot .g-shot img {
+  border-radius: 0 var(--radius-card) 0 var(--radius-window);
+  outline: 0;
+  border-bottom: 1px solid var(--color-frame);
+  border-left: 1px solid var(--color-frame);
+}
+.g-tile__figure {
+  font-family: var(--font-display);
+  font-size: var(--text-figure);
+  font-weight: 600;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+.g-tile__figure--mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: clamp(1.75rem, 1.2rem + 1.6vw, 2.75rem);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.g-tile__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-ink);
+}
+.g-tile__line {
+  margin-top: var(--space-xs);
+  max-width: 46ch;
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: var(--color-ink-muted);
+}
+
+/* Phases: the column's rows beside the stage */
+.g-phases {
+  padding-top: var(--section-gap);
+  scroll-margin-top: var(--nav-height);
+}
+.g-phases__body {
+  margin-top: var(--space-2xl);
+}
+.g-phases.is-tabs .g-phases__body {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: var(--gap-columns);
+  align-items: start;
+}
+.g-phases__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-xs);
+  border-radius: var(--radius-card);
+  background: var(--color-panel);
+}
+.g-phases__rail[hidden] {
+  display: none;
+}
+.g-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md) var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-row);
+  text-align: left;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.g-row > svg {
+  flex: none;
+  margin-top: 0.125rem;
+}
+.g-row:hover {
+  color: var(--color-ink);
+  background: var(--color-paper-2);
+}
+.g-row[aria-selected="true"] {
+  color: var(--color-ink);
+  background: var(--color-card);
+  box-shadow: 0 0 0 1px var(--color-frame);
+}
+.g-row[aria-selected="true"] > svg {
+  color: var(--color-accent);
+}
+.g-row:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.g-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.g-row__label {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+.g-row__title {
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--color-ink-muted);
+}
+/* the bar at the row's left edge fills as the phase's video plays */
+.g-row__bar {
+  position: absolute;
+  inset: var(--space-xs) auto var(--space-xs) 0.375rem;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--color-accent);
+  transform: scaleY(var(--p, 0));
+  transform-origin: center top;
+  transition: transform 250ms linear;
+}
+.g-row[aria-selected="false"] .g-row__bar {
+  opacity: 0;
+}
+.g-phase {
+  display: grid;
+  gap: var(--space-xl);
+}
+.g-phases:not(.is-tabs) .g-phase + .g-phase {
+  margin-top: var(--section-gap-s);
+}
+.g-phase[hidden] {
+  display: none;
+}
+.g-phase:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 6px;
+  border-radius: var(--radius-card);
+}
+.g-phase__text {
+  display: grid;
+  gap: var(--space-lg);
+}
+.g-phase__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2.125rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+/* in tabs the chosen row already names the phase; the heading stays for the outline */
+.is-tabs .g-phase__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.g-phase__lead {
+  max-width: 62ch;
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--color-ink-2);
+}
+.g-phase__details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--space-lg);
+  margin: 0;
+}
+.g-phase .g-more {
+  justify-self: start;
+  margin-top: 0;
+}
+.g-detail {
+  padding-top: var(--space-sm);
+  border-top: 2px solid var(--color-accent-bg);
+  min-width: 0;
+}
+.g-detail dt {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-ink);
+}
+.g-detail dd {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+
+/* Also built in: a catalog by area, a tab strip like a dock's head over one index per area */
+.g-catalog {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: var(--space-xl) var(--gap-columns);
+  align-items: start;
+  padding-top: var(--section-gap);
+}
+.g-catalog > .g-head {
+  position: sticky;
+  top: calc(var(--nav-height) + var(--space-xl));
+}
+.g-catalog__tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: var(--space-lg);
+  padding: 4px;
+  border-radius: var(--radius-control);
+  background: var(--color-panel);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.g-catalog__tabs[hidden] {
+  display: none;
+}
+.g-tab {
+  flex: 1 0 auto;
+  min-height: 2.5rem;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-row);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.g-tab:hover {
+  color: var(--color-ink);
+}
+.g-tab[aria-selected="true"] {
+  color: var(--color-ink);
+  background: var(--color-card);
+  box-shadow: 0 0 0 1px var(--color-frame);
+}
+.g-tab:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.g-area + .g-area {
+  margin-top: var(--space-2xl);
+}
+.g-area[hidden] {
+  display: none;
+}
+.g-area:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 6px;
+  border-radius: var(--radius-row);
+}
+.g-area__name {
+  margin: 0 0 var(--space-md);
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.is-tabs .g-area + .g-area {
+  margin-top: 0;
+}
+/* in tabs the chosen tab names the area; the heading stays for the outline */
+.is-tabs .g-area__name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.g-index__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-md);
+}
+.g-index__table thead th {
+  padding: 0 var(--space-md) var(--space-sm) 0;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  text-align: left;
+  color: var(--color-ink-muted);
+}
+.g-index__table thead th:last-child {
+  padding-right: 0;
+  text-align: right;
+}
+.g-index__table tbody tr {
+  border-top: 1px solid var(--color-rule);
+}
+.g-index__table tbody tr:last-child {
+  border-bottom: 1px solid var(--color-rule);
+}
+.g-index__table tbody th,
+.g-index__table td {
+  padding: var(--space-md) var(--space-md) var(--space-md) 0;
+  vertical-align: top;
+  text-align: left;
+  line-height: 1.5;
+}
+.g-index__table tbody th {
+  width: 30%;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.g-index__table td {
+  color: var(--color-ink-muted);
+}
+.g-index__table td:last-child {
+  width: 24%;
+  padding-right: 0;
+  text-align: right;
+}
+.g-index__table kbd {
+  display: inline-block;
+  padding: 2px var(--space-xs);
+  border: 1px solid var(--color-rule);
+  border-bottom-width: 2px;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  white-space: nowrap;
+  color: var(--color-ink-2);
+  background: var(--color-card);
+}
+
+/* Questions, as an open interview in two columns */
+.g-interview {
+  padding-top: var(--section-gap);
+}
+.g-interview__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2xl) var(--gap-columns);
+  margin-top: var(--space-2xl);
+}
+.g-qa__q {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-ink);
+}
+.g-qa__a {
+  margin-top: var(--space-sm);
+  max-width: 54ch;
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--color-ink-muted);
+}
+
+/* The close: the download again beside one last screen, cut by the band's lower edge */
+.g-close {
+  margin-top: var(--section-gap);
+  padding-top: var(--section-gap-s);
+  box-shadow: 0 0 0 100vmax var(--color-panel);
+  clip-path: inset(0 -100vmax);
+  background: var(--color-panel);
+}
+.g-close__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--space-3xl);
+  align-items: end;
+}
+.g-close__text {
+  padding-bottom: var(--section-gap-s);
+}
+.g-close__steps ol {
+  margin: var(--space-xl) 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.g-close__steps li {
+  position: relative;
+  padding: 0 0 var(--space-md) var(--space-xl);
+  counter-increment: step;
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: var(--color-ink-2);
+}
+.g-close__steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: var(--radius-row);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-accent-ink);
+  background: var(--color-accent-bg);
+}
+.g-close__steps strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.g-close__steps p {
+  margin-top: var(--space-xs);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+.g-close__shot {
+  max-height: 34rem;
+  overflow: hidden;
+  border-radius: var(--radius-window) var(--radius-window) 0 0;
+}
+.g-close__shot .g-shot img {
+  border-radius: var(--radius-window) var(--radius-window) 0 0;
+}
+
+/* The theme switch lives in the navbar (a theme-toggle menu item). Hextra 0.13 also prints one
+   above the footer on pages without a sidebar, and its displayToggle param cannot turn that off
+   (false | default true is true), so that copy and its rule are hidden. */
+.hextra-footer > div:has(.hextra-theme-toggle),
+.hextra-footer > div:has(.hextra-theme-toggle) + hr {
+  display: none;
+}
+
+/* Footer: a colophon, the wordmark and one paragraph */
+.hextra-footer {
+  background: var(--color-paper);
+}
+.g-colophon {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: var(--space-lg) var(--gap-columns);
+  padding: var(--space-2xl) 0 var(--space-3xl);
+}
+.g-colophon__mark {
+  display: inline-flex;
+  align-items: center;
+  align-self: start;
+  gap: var(--space-sm);
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.g-colophon__text {
+  max-width: 62ch;
+  font-size: var(--text-md);
+  line-height: 1.7;
+  color: var(--color-ink-muted);
+}
+.g-colophon__text a {
+  color: var(--color-ink-2);
+}
+.g-colophon__text a:hover {
+  color: var(--color-ink);
+}
+
+@media (max-width: 60rem) {
+  .g-hero,
+  .g-cli__body,
+  .g-phases.is-tabs .g-phases__body,
+  .g-catalog,
+  .g-close__inner,
+  .g-colophon {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .g-hero {
+    min-height: 0;
+    gap: var(--space-xl);
+    padding-top: var(--space-2xl);
+  }
+  .g-bento__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .g-tile--lead,
+  .g-tile--side,
+  .g-tile--half {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  /* the rail becomes a strip of the rows' names that scrolls sideways */
+  .g-phases__rail {
+    flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .g-row {
+    flex: none;
+    width: auto;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+  }
+  .g-row__title {
+    display: none;
+  }
+  .g-row__bar {
+    inset: auto var(--space-sm) 0.25rem;
+    width: auto;
+    height: 3px;
+    transform: scaleX(var(--p, 0));
+    transform-origin: left center;
+  }
+  .g-phase__details,
+  .g-interview__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .g-phase__details {
+    row-gap: var(--space-md);
+  }
+  .g-index__table thead {
+    display: none;
+  }
+  .g-index__table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-block: var(--space-md);
+  }
+  .g-index__table tbody th,
+  .g-index__table td {
+    padding: 0;
+    width: auto;
+  }
+  .g-index__table td:first-of-type {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: var(--space-xs);
+  }
+  .g-close__text {
+    padding-bottom: 0;
+  }
+  .g-catalog > .g-head {
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .g-row__bar {
+    display: none;
+  }
+  .g-btn,
+  .g-row,
+  .g-tab {
+    transition: none;
+  }
+  .g-btn:active {
+    transform: none;
+  }
+}

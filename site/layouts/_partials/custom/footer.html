@@ -1,0 +1,10 @@
+{{- /* The footer as a colophon: the wordmark, then one paragraph (i18n "colophon") that says what
+   Guild is, where its parts are and under what licence. Hextra's copyright block is off
+   (params.footer.displayCopyright), so this is the whole of it. */ -}}
+<div class="g-colophon">
+  <a class="g-colophon__mark" href="{{ site.Home.RelPermalink }}">
+    <img src="{{ "images/logo.svg" | relURL }}" alt="" width="28" height="28">
+    <span>Guild</span>
+  </a>
+  <p class="g-colophon__text">{{ T "colophon" | safeHTML }}</p>
+</div>

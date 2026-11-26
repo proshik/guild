@@ -452,6 +452,7 @@ just release               # main only: check, cut Unreleased into nightly-<date
 just install               # a dev build: check, tag dogfood-<date>, bundle, swap into
                            # /Applications; refused while the installed Guild runs
 just desktop-dev <dir>     # the build being developed, its state apart — docs/desktop-dev.md
+just site / just site-serve # the landing page in site/, Hugo + Hextra — docs/site.md
 just toolchain             # what actually builds this
 ```
 

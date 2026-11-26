@@ -30,3 +30,11 @@
 
 # Retained local task requests, logs and acceptance evidence.
 /task-evidence/
+
+# The landing site's build output and Hugo's caches, and the Hugo binary
+# tools/get-hugo.sh downloads.
+/site/public/
+/site/resources/
+.hugo_build.lock
+/tools/hugo
+/tools/.hugo.*

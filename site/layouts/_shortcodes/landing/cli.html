@@ -1,0 +1,58 @@
+{{- /*
+The window driven from the command line: the real `guild` commands, each with what it does,
+beside a clip of an agent running them. The body is landing/cmd entries, then a note in
+Markdown is given as the note param. The clip loads only when the section comes into view
+and does not play on its own under prefers-reduced-motion.
+
+@param {string} id    Anchor of the section.
+@param {string} title The heading.
+@param {string} lead  The line under it (Markdown).
+@param {string} note  A closing line under the commands (Markdown).
+@param {string} link  URL for the longer read.
+@param {string} video Base name under video/: <video>-light|dark.{webm,mp4,jpg}.
+@param {string} alt   What the clip shows.
+*/ -}}
+{{- $id := .Get "id" -}}
+<section class="g-cli" id="{{ $id }}" aria-labelledby="{{ $id }}-title">
+  <div class="g-head">
+    <h2 id="{{ $id }}-title" class="g-h2">{{ .Get "title" }}</h2>
+    <p class="g-lead">{{ .Get "lead" | markdownify }}</p>
+  </div>
+  <div class="g-cli__body">
+    <div class="g-cli__commands">
+      <dl class="g-cli__list">{{ .Inner }}</dl>
+      {{- with .Get "note" }}<p class="g-cli__note">{{ . | markdownify }}</p>{{ end }}
+      {{- with .Get "link" }}<a class="g-more" href="{{ . }}">{{ T "learnMore" }}</a>{{ end }}
+    </div>
+    <div class="g-cli__media">
+      {{- range slice "light" "dark" }}
+      <video class="g-clip g-clip--{{ . }}" muted playsinline loop controls preload="none"
+        width="1600" height="1000" poster="{{ printf "video/%s-%s.jpg" ($.Get "video") . | relURL }}" aria-label="{{ $.Get "alt" }}">
+        <source src="{{ printf "video/%s-%s.webm" ($.Get "video") . | relURL }}" type="video/webm">
+        <source src="{{ printf "video/%s-%s.mp4" ($.Get "video") . | relURL }}" type="video/mp4">
+      </video>
+      {{- end }}
+    </div>
+  </div>
+  <script>
+  (() => {
+    const root = document.currentScript.closest('.g-cli');
+    const calm = matchMedia('(prefers-reduced-motion: reduce)');
+    const clips = [...root.querySelectorAll('video')];
+    clips.forEach(v => { v.controls = false; });
+    // The take matching the active theme is the one CSS displays.
+    const shown = () => clips.find(v => getComputedStyle(v).display !== 'none');
+    let inView = false;
+    const play = () => {
+      clips.forEach(v => v.pause());
+      const v = shown();
+      if (!v) return;
+      if (calm.matches) { v.controls = true; return; }
+      if (inView) v.play().catch(() => {});
+    };
+    new IntersectionObserver(es => { inView = es[0].isIntersecting; play(); }, { threshold: 0.35 }).observe(root);
+    new MutationObserver(play).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    calm.addEventListener('change', play);
+  })();
+  </script>
+</section>

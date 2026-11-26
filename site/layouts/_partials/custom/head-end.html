@@ -1,0 +1,5 @@
+{{- /* Each language's page names the other, so a search engine shows the right one. */ -}}
+{{- range .AllTranslations }}
+<link rel="alternate" hreflang="{{ .Language.Lang }}" href="{{ .Permalink }}">
+{{- end }}
+{{- with hugo.Sites.Default.Home }}<link rel="alternate" hreflang="x-default" href="{{ .Permalink }}">{{ end }}

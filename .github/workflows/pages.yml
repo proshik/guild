@@ -1,0 +1,69 @@
+# The landing site: builds site/ (Hugo and the Hextra theme) and deploys it to GitHub Pages.
+#
+# It runs only when started by hand, from the Actions tab or with
+# `gh workflow run pages.yml`, while the repository is private and Pages is
+# not turned on: a push-triggered run would fail at the deploy on every push
+# to main. Once Pages is on (Settings → Pages → Source: GitHub Actions), a
+# `push` trigger on main for the paths below can be added:
+#   site/**, assets/icon.svg, crates/desktop/assets/fonts/**,
+#   .github/workflows/pages.yml, tools/get-hugo.sh
+#
+# Hugo is the version tools/get-hugo.sh pins and checks against its SHA-256;
+# the theme is a Hugo module pinned in site/go.mod and fetched with the go
+# command. The base URL comes from actions/configure-pages, so a custom
+# domain set in the repository's Pages settings needs no change here.
+name: pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer run waits instead of cancelling one in progress.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: site/go.mod
+          cache: false
+
+      - uses: extractions/setup-just@v3
+
+      - run: ./tools/get-hugo.sh
+
+      - id: pages
+        uses: actions/configure-pages@v6
+
+      - name: build
+        env:
+          HUGO_ENVIRONMENT: production
+          HUGO_BASEURL: ${{ steps.pages.outputs.base_url }}/
+        run: just site
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

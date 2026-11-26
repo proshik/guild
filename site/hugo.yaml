@@ -1,0 +1,168 @@
+# Guild's landing page: Hugo and the Hextra theme, a Hugo module pinned in go.mod.
+# Build: `just site` (output in site/public); preview: `just site-serve`.
+# The Pages workflow sets the base URL to the one GitHub Pages reports.
+baseURL: "http://localhost:1313/"
+title: Guild
+defaultContentLanguage: en
+# English at the root, Russian under /ru/; the navbar's language switch moves between them.
+defaultContentLanguageInSubdir: false
+enableRobotsTXT: true
+
+# One page: no blog, taxonomies or feeds.
+disableKinds: [taxonomy, term, rss]
+outputs:
+  home: [html]
+
+module:
+  hugoVersion:
+    min: "0.153.0"
+  imports:
+    - path: github.com/imfing/hextra
+      # Everything but static/: Hextra's favicons and logos are its own.
+      mounts:
+        - source: layouts
+          target: layouts
+        - source: assets
+          target: assets
+        - source: data
+          target: data
+        - source: i18n
+          target: i18n
+  # Declaring a mount replaces the defaults, so the standard folders are listed again.
+  # The logo and the window's own faces come straight from the repository rather than being
+  # copied here; only the faces the page sets are published.
+  mounts:
+    - source: content
+      target: content
+    - source: layouts
+      target: layouts
+    - source: assets
+      target: assets
+    - source: static
+      target: static
+    - source: i18n
+      target: i18n
+    - source: ../assets/icon.svg
+      target: static/favicon.svg
+    - source: ../assets/icon.svg
+      target: static/images/logo.svg
+    - source: ../crates/desktop/assets/fonts
+      target: static/fonts
+      files:
+        - Inter-Regular.ttf
+        - Inter-SemiBold.ttf
+        - JetBrainsMono-Regular.ttf
+        - LICENSE-inter
+        - LICENSE-jetbrains-mono
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+  highlight:
+    noClasses: false
+
+languages:
+  en:
+    label: English
+    locale: en-US
+    weight: 1
+    menus:
+      main:
+        - name: Changelog
+          url: "https://github.com/proshik/guild/blob/main/CHANGELOG.md"
+          weight: 2
+        - name: Download
+          url: "https://github.com/proshik/guild/releases"
+          weight: 3
+        - name: Language
+          weight: 4
+          params:
+            type: language-switch
+        - name: Theme
+          weight: 5
+          params:
+            type: theme-toggle
+        - name: GitHub
+          url: "https://github.com/proshik/guild"
+          weight: 6
+          params:
+            icon: github
+    params:
+      # The link preview (Hextra's opengraph partial and Hugo's twitter_cards make it absolute).
+      images:
+        - og.png
+      tagline: The window where AI agents do the work.
+      description: >-
+        Guild is a native macOS window for running many AI agents: it makes worktrees, starts
+        Claude Code, Codex and OpenCode in them, shows who needs you first, and answers a command
+        line your agents can use too.
+  ru:
+    label: Русский
+    locale: ru-RU
+    weight: 2
+    menus:
+      main:
+        - name: Изменения
+          url: "https://github.com/proshik/guild/blob/main/CHANGELOG.md"
+          weight: 2
+        - name: Скачать
+          url: "https://github.com/proshik/guild/releases"
+          weight: 3
+        - name: Язык
+          weight: 4
+          params:
+            type: language-switch
+        - name: Тема
+          weight: 5
+          params:
+            type: theme-toggle
+        - name: GitHub
+          url: "https://github.com/proshik/guild"
+          weight: 6
+          params:
+            icon: github
+    params:
+      images:
+        - og-ru.png
+      tagline: Окно, в котором работу делают ИИ-агенты.
+      description: >-
+        Guild — нативное окно для macOS, чтобы вести много ИИ-агентов сразу: оно создаёт worktree,
+        запускает в них Claude Code, Codex и OpenCode, показывает, кто ждёт вас первым, и
+        отвечает на командную строку, которой пользуются и ваши агенты.
+
+params:
+  externalLinkDecoration: false
+
+  navbar:
+    displayTitle: true
+    displayLogo: true
+    logo:
+      path: images/logo.svg
+      width: 28
+      height: 28
+    width: normal
+
+  theme:
+    default: system
+    displayToggle: true
+
+  footer:
+    enable: true
+    displayCopyright: false
+    displayPoweredBy: false
+    width: normal
+
+  search:
+    enable: false
+
+  editURL:
+    enable: false
+
+  highlight:
+    copy:
+      enable: true
+      display: always
+
+  page:
+    width: normal

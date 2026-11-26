@@ -1,0 +1,20 @@
+{{- /*
+One card of landing/bento: a title and a line (Markdown body), led by a large figure or a
+cropped screenshot.
+
+@param {string} size   lead (seven columns, two rows, with a picture), side (five columns) or half (six).
+@param {string} title  The card's name.
+@param {string} figure Optional text set large above the title.
+@param {bool}   mono   Set the figure in the code face (a path, a command).
+@param {string} shot   Optional screenshot base name; alt says what it shows.
+*/ -}}
+<article class="g-tile{{ with .Get "size" }} g-tile--{{ . }}{{ end }}">
+  {{- with .Get "shot" }}
+  <div class="g-tile__shot">{{ partial "landing/shot.html" (dict "name" . "alt" ($.Get "alt")) }}</div>
+  {{- end }}
+  <div class="g-tile__text">
+    {{- with .Get "figure" }}<p class="g-tile__figure{{ if $.Get "mono" }} g-tile__figure--mono{{ end }}">{{ . }}</p>{{ end }}
+    <h3 class="g-tile__title">{{ .Get "title" }}</h3>
+    <p class="g-tile__line">{{ .Inner | strings.TrimSpace | markdownify }}</p>
+  </div>
+</article>

@@ -1,0 +1,25 @@
+{{- /*
+A screenshot of the Guild window, one image per theme. Hextra switches themes with a class on
+<html>, which a <picture> media query would not follow, so both images are rendered and CSS
+shows the one that matches. The captures live in site/assets/images as
+<name>-light.webp and <name>-dark.webp, taken from an isolated development window on a demo
+project and published as they are. A capture not taken yet is drawn as a
+labelled slot, so the page builds and shows where it goes.
+
+@param {string} name  Base name under assets/images.
+@param {string} alt   Alternative text.
+@param {bool}   eager Load eagerly (the hero's picture).
+*/ -}}
+{{- $eager := .eager | default false -}}
+{{- $l := resources.Get (printf "images/%s-light.webp" .name) -}}
+{{- $d := resources.Get (printf "images/%s-dark.webp" .name) -}}
+{{- if and $l $d }}
+<span class="g-shot">
+  <img class="g-shot__light" src="{{ $l.RelPermalink }}" alt="{{ .alt }}" width="{{ $l.Width }}" height="{{ $l.Height }}"{{ if $eager }} fetchpriority="high"{{ else }} loading="lazy"{{ end }} />
+  <img class="g-shot__dark" src="{{ $d.RelPermalink }}" alt="{{ .alt }}" width="{{ $d.Width }}" height="{{ $d.Height }}"{{ if not $eager }} loading="lazy"{{ end }} />
+</span>
+{{- else }}
+<span class="g-shot g-shot--slot" role="img" aria-label="{{ .alt }}">
+  <span class="g-shot__slot">{{ T "screenshotToCome" }} {{ .alt }}</span>
+</span>
+{{- end }}

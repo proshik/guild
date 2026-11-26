@@ -1,0 +1,19 @@
+{{- /*
+The first screen, Settled: the head, one sentence and the download on five columns, and the
+whole window on the other seven.
+
+@param {string} title    The headline.
+@param {string} subtitle The sentence under it.
+@param {string} shot     Screenshot base name (see partials/landing/shot.html).
+@param {string} alt      What the screenshot shows.
+*/ -}}
+<section class="g-hero" aria-labelledby="g-hero-title">
+  <div class="g-hero__text">
+    <h1 id="g-hero-title" class="g-hero__title">{{ .Get "title" }}</h1>
+    <p class="g-hero__lead">{{ .Get "subtitle" }}</p>
+    {{ partial "landing/actions.html" . }}
+  </div>
+  <div class="g-hero__window">
+    {{ partial "landing/shot.html" (dict "name" (.Get "shot") "alt" (.Get "alt") "eager" true) }}
+  </div>
+</section>

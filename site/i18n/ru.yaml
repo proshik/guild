@@ -1,0 +1,18 @@
+# Слова страницы, которые живут в шаблонах; содержание — content/_index.ru.md.
+learnMore: Подробнее
+download: Скачать для macOS
+source: Исходники
+platformNote: Для Apple silicon, macOS 13 и новее.
+colFeature: Функция
+colWhat: Что делает
+colWhere: Где
+screenshotToCome: "Здесь будет снимок:"
+colophon: >-
+  Guild — нативное окно для macOS, в котором работу делают ИИ-агенты; написано на Rust и GPUI.
+  Ночные сборки лежат на <a href="https://github.com/proshik/guild/releases">странице релизов</a>;
+  исходники, <a href="https://github.com/proshik/guild#readme">README</a>,
+  <a href="https://github.com/proshik/guild/blob/main/CHANGELOG.md">журнал изменений</a> и
+  <a href="https://github.com/proshik/guild/blob/main/docs/decisions.md">решения</a> —
+  <a href="https://github.com/proshik/guild">на GitHub</a>. &copy; 2026 Guild, лицензия на выбор:
+  <a href="https://github.com/proshik/guild/blob/main/LICENSE-MIT">MIT</a> или
+  <a href="https://github.com/proshik/guild/blob/main/LICENSE-APACHE">Apache 2.0</a>.

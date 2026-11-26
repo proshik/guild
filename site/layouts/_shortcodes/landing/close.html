@@ -1,0 +1,17 @@
+{{- /*
+The close: the download again beside one last screen, on the panel's paper. The body is the
+steps as a Markdown list, then a note.
+
+@param {string} title The heading.
+@param {string} shot  Screenshot base name; alt says what it shows.
+*/ -}}
+<section class="g-close" id="download" aria-labelledby="download-title">
+  <div class="g-close__inner">
+    <div class="g-close__text">
+      <h2 id="download-title" class="g-h2">{{ .Get "title" }}</h2>
+      {{ partial "landing/actions.html" . }}
+      <div class="g-close__steps">{{ .Inner | $.Page.RenderString (dict "display" "block") }}</div>
+    </div>
+    <div class="g-close__shot">{{ partial "landing/shot.html" (dict "name" (.Get "shot") "alt" (.Get "alt")) }}</div>
+  </div>
+</section>

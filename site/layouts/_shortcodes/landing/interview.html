@@ -1,0 +1,17 @@
+{{- /*
+Questions as an open interview: every question and its answer visible, in two columns.
+The body is landing/qa pairs.
+
+@param {string} id       Anchor of the section.
+@param {string} title    The heading.
+@param {string} link     URL for the longer read.
+@param {string} linktext Its text.
+*/ -}}
+{{- $id := .Get "id" -}}
+<section class="g-interview" id="{{ $id }}" aria-labelledby="{{ $id }}-title">
+  <div class="g-head">
+    <h2 id="{{ $id }}-title" class="g-h2">{{ .Get "title" }}</h2>
+    {{- with .Get "link" }}<a class="g-more" href="{{ . }}">{{ $.Get "linktext" }}</a>{{ end }}
+  </div>
+  <div class="g-interview__list">{{ .Inner }}</div>
+</section>

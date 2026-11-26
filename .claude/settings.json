@@ -29,6 +29,8 @@
       "Bash(just build)",
       "Bash(just toolchain)",
       "Bash(just boundaries)",
+      "Bash(just site)",
+      "Bash(just site-serve)",
       "Bash(claude mcp list)",
       "Bash(claude mcp get:*)",
       "Bash(just test-live)"

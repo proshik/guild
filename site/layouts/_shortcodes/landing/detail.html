@@ -1,0 +1,9 @@
+{{- /*
+One detail of a phase: a short name and one line (Markdown body).
+
+@param {string} title The name.
+*/ -}}
+<div class="g-detail">
+  <dt>{{ .Get "title" }}</dt>
+  <dd>{{ .Inner | strings.TrimSpace | markdownify }}</dd>
+</div>

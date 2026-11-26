@@ -1,0 +1,9 @@
+{{- /*
+One command of landing/cli: the command as typed, and what it does (Markdown body).
+
+@param {string} run The command line, without the prompt.
+*/ -}}
+<div class="g-cmd">
+  <dt><code>{{ .Get "run" }}</code></dt>
+  <dd>{{ .Inner | strings.TrimSpace | markdownify }}</dd>
+</div>

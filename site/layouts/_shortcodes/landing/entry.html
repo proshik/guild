@@ -1,0 +1,11 @@
+{{- /*
+One row of a landing/area table. The body is one line of Markdown.
+
+@param {string} name  The feature.
+@param {string} where Where it lives in the window, or its keys.
+*/ -}}
+<tr>
+  <th scope="row">{{ .Get "name" | markdownify }}</th>
+  <td>{{ .Inner | strings.TrimSpace | markdownify }}</td>
+  <td><kbd>{{ .Get "where" }}</kbd></td>
+</tr>

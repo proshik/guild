@@ -1,0 +1,16 @@
+{{- /*
+The case for Guild as the window draws its own areas: cards six points apart on the window's
+backdrop, in mixed spans. The body is landing/tile entries.
+
+@param {string} id    Anchor of the section.
+@param {string} title The heading.
+@param {string} lead  The line under it (Markdown).
+*/ -}}
+{{- $id := .Get "id" -}}
+<section class="g-bento" id="{{ $id }}" aria-labelledby="{{ $id }}-title">
+  <div class="g-head">
+    <h2 id="{{ $id }}-title" class="g-h2">{{ .Get "title" }}</h2>
+    {{- with .Get "lead" }}<p class="g-lead">{{ . | markdownify }}</p>{{ end }}
+  </div>
+  <div class="g-bento__grid">{{ .Inner }}</div>
+</section>

@@ -1,0 +1,18 @@
+# The page's own words that live in its templates; the content is content/_index.md.
+learnMore: Learn more
+download: Download for macOS
+source: Source
+platformNote: For Apple silicon, macOS 13 or later.
+colFeature: Feature
+colWhat: What it does
+colWhere: Where
+screenshotToCome: "Screenshot to come:"
+colophon: >-
+  Guild is a native macOS window where AI agents do the work, written in Rust on GPUI. Its
+  nightlies are on the <a href="https://github.com/proshik/guild/releases">releases page</a>; its
+  source, <a href="https://github.com/proshik/guild#readme">README</a>,
+  <a href="https://github.com/proshik/guild/blob/main/CHANGELOG.md">changelog</a> and
+  <a href="https://github.com/proshik/guild/blob/main/docs/decisions.md">decisions</a> are
+  <a href="https://github.com/proshik/guild">on GitHub</a>. &copy; 2026 Guild, licensed under
+  <a href="https://github.com/proshik/guild/blob/main/LICENSE-MIT">MIT</a> or
+  <a href="https://github.com/proshik/guild/blob/main/LICENSE-APACHE">Apache 2.0</a>, at your option.

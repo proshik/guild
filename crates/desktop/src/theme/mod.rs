@@ -511,8 +511,6 @@ pub mod space {
     pub const COLUMN: Rems = from_px(232.0);
     /// Logical-point target centered on the column boundary, independent of UI scale.
     pub const COLUMN_RESIZE_REACH: f32 = 9.0;
-    /// The neutral line shown only while the column edge is hovered or dragged.
-    pub const COLUMN_RESIZE_LINE: f32 = 1.0;
     /// The terminal's scrollbar: the thumb's width and its inset from
     /// the right edge.
     ///

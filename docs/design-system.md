@@ -339,17 +339,14 @@ The terminal content inset is **5 points vertically and 13 horizontally** (`them
 
 **Corner radii:** 6 — tree and list rows · 7–9 — cards, buttons, badges · 11 — the application window · 20+ — pills.
 
-The project column's resize edge is an exception to the historical cursor-only
-rule below (user correction, 2026-10-23). Its **9-point target is centered on the
-visible boundary**, not wholly inside the column. A **1-point `text.muted` line**
-appears on hover and remains during drag; it is absent at rest. Its top and bottom
-stop at the start of the card's straight edge, inset by `radius::WORK` (14 at the
-default UI size), so the line never protrudes past rounded corners. The hit target
-retains its full height. Dimensions are
-`space::COLUMN_RESIZE_REACH` and `COLUMN_RESIZE_LINE`, in logical points. The
-pinned grip sits above the work surface and below deferred popups, ends before
-the footer, and follows the same boundary in the folded peek. Other handles
-retain their existing appearance.
+The project column's resize edge follows the cursor-only rule of every other
+handle. Its **9-point target is centered on the visible boundary**, not wholly
+inside the column, and keeps its full height; its width is
+`space::COLUMN_RESIZE_REACH`, in logical points. Since 2026-11-26 (user
+correction) it **draws nothing at rest, on hover or during a drag** — the resize
+cursor is the only sign; from 2026-10-23 until then a 1-point line lit under the
+hand. The pinned grip sits above the work surface and below deferred popups,
+ends before the footer, and follows the same boundary in the folded peek.
 
 ### 4.1 The work is a card — M12.6
 

@@ -95,24 +95,27 @@ fn fixed_footer_window(cx: &mut TestAppContext) {
         border,
         "resize target must straddle the visible column boundary"
     );
-    let line = cx.debug_bounds("column-edge-line").unwrap();
-    assert_eq!(line.center().x, border);
-    let corner = px(cx.update(|_, cx| root.read(cx).rem_px(crate::theme::radius::WORK)));
-    assert_eq!(
-        line.top(),
-        edge.top() + corner,
-        "highlight starts below the card corner"
-    );
-    assert_eq!(
-        line.bottom(),
-        edge.bottom() - corner,
-        "highlight ends above the card corner"
+    // The edge draws nothing at rest, under the hand or during a drag:
+    // the resize cursor is the only sign, as on every other handle.
+    assert!(
+        cx.debug_bounds("column-edge-line").is_none(),
+        "the column edge draws no line at rest"
     );
     // The work-facing half must win hit testing over the surface behind it.
     let right_half = gpui::point(border + px(2.), edge.center().y);
+    cx.simulate_mouse_move(right_half, None, Default::default());
+    cx.run_until_parked();
+    assert!(
+        cx.debug_bounds("column-edge-line").is_none(),
+        "the column edge draws no line under the hand"
+    );
     cx.simulate_mouse_down(right_half, gpui::MouseButton::Left, Default::default());
     cx.run_until_parked();
     cx.update(|_, cx| assert!(root.read(cx).column_edge_drag));
+    assert!(
+        cx.debug_bounds("column-edge-line").is_none(),
+        "the column edge draws no line during a drag"
+    );
     cx.simulate_mouse_up(right_half, gpui::MouseButton::Left, Default::default());
     cx.run_until_parked();
     cx.update(|_, cx| assert!(!root.read(cx).column_edge_drag));

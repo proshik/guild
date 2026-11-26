@@ -921,23 +921,11 @@ impl Root {
     }
 
     /// A symmetric target on the column boundary, above the adjacent work.
+    /// It draws nothing, at rest, under the hand or during a drag: the
+    /// resize cursor is the only sign, as on every other handle.
     /// Pinned columns mount it last in the work row; peeking columns keep
     /// it inside their deferred overlay. The footer and popups stay above it.
     pub(crate) fn render_column_edge(&self, cx: &mut Context<Root>) -> gpui::AnyElement {
-        let line = div()
-            .debug_selector(|| "column-edge-line".into())
-            .absolute()
-            .left(px((theme::space::COLUMN_RESIZE_REACH
-                - theme::space::COLUMN_RESIZE_LINE)
-                / 2.0))
-            .top(theme::radius::WORK)
-            .bottom(theme::radius::WORK)
-            .w(px(theme::space::COLUMN_RESIZE_LINE))
-            .group_hover("column-edge", |line| line.bg(rgb(self.theme.text.muted)))
-            .when(self.column_edge_drag, |line| {
-                line.bg(rgb(self.theme.text.muted))
-            });
-
         div()
             .id("column-edge-grip")
             .debug_selector(|| "column-edge-grip".into())
@@ -946,10 +934,6 @@ impl Root {
             .top_0()
             .bottom_0()
             .w(px(theme::space::COLUMN_RESIZE_REACH))
-            .flex()
-            .items_center()
-            .justify_center()
-            .group("column-edge")
             .cursor(gpui::CursorStyle::ResizeLeftRight)
             .occlude()
             .on_mouse_down(
@@ -968,7 +952,6 @@ impl Root {
                     root.grab_column_edge(cx);
                 }),
             )
-            .child(line)
             .into_any_element()
     }
 

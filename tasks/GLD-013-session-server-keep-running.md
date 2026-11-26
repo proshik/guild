@@ -68,8 +68,8 @@ working, the server also keeps the Mac from idle sleep.
 
 - **Launch at login is not part of this task** — an optional later item.
 - **Not here:** remote connection — GLD-065 and GLD-066. Out of scope
-  altogether: surviving a server crash (a crash ends the sessions); files,
-  git, LSP on the server; a TUI editor.
+  altogether: surviving a server crash (a crash ends the sessions); files
+  and git on the server (language servers: GLD-010); a TUI editor.
 - Keeping a Mac awake with its lid closed on battery, and any change to the
   person's energy settings.
 

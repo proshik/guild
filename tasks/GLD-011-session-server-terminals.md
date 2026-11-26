@@ -77,8 +77,8 @@ re-scope it.
 
 - **Not here:** remote connection — the ssh bridge is GLD-065 and the
   remote-machine window GLD-066; this task's protocol carries the generation
-  and capabilities they rely on. Out of scope altogether: files, git, search,
-  LSP and buffers on the server; a TUI editor; surviving a server crash;
+  and capabilities they rely on. Out of scope altogether: files, git, search
+  and buffers on the server (language servers: GLD-010); a TUI editor; surviving a server crash;
   launch at login.
 - No change to how harnesses are launched or resumed beyond where the PTY
   lives.

@@ -76,7 +76,8 @@ the caller — becomes the server's.
   GLD-049. A message that survives does not mean a process survived.
 - **Not here:** remote connection — the ssh bridge is GLD-065, the
   remote-machine window GLD-066; this task only makes the API fit for them.
-  Out of scope altogether: files, git, LSP on the server; a TUI editor;
+  Out of scope altogether: files and git on the server (language servers:
+  GLD-010); a TUI editor;
   surviving a server crash.
 
 ## Context

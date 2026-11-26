@@ -55,7 +55,7 @@ more. `guild` stays small: the TUI is its own binary.
 
 ## Limits / non-goals
 
-- **No TUI editor**, no file tree, git or LSP — those stay in the window.
+- **No TUI editor**, no file tree, git or language features — those are the window's.
 - **Not here:** remote connection — the TUI attaches to a local socket
   only, and `--remote host` is GLD-065's. **Deferred:** launch at login.
 

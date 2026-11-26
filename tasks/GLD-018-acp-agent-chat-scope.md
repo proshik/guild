@@ -5,7 +5,7 @@ kind: design
 status: backlog
 priority: 3
 component: docs
-depends_on: []
+depends_on: [GLD-010]
 touches:
   - openspec/changes/acp-agent-chat/**
 harness: any
@@ -21,6 +21,14 @@ readable messages, streamed tool activity, links to changed files and diffs,
 permission requests and cancellation. Agent Client Protocol (ACP) would give
 one transport for compatible agents; it supplies neither the UI nor better
 models. This task scopes it and records the decision; it builds nothing.
+
+**Where it runs** (decided 2026-11-27, recorded in GLD-010): the ACP agent is
+a session of the session server, not a process of the window. The server
+starts the agent, is its ACP client and keeps the conversation. Chat in the
+window is one client of that session, as a terminal tab is of a terminal. So
+a conversation outlives a window restart, the TUI can see it, and an agent
+that waits reaches the shared waiting list. Chat is therefore designed on
+GLD-010's protocol, after it.
 
 **Not yet agreed with the person.** This is a candidate carried over from the
 former `docs/backlog/future-improvements.md` ("ACP-backed agent chat",
@@ -44,6 +52,11 @@ person's decision come before code.
       file/diff links, permission requests and cancellation are mapped to what
       the chosen agent actually reports; unsupported capabilities are handled
       explicitly.
+- [ ] WHEN the surface is specified THEN Chat is a client of the server's
+      conversation session (GLD-010): what it draws comes from the server's
+      events, a permission request is answered by the client that holds
+      input (GLD-015), and ACP's `fs` and `terminal` capabilities follow
+      GLD-010's answer.
 - [ ] WHEN Chat sessions are mapped to tabs, panes, worktrees, status and
       caller identity THEN the existing permission and managed-session
       provenance rules hold.
@@ -62,11 +75,13 @@ person's decision come before code.
 
 - No implementation; agent choice, interaction design and rollout are this
   task's output.
-- Out of scope: cross-agent conversation transfer, automatic recovery, remote
-  execution.
+- Out of scope: cross-agent conversation transfer, automatic recovery, and a
+  remote machine's conversation (GLD-066's window is terminal-only unless
+  GLD-010 changes it).
 
 ## Context
 
 - https://agentclientprotocol.com/protocol/v1/overview
 - https://github.com/agentclientprotocol/rust-sdk
-- GLD-010 (session server) — where a Chat session's process would live.
+- GLD-010 — the server that runs the agent's process and keeps its
+  conversation; GLD-015, input handover; GLD-067, the waiting list.

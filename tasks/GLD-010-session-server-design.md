@@ -17,6 +17,7 @@ touches:
   - tasks/GLD-065-ssh-bridge.md
   - tasks/GLD-066-remote-machine-window.md
   - tasks/GLD-067-shared-waiting-list.md
+  - tasks/GLD-018-acp-agent-chat-scope.md
 harness: any
 reviews: {spec: 1, code: 0}
 created: "2026-11-07"
@@ -25,7 +26,8 @@ created: "2026-11-07"
 ## Goal
 
 Guild becomes a client of a local session server that runs terminals,
-harnesses and terminal jobs and keeps their statuses; the window, `guild`, a
+harnesses, terminal jobs, ACP agents and the language servers' processes, and
+keeps their statuses; the window, `guild`, a
 TUI and the windows of other machines attach to it — locally through a Unix
 socket, from another machine through ssh. Before any server code, decide its
 shape and protocol and record them in an OpenSpec change
@@ -36,9 +38,22 @@ layer) are brought to the same decision.
 **Decided by the person** (2026-11-22, recorded here as decided, not to be
 asked again):
 
-- **The server owns terminals and agents only**: statuses, hooks, terminal
-  jobs, input. Files, git, the editor, LSP and search stay in the window and
+- **The server owns terminals and agents**: statuses, hooks, terminal
+  jobs, input. Files, git, the editor and search stay in the window and
   never move to the server.
+- **(2026-11-27) The language servers' processes move to the server too**,
+  revising the 2026-11-22 line that kept LSP in the window. A language
+  server's index then outlives a window restart and is shared by every
+  window of the state directory. Files, buffers, the editor and git stay in
+  the window. How a window speaks LSP through the server is decided here
+  (*Open questions*).
+- **(2026-11-27) An ACP agent is the server's agent.** A conversation over
+  the Agent Client Protocol (GLD-018) is a kind of session beside a terminal.
+  The server runs the agent's process and is its ACP client. The window, the
+  TUI and `guild` see the conversation through Guild's own protocol. ACP is
+  not that protocol: it joins one client to one agent, with no snapshot, no
+  sequence numbers and no second observer. GLD-018 designs the Chat surface
+  on top of this.
 - **Remote is ssh only.** The server has no TCP listener. Locally it is a
   0600 Unix socket; remotely the same byte stream goes through `ssh host
   guild server bridge`. A dropped connection is *disconnected*, never
@@ -72,6 +87,19 @@ asked again):
   and an incompatible generation is a plain "update Guild on machine X".
   Snapshot plus a sequence-numbered change stream; retried requests
   deduplicated by id; no fd passing or shared memory.
+- **A conversation session (ACP).** Its frames carry the agent's structured
+  updates (messages, tool calls, plans) beside a terminal's PTY bytes, with
+  the same snapshot and sequence rules. A permission request is answered by
+  the client that holds input (GLD-015). An agent that waits is a
+  `Waiting(Why)` session like any other (GLD-067). ACP's client-side
+  capabilities are answered by the server or not offered: `terminal/*`
+  becomes a terminal of the server's, and `fs/*` is an open question below.
+- **Language servers.** One process per project root and language, owned by
+  the server's process groups (`ProcessGroup`) rather than the window's, and
+  shared by every window that has the project open. Its lifetime is
+  decided here: when it starts, when it stops, and what a window sees while
+  it starts. What the window keeps: the buffers, `didOpen`/`didChange`, and
+  the providers in `lsp/providers.rs`.
 - **The ssh bridge** (GLD-065). The approach planned on 2026-11-26, to
   be confirmed or changed here: `guild server bridge` joins its stdio to the
   server's socket and does nothing else; the client runs the system `ssh`
@@ -101,6 +129,10 @@ recommendation, and recorded with its date — never assumed.
 | Where Claude's IDE endpoint lives | On the server, forwarding calls to the attached **local** window; with no window it says plainly there is no IDE; never forwarded to a remote-machine window. `CLAUDE_CODE_SSE_PORT` is set at launch (`crates/desktop/src/terminal/view/mod.rs:1664`) *(code)*, so a window-hosted endpoint breaks across a window restart |
 | Who shows the menu bar item | The server through a small AppKit module, or a windowless app — decided with the cost of both |
 | The grace period after the last client leaves | Short, on the order of a minute |
+| Who speaks LSP to a language server | The window, through the server, which passes its frames to the process it owns. The window keeps its buffers and providers, and the server owns only the process, its lifetime and its group |
+| When a language server stops | When no window has its project open, after the same kind of grace as the server's own |
+| Whether the server offers ACP's `fs` capability | No: the agent reads and writes the disk itself, as a terminal agent does. Answering from the window's buffers would fail with no window open, and files stay in the window |
+| Whether a remote-machine window shows an ACP conversation | Not yet: the window stays terminal-only (2026-11-22) until GLD-018 is designed, and a remote agent that waits still reaches the shared waiting list |
 
 Settled by the design itself, recorded in `design.md`:
 
@@ -139,6 +171,9 @@ GLD-010, and not discovered in GLD-011. The result goes into `design.md`.
       remote-machine window's boundaries, the shared waiting list and the
       version-skew rules are described, each with the task that builds it
       (GLD-065–067).
+- [ ] The conversation (ACP) session and the language servers' hosting are
+      in the protocol outline, each with the task that builds it (created or
+      re-scoped if none fits), and GLD-018 is edited to match.
 - [ ] Lifetime: the server always owns sessions; by default it ends when the
       last client leaves (after the decided grace); outliving the window is a
       setting (GLD-013).
@@ -160,8 +195,9 @@ GLD-010, and not discovered in GLD-011. The result goes into `design.md`.
 ## Limits / non-goals
 
 - Design only: no production code, no Cargo change.
-- **Out of scope, recorded as such:** files, git, search, LSP and buffers on
-  the server (they stay in the window, decided 2026-11-22); a TUI editor;
+- **Out of scope, recorded as such:** files, git, search, the editor and
+  buffers on the server (they stay in the window, decided 2026-11-22; the
+  language servers' processes are in scope since 2026-11-27); a TUI editor;
   surviving a server crash; launch at login; the phone layer (a web inbox or
   Telegram, a VDS with Caddy and passkeys, `ssh -R` from the Mac) — it waits
   for a separate task tool's first version and gets a plan of its own, so nothing in
@@ -180,5 +216,10 @@ GLD-010, and not discovered in GLD-011. The result goes into `design.md`.
   terminal recovery, bounded transport ownership.
 - `crates/session/src/status.rs` — `Status::Waiting(Why)`, `Why` =
   `Permission | Question | Auth | Unstated` *(code)*, what GLD-067 lists.
+- `crates/desktop/src/lsp/client.rs` (a server in a process, a group to
+  kill), `lsp/providers.rs`, `root/lsp.rs` — today's language servers, owned
+  by the window *(code)*.
+- GLD-018 (ACP Chat) and the protocol: https://agentclientprotocol.com/protocol/v1/overview
+  *(ext)*.
 - GLD-009 (the terminal core the server and its clients will share) —
   useful, not required, to read first.

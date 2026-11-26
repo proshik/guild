@@ -95,8 +95,8 @@ compression.
   library — the system `ssh` only.
 - No phone access (a web inbox or Telegram through a VDS and `ssh -R`): it
   waits for a separate task tool's first version and gets a plan of its own.
-- Files, git, LSP and search stay in the window and are not reached on the
-  remote machine.
+- A remote machine's files, git, language servers and search are not
+  reached.
 
 ## Context
 

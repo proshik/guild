@@ -64,8 +64,8 @@ integration breaks across a window restart.
 ## Limits / non-goals
 
 - **Not here:** remote connection — GLD-065 (the ssh bridge) and GLD-066
-  (the remote-machine window). Out of scope altogether: files, git, search,
-  LSP and buffers on the server; a TUI editor; surviving a server crash;
+  (the remote-machine window). Out of scope altogether: files, git, search
+  and buffers on the server (language servers: GLD-010); a TUI editor; surviving a server crash;
   launch at login.
 - The `guild` CLI keeps talking to the window in this task; the common API
   is GLD-014.

@@ -30,7 +30,40 @@ a conversation outlives a window restart, the TUI can see it, and an agent
 that waits reaches the shared waiting list. Chat is therefore designed on
 GLD-010's protocol, after it.
 
-**Not yet agreed with the person.** This is a candidate carried over from the
+**Agreed with the person** (2026-11-27):
+
+- **A client never speaks ACP.** ACP runs only between the server and the
+  agent. The window and the TUI speak Guild's own protocol (GLD-010), for a
+  terminal session and a conversation alike.
+- **Terminal sessions are used as today.** The server holds the PTY and the
+  screen; a client draws them with its own emulator and sends input through
+  the server, one keyboard at a time (GLD-015).
+- **A conversation's interface is Guild's own.** The server sends the
+  conversation as events (messages, tool calls, plans, permission requests)
+  under the same snapshot and sequence rules as a terminal. The window or the
+  TUI draws them, and answers to permissions and cancellation go back
+  through the server. The server keeps the conversation itself, so a new
+  client gets all of it without relying on the agent's `session/load`.
+
+**Still open:**
+
+- **The events' form** is GLD-010's to decide. ACP's own types can go almost
+  as they are inside Guild's envelope: less work, and a client draws straight
+  from ACP's schema. Or they can be translated into Guild's types: clients
+  then do not depend on ACP's versions, at the cost of keeping a translation.
+  Recommendation: ACP's types inside the envelope, since ACP carries versions
+  and capabilities.
+- **No switch in place.** An agent started in a terminal and the same agent
+  over ACP are two processes with no shared history (Acceptance, *history and
+  resume*).
+- **Which agents speak ACP.** opencode is believed to support it natively,
+  and Claude Code and Codex through adapters. This is not verified, and the
+  first agent's check below verifies it.
+- **A remote machine's conversation.** ACP would reach a remote server
+  through ssh without anything new, but the remote-machine window is
+  terminal-only (2026-11-22). The question is open in GLD-010.
+
+**Not yet agreed with the person.** Beyond the points above, this is a candidate carried over from the
 former `docs/backlog/future-improvements.md` ("ACP-backed agent chat",
 recorded 2026-10-24); its scope and behaviour are to be agreed with the person
 before any work, and recorded in the task (or an OpenSpec change) in the same

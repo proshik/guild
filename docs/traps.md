@@ -334,6 +334,16 @@ native fixture as having completed a turn.
   may retain an orphan zombie after SIGKILL while macOS has already reaped it.
   A fixture holds a lifetime pipe until termination; EOF tests cleanup without
   depending on the host's init/reaper. Never signal an archived or unowned PID.
+- **A new script's first exec is not the code under test.** macOS assesses an
+  executable it has not run before; under a full `guild-session` run, with
+  dozens of fresh fixture scripts at once, that first exec measured 2.5 s
+  against 0.15 s for a fresh file alone and under 0.16 s for a second exec of
+  the same file. The child sits in `S` before its first line, so a 2 s
+  deadline reads as glab or a harness not answering. On 2026-11-27 it failed
+  the glab mid-batch deadline and the version probe on every full run, and on
+  `ab3767b` too — not a regression. Run each fixture script once before a
+  test's clock starts (`[ "$1" = warm ] && exit 0`, or the glab stand-in's
+  own early exit) and keep the deadline what it proves.
 
 - **Diagnostic encoding is not the command's exit status.** Strict UTF-8
   conversion of stderr turned an exit-zero dependency query into a failure.

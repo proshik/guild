@@ -28,18 +28,27 @@ fn version_probe_finishes_when_a_descendant_inherits_output() {
     use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
     let script = dir.path().join("codex");
+    // The pid file by its absolute path: the test process keeps its own
+    // directory.
     std::fs::write(
         &script,
-        "#!/bin/sh\n/bin/sleep 30 &\necho $! > child.pid\necho 'codex 1.2.3'\n",
+        format!(
+            "#!/bin/sh\n[ \"$1\" = warm ] && exit 0\n/bin/sleep 30 &\necho $! > '{}'\necho 'codex 1.2.3'\n",
+            dir.path().join("child.pid").display()
+        ),
     )
     .unwrap();
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
-    // Only the child changes directory; the test process keeps its environment.
-    let text = std::fs::read_to_string(&script).unwrap().replace(
-        "child.pid",
-        &format!("'{}'", dir.path().join("child.pid").display()),
+    // macOS checks a new executable at its first exec; while the suite
+    // starts dozens at once that took over 2 s — the probe's whole deadline.
+    // Run it once before the probe, so the deadline measures the probe.
+    assert!(
+        Command::new(&script)
+            .arg("warm")
+            .status()
+            .unwrap()
+            .success()
     );
-    std::fs::write(&script, text).unwrap();
     let path = dir.path().display().to_string();
     let (send, receive) = std::sync::mpsc::channel();
     let thread = std::thread::spawn(move || {

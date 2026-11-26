@@ -199,4 +199,4 @@ machine, during the investigation).
   loops beside them (load median 51, peak 128); and
   `the_sessions_page_lists_by_urgency_settles_and_takes_keys` (two Working
   rows in the wrong order, sessions_tests.rs:130) with no synthetic load
-  (median 17, peak 34). They are left to their own tasks.
+  (median 17, peak 34). They are GLD-070, GLD-071 and GLD-072, in that order.

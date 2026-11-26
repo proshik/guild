@@ -53,26 +53,70 @@ const CHANGELOG: &str = "\
 - Old.
 ";
 
-/// The tags come in on stdin, one a line, as `git tag -l` prints them.
+/// The tags come in on stdin, one a line, as `git tag -l` prints them,
+/// and the changelog is read for the versions it has released.
 #[test]
 fn the_name_is_the_date_or_the_date_and_the_commit() {
-    let first = tool(&["name", "2026-09-24", "2bca70a"], "nightly-2026-09-23\n");
+    let dir = scratch("name");
+    let file = dir.path().join("CHANGELOG.md");
+    std::fs::write(&file, CHANGELOG).unwrap();
+    let file = file.to_str().unwrap();
+
+    let first = tool(
+        &["name", "2026-09-24", "2bca70a", file],
+        "nightly-2026-09-23\n",
+    );
     assert!(first.status.success(), "{:?}", said(&first));
     assert_eq!(said(&first).0, "nightly-2026-09-24\n");
 
     let second = tool(
-        &["name", "2026-09-24", "2bca70a"],
+        &["name", "2026-09-24", "2bca70a", file],
         "nightly-2026-09-23\nnightly-2026-09-24\n",
     );
     assert!(second.status.success(), "{:?}", said(&second));
     assert_eq!(said(&second).0, "nightly-2026-09-24-2bca70a\n");
 
     let taken = tool(
-        &["name", "2026-09-24", "2bca70a"],
+        &["name", "2026-09-24", "2bca70a", file],
         "nightly-2026-09-24\nnightly-2026-09-24-2bca70a\n",
     );
     assert_eq!(taken.status.code(), Some(1));
     assert!(said(&taken).1.contains("nightly-2026-09-24-2bca70a"));
+}
+
+/// A repository whose history was started afresh has no tags for the
+/// releases its changelog carries: a heading takes a name as a tag does.
+#[test]
+fn a_version_the_changelog_holds_is_taken_without_its_tag() {
+    let dir = scratch("name-heading");
+    let file = dir.path().join("CHANGELOG.md");
+    std::fs::write(&file, CHANGELOG).unwrap();
+    let file = file.to_str().unwrap();
+
+    let out = tool(&["name", "2026-09-23", "2bca70a", file], "");
+    assert!(out.status.success(), "{:?}", said(&out));
+    assert_eq!(said(&out).0, "nightly-2026-09-23-2bca70a\n");
+
+    let taken = tool(
+        &["name", "2026-09-23", "2bca70a", file],
+        "nightly-2026-09-23-2bca70a\n",
+    );
+    assert_eq!(taken.status.code(), Some(1));
+    assert!(
+        said(&taken).1.contains("nightly-2026-09-23-2bca70a"),
+        "{:?}",
+        said(&taken)
+    );
+}
+
+/// Without the changelog the name could be one it already holds: the
+/// old call is a usage error, not a guess from the tags alone.
+#[test]
+fn the_name_is_not_chosen_without_the_changelog() {
+    let out = tool(&["name", "2026-09-24", "2bca70a"], "");
+
+    assert_eq!(out.status.code(), Some(2));
+    assert!(said(&out).1.contains("usage"), "{:?}", said(&out));
 }
 
 #[test]

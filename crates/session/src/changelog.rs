@@ -235,23 +235,37 @@ pub fn cut(notes: &Notes, at: usize) -> (Notes, usize) {
     (kept, more)
 }
 
-/// A name both forms of which are tags already — which only a tag made
-/// by hand can explain.
+/// A name both forms of which are taken already — by a tag or by a
+/// release of the changelog — which only one made by hand can explain.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Taken(pub String);
 
 /// The name of a release made on `date` (`YYYY-MM-DD`) from the commit
-/// `short` names, among the `tags` there are — the person's decision 3:
+/// `short` names, among the `tags` there are and the releases
+/// `changelog` already holds — the person's decision 3:
 /// `nightly-<date>`, and `nightly-<date>-<short>` when the day has one.
 /// The commit is the one released, not the release commit, which cannot
 /// carry its own hash in the file it commits.
-pub fn version_name(date: &str, short: &str, tags: &[&str]) -> Result<String, Taken> {
+///
+/// A heading takes a name as a tag does because a history can be started
+/// afresh: the public repository's has no tags for the releases its
+/// changelog carries, and a name already a heading is one `release`
+/// refuses to cut.
+pub fn version_name(
+    date: &str,
+    short: &str,
+    tags: &[&str],
+    changelog: &str,
+) -> Result<String, Taken> {
+    let released = parse(changelog);
+    let taken =
+        |name: &str| tags.contains(&name) || released.iter().any(|release| release.version == name);
     let first = format!("{NIGHTLY}{date}");
-    if !tags.contains(&first.as_str()) {
+    if !taken(&first) {
         return Ok(first);
     }
     let second = format!("{first}-{short}");
-    if tags.contains(&second.as_str()) {
+    if taken(&second) {
         return Err(Taken(second));
     }
     Ok(second)

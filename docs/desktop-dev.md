@@ -14,9 +14,10 @@ worked in and the window being worked on do not get in each other's way.
   files, and a `CHANGELOG.md` whose `## [Unreleased]` has no entry — all
   three before `just check`;
 - runs `just check` (its log in `target/release-check.log`), then names
-  the release `nightly-<date>` — `nightly-<date>-<short hash>` for a
-  second one that day — cuts `Unreleased` into it, commits
-  `CHANGELOG.md` alone as `Release <name>`, and tags that commit;
+  the release `nightly-<date>` — `nightly-<date>-<short hash>` when a
+  tag or a heading of `CHANGELOG.md` has that day already — cuts
+  `Unreleased` into it, commits `CHANGELOG.md` alone as
+  `Release <name>`, and tags that commit;
 - runs `just bundle`, which writes the commit, the tag and the build time
   into `Guild.app/Contents/Resources`, with the swap helper and
   `CHANGELOG.md` beside them;

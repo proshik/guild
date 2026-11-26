@@ -133,8 +133,9 @@ install dest="/Applications":
 
 # Only from a clean `main`, and only with something under `## [Unreleased]`
 # in CHANGELOG.md — both asked before five minutes of `just check`. Then:
-# the name (`nightly-<date>`, `-<short hash>` for a second that day), the
-# changelog cut, a commit of CHANGELOG.md alone, the tag, the bundle; and
+# the name (`nightly-<date>`, `-<short hash>` when a tag or a changelog
+# heading has that day already), the changelog cut, a commit of
+# CHANGELOG.md alone, the tag, the bundle; and
 # staged for the Update button while the installed Guild runs, swapped in
 # otherwise. **Never pushed** — the push is printed for the person. M5.16,
 # decision 45; docs/desktop-dev.md.
@@ -171,7 +172,7 @@ release dest="/Applications":
         exit 1
     fi
     date=$(date +%F)
-    name=$(git tag -l 'nightly-*' | "$tool" name "$date" "$(git rev-parse --short HEAD)")
+    name=$(git tag -l 'nightly-*' | "$tool" name "$date" "$(git rev-parse --short HEAD)" CHANGELOG.md)
     "$tool" cut CHANGELOG.md "$name" "$date"
     git add CHANGELOG.md
     git commit -q -m "Release $name"

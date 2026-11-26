@@ -361,11 +361,11 @@ fn notes_are_cut_to_a_count_and_the_rest_counted() {
 #[test]
 fn a_version_is_named_by_its_date_then_its_commit() {
     assert_eq!(
-        changelog::version_name("2026-09-24", "2bca70a", &["nightly-2026-09-23"]),
+        changelog::version_name("2026-09-24", "2bca70a", &["nightly-2026-09-23"], ""),
         Ok("nightly-2026-09-24".to_owned())
     );
     assert_eq!(
-        changelog::version_name("2026-09-24", "2bca70a", &["nightly-2026-09-24"]),
+        changelog::version_name("2026-09-24", "2bca70a", &["nightly-2026-09-24"], ""),
         Ok("nightly-2026-09-24-2bca70a".to_owned())
     );
 }
@@ -378,11 +378,38 @@ fn a_name_taken_twice_is_refused() {
         "2026-09-24",
         "2bca70a",
         &["nightly-2026-09-24", "nightly-2026-09-24-2bca70a"],
+        "",
     );
 
     assert_eq!(
         taken,
         Err(changelog::Taken("nightly-2026-09-24-2bca70a".to_owned()))
+    );
+}
+
+/// A version the changelog already holds is taken as a tag is: the
+/// public repository's fresh history has no tags for the releases its
+/// changelog carries.
+#[test]
+fn a_version_in_the_changelog_is_taken_without_a_tag() {
+    let held = "## [Unreleased]\n\n## [nightly-2026-09-24] - 2026-09-24\n";
+
+    assert_eq!(
+        changelog::version_name("2026-09-24", "2bca70a", &[], held),
+        Ok("nightly-2026-09-24-2bca70a".to_owned())
+    );
+    assert_eq!(
+        changelog::version_name(
+            "2026-09-24",
+            "2bca70a",
+            &["nightly-2026-09-24-2bca70a"],
+            held
+        ),
+        Err(changelog::Taken("nightly-2026-09-24-2bca70a".to_owned()))
+    );
+    assert_eq!(
+        changelog::version_name("2026-09-25", "2bca70a", &[], held),
+        Ok("nightly-2026-09-25".to_owned())
     );
 }
 

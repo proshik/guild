@@ -1,7 +1,8 @@
 //! `guild-release` — what `just release` asks of the changelog, M5.16.
 //!
 //! ```text
-//! guild-release name <date> <short hash>     tags on stdin; the name on stdout
+//! guild-release name <date> <short hash> <CHANGELOG.md>
+//!                                            tags on stdin; the name on stdout
 //! guild-release check <CHANGELOG.md>         something to release, or why not
 //! guild-release cut <CHANGELOG.md> <version> <date>
 //! ```
@@ -16,7 +17,7 @@ use std::process::ExitCode;
 use guild_session::changelog;
 mod update_release;
 
-const USAGE: &str = "usage: guild-release name <date> <short hash> < tags\n       \
+const USAGE: &str = "usage: guild-release name <date> <short hash> <CHANGELOG.md> < tags\n       \
                      guild-release check <CHANGELOG.md>\n       \
                      guild-release cut <CHANGELOG.md> <version> <date>";
 
@@ -24,7 +25,7 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
     let done = match args.as_slice() {
-        ["name", date, short] => name(date, short),
+        ["name", date, short, file] => name(date, short, file),
         ["check", file] => read(file).and_then(|text| {
             changelog::check(&text).map_err(|refusal| format!("refused: {refusal}"))
         }),
@@ -49,15 +50,18 @@ fn main() -> ExitCode {
     }
 }
 
-fn name(date: &str, short: &str) -> Result<(), String> {
+fn name(date: &str, short: &str, file: &str) -> Result<(), String> {
+    let changelog = read(file)?;
     let mut tags = String::new();
     std::io::stdin()
         .read_to_string(&mut tags)
         .map_err(|err| format!("guild-release: the tags on stdin: {err}"))?;
     let tags: Vec<&str> = tags.lines().map(str::trim).collect();
-    let name = changelog::version_name(date, short, &tags).map_err(|changelog::Taken(name)| {
-        format!("refused: {name} is a tag already — made by hand?")
-    })?;
+    let name = changelog::version_name(date, short, &tags, &changelog).map_err(
+        |changelog::Taken(name)| {
+            format!("refused: {name} is a tag or a release of {file} already — made by hand?")
+        },
+    )?;
     println!("{name}");
     Ok(())
 }

@@ -38,7 +38,7 @@ to equal a subsequently advanced remote main. Stop on ambiguity or mismatch.
    Run `"$release_cli" check CHANGELOG.md` and
    `"$release_cli" keys-check assets/update-keys.json`.
 3. Set `$date` to today's `YYYY-MM-DD`; choose `$tag` with
-   `git tag -l 'nightly-*' | "$release_cli" name "$date" "$(git rev-parse --short HEAD)"`.
+   `git tag -l 'nightly-*' | "$release_cli" name "$date" "$(git rev-parse --short HEAD)" CHANGELOG.md`.
    Run `"$release_cli" cut CHANGELOG.md "$tag" "$date"`, inspect the changelog,
    then `git add -- CHANGELOG.md` and
    `git commit --only -m "Release $tag" -- CHANGELOG.md`.

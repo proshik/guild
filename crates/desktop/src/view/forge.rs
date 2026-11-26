@@ -10,7 +10,9 @@ use guild_session::merge_requests::status::{
     self, Badge, Check, MergeRequest, State, Verdict, badge, verdict,
 };
 
+use crate::forge::Indicator;
 use crate::theme::{self, Theme};
+use crate::view::tooltip::Hint as _;
 
 /// The icon's colour for a verdict.
 pub(crate) fn verdict_colour(verdict: Verdict, theme: Theme) -> u32 {
@@ -84,6 +86,81 @@ pub(crate) fn glyph(mr: &MergeRequest, theme: Theme, ring: Rgba) -> gpui::Div {
                     ),
             )
         })
+}
+
+/// A repository header's indicator: its glyph and colour — the approved
+/// Penpot board *MR header status — column*. Checking turns.
+pub(crate) fn indicator_look(indicator: &Indicator, theme: Theme) -> (&'static str, u32) {
+    match indicator {
+        Indicator::Queued => ("ui/mr-queued.svg", theme.text.faint),
+        Indicator::Checking => ("ui/tool-refresh.svg", theme.text.muted),
+        Indicator::Checked => ("ui/mr-check.svg", theme.text.faint),
+        Indicator::Failed(_) => ("ui/mr-refresh-failed.svg", theme.accent.brass),
+    }
+}
+
+impl crate::Root {
+    /// The repository header's indicator before its `⋯ +`, in the action
+    /// slot's size, its hover worded when it opens. *Checked* is drawn only
+    /// while the pointer is on the header — `head` is the header's hover
+    /// group, the chevron's. `None` when the repository has no state: the
+    /// setting off, not GitLab, nothing answered yet.
+    pub(crate) fn project_header_mr(
+        &self,
+        repo: Option<&std::path::Path>,
+        head: gpui::SharedString,
+        animate: bool,
+    ) -> Option<gpui::AnyElement> {
+        let status = self.forge_status(repo?)?;
+        let indicator = status.indicator()?;
+        let checked = status.checked;
+        let theme = self.theme;
+        let ui = self.ui();
+        let (path, colour) = indicator_look(&indicator, theme);
+        let glyph = match indicator {
+            Indicator::Checking => crate::view::activity::turning(
+                path,
+                theme::space::WORKTREE_GLYPH,
+                rgb(colour),
+                animate,
+            ),
+            _ => crate::icons::glyph(path, theme::space::WORKTREE_GLYPH)
+                .text_color(rgb(colour))
+                .into_any_element(),
+        };
+        let state = match indicator {
+            Indicator::Queued => "Queued",
+            Indicator::Checking => "Checking",
+            Indicator::Checked => "Checked",
+            Indicator::Failed(_) => "Failed",
+        };
+        let quiet = matches!(indicator, Indicator::Checked);
+        Some(
+            div()
+                .id(gpui::SharedString::from(format!(
+                    "project-header-mr-{}",
+                    repo?.display()
+                )))
+                .debug_selector(move || format!("project-header-mr-{state}"))
+                .flex()
+                .flex_none()
+                .items_center()
+                .justify_center()
+                .size(theme::column::ACTION_TARGET)
+                .when(quiet, |slot| {
+                    slot.invisible().group_hover(head, |slot| slot.visible())
+                })
+                .hint_delay()
+                .tooltip(move |_window, app| {
+                    let text = ui
+                        .mr_indicator(&indicator, checked.map(|at| at.elapsed().as_secs() as i64));
+                    app.new(|_| crate::view::tooltip::Tooltip::text(text, theme))
+                        .into()
+                })
+                .child(glyph)
+                .into_any_element(),
+        )
+    }
 }
 
 /// One line of the card, already worded: ✓, ✗ or neither.

@@ -57,6 +57,23 @@ pub(crate) fn color(status: Status, palette: theme::Theme) -> u32 {
 
 /// Shared visibility-aware ring, including the review progress colour.
 pub(crate) fn ring(color: gpui::Rgba, animate: bool) -> gpui::AnyElement {
+    turning(
+        "ui/activity-ring.svg",
+        theme::activity::RING,
+        color,
+        animate,
+    )
+}
+
+/// A glyph that turns while it is seen: the activity ring, a repository's
+/// merge requests being checked. One clock and one rule for both — no
+/// frame is asked for out of view or under reduced motion.
+pub(crate) fn turning(
+    asset: &'static str,
+    size: impl Into<gpui::Length> + Clone,
+    color: gpui::Rgba,
+    animate: bool,
+) -> gpui::AnyElement {
     // AnimationElement schedules during layout, before scroll clipping is known.
     // Native canvas requests frames only after intersecting the actual content mask.
     gpui::canvas(
@@ -84,14 +101,9 @@ pub(crate) fn ring(color: gpui::Rgba, animate: bool) -> gpui::AnyElement {
                 .translate(center)
                 .rotate(gpui::Radians(angle))
                 .translate(bounds.center().scale(-window.scale_factor()));
-            if let Err(error) = window.paint_svg(
-                bounds,
-                "ui/activity-ring.svg".into(),
-                None,
-                transform,
-                color.into(),
-                cx,
-            ) {
+            if let Err(error) =
+                window.paint_svg(bounds, asset.into(), None, transform, color.into(), cx)
+            {
                 tracing::error!("Activity spinner: {error}");
             }
             if rotating {
@@ -101,7 +113,7 @@ pub(crate) fn ring(color: gpui::Rgba, animate: bool) -> gpui::AnyElement {
             }
         },
     )
-    .size(theme::activity::RING)
+    .size(size)
     .into_any_element()
 }
 

@@ -155,6 +155,38 @@ pub struct RepoStatus<'a> {
     pub problems: &'a [Problem],
 }
 
+/// What a repository's header draws of its merge requests' state — the
+/// approved Penpot board *MR header status — column*.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Indicator {
+    /// Due, not out: a clock.
+    Queued,
+    /// A refresh is out: turning arrows.
+    Checking,
+    /// The last answer asked everything: a faint ✓ under the pointer, its
+    /// hover saying when — read off [`RepoStatus::checked`] as it opens.
+    Checked,
+    /// The last answer could not ask something, these: struck-through
+    /// arrows, the problems in its hover.
+    Failed(Vec<Problem>),
+}
+
+impl RepoStatus<'_> {
+    /// The header's indicator: checking over queued over a problem of the
+    /// last answer — the refresh due or out may clear it — over checked;
+    /// nothing before the first answer, or with nothing to ask.
+    pub fn indicator(&self) -> Option<Indicator> {
+        match self.progress {
+            Progress::Checking => Some(Indicator::Checking),
+            Progress::Queued => Some(Indicator::Queued),
+            Progress::Idle if !self.problems.is_empty() => {
+                Some(Indicator::Failed(self.problems.to_vec()))
+            }
+            Progress::Idle => self.checked.map(|_| Indicator::Checked),
+        }
+    }
+}
+
 /// A refresh to run: what was asked, under which generation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ask {
@@ -600,6 +632,19 @@ impl Forge {
             checked: state.checked,
             problems: &state.problems,
         })
+    }
+}
+
+impl Forge {
+    /// Every shown repository's indicator, for the window to compare with
+    /// what it last drew: progress moves outside [`Forge::land`] — a
+    /// trigger, a refresh started or abandoned, a write — so `land`'s
+    /// answer alone cannot say a header changed.
+    pub fn indicators(&self) -> Vec<(PathBuf, Option<Indicator>)> {
+        self.repos
+            .keys()
+            .filter_map(|repo| Some((repo.clone(), self.status(repo)?.indicator())))
+            .collect()
     }
 }
 

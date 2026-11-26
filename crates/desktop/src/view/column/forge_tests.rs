@@ -271,3 +271,172 @@ fn a_worktree_s_merge_request_is_drawn_opened_and_explained(cx: &mut TestAppCont
         "git's, not GitLab's"
     );
 }
+
+/// mr-header-status-and-author: the repository's header draws its merge
+/// requests' state from the model — queued, checking, couldn't refresh,
+/// checked — and nothing when the setting is off; a problem of the
+/// repository is on its header, never on a row.
+#[gpui::test]
+fn the_repository_header_draws_its_merge_requests_state(cx: &mut TestAppContext) {
+    if !crate::root::isolation::isolated_test(concat!(
+        module_path!(),
+        "::the_repository_header_draws_its_merge_requests_state"
+    )) {
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let main = dir.path().join("app");
+    let feat = dir.path().join("feat");
+    std::fs::create_dir_all(&main).unwrap();
+    std::fs::create_dir_all(&feat).unwrap();
+    let common = main.join(".git");
+    let url = "git@gitlab.example.com:team/app.git";
+    let candidate = crate::forge::Candidate {
+        worktree: feat.clone(),
+        url: url.into(),
+        branch: "feat".into(),
+    };
+    let mut entity = None;
+    let (_, cx) = cx.add_window_view(|window, cx| {
+        crate::editor::init(cx);
+        crate::actions::install(cx);
+        let mut desk = Desk::default();
+        desk.normalise();
+        let workspace = desk.active_workspace();
+        let project = desk.open_in(workspace, &main);
+        desk.set_repository(project, Some(common.clone()));
+        let root = cx.new(|cx| {
+            let mut root = Root::from_state(Default::default(), desk, cx);
+            root.isolated_render = true;
+            root.settings.gitlab_merge_requests = true;
+            let tree = |path: &std::path::Path, branch: &str, main_branch: bool| {
+                crate::git::worktrees::Worktree {
+                    path: path.to_path_buf(),
+                    branch: Some(branch.into()),
+                    head: Some("abc".into()),
+                    main_branch,
+                    push: Some(crate::git::worktrees::Pushed {
+                        remote: "origin".into(),
+                        url: Some(url.into()),
+                        branch: branch.into(),
+                    }),
+                    ..Default::default()
+                }
+            };
+            root.worktrees.insert(
+                common.clone(),
+                vec![tree(&main, "main", true), tree(&feat, "feat", false)],
+            );
+            let now = std::time::Instant::now();
+            let model = root.forge_model_mut();
+            model.set_enabled(true, now);
+            model.inputs(&common, vec![candidate.clone()], now);
+            root
+        });
+        entity = Some(root.clone());
+        gpui_component::Root::new(root, window, cx)
+    });
+    cx.simulate_resize(gpui::size(px(900.), px(500.)));
+    let root = entity.unwrap();
+    cx.run_until_parked();
+    let only = |cx: &mut gpui::VisualTestContext, shown: &str| {
+        for (state, selector) in [
+            ("Queued", "project-header-mr-Queued"),
+            ("Checking", "project-header-mr-Checking"),
+            ("Checked", "project-header-mr-Checked"),
+            ("Failed", "project-header-mr-Failed"),
+        ] {
+            let found = cx.debug_bounds(selector).is_some();
+            assert_eq!(found, state == shown, "{state} while {shown} is due");
+        }
+    };
+    only(cx, "Queued");
+
+    let ask = root.update(cx, |root, cx| {
+        let ask = root
+            .forge_model_mut()
+            .take_due(std::time::Instant::now())
+            .remove(0);
+        cx.notify();
+        ask
+    });
+    cx.run_until_parked();
+    only(cx, "Checking");
+
+    // glab is not logged in to the host: the header says so, the row does not.
+    root.update(cx, |root, cx| {
+        root.forge_model_mut().land(
+            crate::forge::Answer {
+                repo: ask.repo.clone(),
+                candidates: ask.candidates.clone(),
+                generation: ask.generation,
+                resolutions: vec![(
+                    candidate.clone(),
+                    crate::forge::Resolution::Why(crate::forge::Why::NotLoggedIn(
+                        "gitlab.example.com".into(),
+                    )),
+                )],
+                batches: Vec::new(),
+            },
+            std::time::Instant::now(),
+        );
+        cx.notify();
+    });
+    cx.run_until_parked();
+    only(cx, "Failed");
+    assert!(cx.debug_bounds("worktree-mr-glyph").is_none());
+    let failed = cx.debug_bounds("project-header-mr-Failed").unwrap();
+    cx.simulate_mouse_move(failed.center(), None, gpui::Modifiers::default());
+    cx.executor()
+        .advance_clock(std::time::Duration::from_secs(2));
+    cx.run_until_parked();
+    assert!(
+        cx.debug_bounds("guild-control-tooltip").is_some(),
+        "the reason in the hover"
+    );
+    cx.simulate_mouse_move(
+        gpui::point(px(600.), px(450.)),
+        None,
+        gpui::Modifiers::default(),
+    );
+    cx.run_until_parked();
+
+    // Asked again, and answered: checked.
+    root.update(cx, |root, cx| {
+        let later = std::time::Instant::now() + std::time::Duration::from_secs(200);
+        let model = root.forge_model_mut();
+        model.trigger(None, crate::forge::Trigger::Tick, later);
+        let ask = model.take_due(later).remove(0);
+        model.land(
+            crate::forge::Answer {
+                repo: ask.repo.clone(),
+                candidates: ask.candidates.clone(),
+                generation: ask.generation,
+                resolutions: vec![(
+                    candidate.clone(),
+                    crate::forge::Resolution::Asked {
+                        host: "gitlab.example.com".into(),
+                        project: "team/app".into(),
+                    },
+                )],
+                batches: vec![crate::forge::Batch {
+                    host: "gitlab.example.com".into(),
+                    project: "team/app".into(),
+                    result: Ok(vec![("feat".into(), Ok(Some(mr())))]),
+                }],
+            },
+            later,
+        );
+        cx.notify();
+    });
+    cx.run_until_parked();
+    only(cx, "Checked");
+
+    // Off: nothing.
+    root.update(cx, |root, cx| {
+        root.settings.gitlab_merge_requests = false;
+        root.poll_forge(cx);
+    });
+    cx.run_until_parked();
+    only(cx, "none");
+}

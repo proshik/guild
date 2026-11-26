@@ -1387,6 +1387,15 @@ impl Root {
                     // No dot for the group any more — M12.4: every row
                     // under it wears its own.
                     .when(!typing_name, |head| head.child(div().flex_1()))
+                    // Where its merge requests stand — the approved Penpot
+                    // board *MR header status — column*.
+                    .when(!typing_name, |head| {
+                        head.children(self.project_header_mr(
+                            group.repository.as_deref(),
+                            head_group.clone(),
+                            workspace == self.active_workspace,
+                        ))
+                    })
                     // **The gesture the column exists for, on the row it
                     // belongs to.** Making a worktree was in the foot and in
                     // a menu nobody opens; a `+` on the repository is where a

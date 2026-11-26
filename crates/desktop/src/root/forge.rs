@@ -35,6 +35,9 @@ use std::{
 pub(crate) struct ForgeState {
     model: crate::forge::Forge,
     jobs: HashMap<PathBuf, Job>,
+    /// The headers' indicators as last compared: one that moved — by a
+    /// trigger, a refresh started, an answer — asks for a frame.
+    drawn: Vec<(PathBuf, Option<crate::forge::Indicator>)>,
     /// A test's glab and hosts instead of the login PATH's and glab's own
     /// config: a test never reaches the person's glab.
     #[cfg(test)]
@@ -54,6 +57,7 @@ impl Default for ForgeState {
             // is asked before the window knows the person's choice.
             model: crate::forge::Forge::new(false),
             jobs: HashMap::new(),
+            drawn: Vec::new(),
             #[cfg(test)]
             stand_in: None,
         }
@@ -158,6 +162,13 @@ impl Root {
         }
         for ask in self.forge.model.take_due(now) {
             self.start_forge_refresh(ask);
+        }
+        // A header's indicator moves outside `land` too — a refresh
+        // started here, a trigger or a write since the last poll.
+        let indicators = self.forge.model.indicators();
+        if indicators != self.forge.drawn {
+            self.forge.drawn = indicators;
+            changed = true;
         }
         if changed {
             cx.notify();
@@ -268,7 +279,6 @@ impl Root {
     /// queued, checking, when it was last answered, and what could not be
     /// asked at all. `None` while the setting is off or the column does not
     /// show it.
-    #[allow(dead_code)] // The repository header's indicator reads it.
     pub(crate) fn forge_status(&self, repo: &Path) -> Option<crate::forge::RepoStatus<'_>> {
         self.forge.model.status(repo)
     }
@@ -795,6 +805,66 @@ mod tests {
             1,
             "another MR is drawn"
         );
+    }
+
+    /// mr-header-status-and-author: a refresh starting changes what the
+    /// repository's header draws, and the root is notified for it, though
+    /// no answer landed; a poll that changes nothing of it notifies nothing.
+    #[gpui::test]
+    fn a_header_s_indicator_change_notifies_the_root(cx: &mut gpui::TestAppContext) {
+        if !crate::root::isolation::isolated_test(concat!(
+            module_path!(),
+            "::a_header_s_indicator_change_notifies_the_root"
+        )) {
+            return;
+        }
+        let (_dir, glab) = stand_in("");
+        let base = tempfile::tempdir().unwrap();
+        let a = base.path().join("a");
+        std::fs::create_dir_all(&a).unwrap();
+        let common = a.join(".git");
+        let root = cx.update(|cx| {
+            crate::editor::init(cx);
+            let mut desk = guild_session::Desk::default();
+            desk.normalise();
+            let one = desk.active_workspace();
+            let project = desk.open_in(one, &a);
+            desk.set_repository(project, Some(common.clone()));
+            cx.new(|cx| {
+                let mut root = Root::from_state(Default::default(), desk, cx);
+                root.isolated_render = true;
+                root.settings.gitlab_merge_requests = true;
+                root.forge.stand_in = Some((glab.clone(), signed_in()));
+                root.worktrees
+                    .insert(common.clone(), vec![worktree(&a, "feat", "app")]);
+                root
+            })
+        });
+        settle(&root, cx);
+        root.read_with(cx, |root, _| {
+            assert_eq!(
+                root.forge_status(&common).and_then(|s| s.indicator()),
+                Some(crate::forge::Indicator::Checked)
+            );
+        });
+        let notified = std::rc::Rc::new(std::cell::Cell::new(0usize));
+        let seen = notified.clone();
+        cx.update(|cx| {
+            cx.observe(&root, move |_, _| seen.set(seen.get() + 1))
+                .detach()
+        });
+        root.update(cx, |root, cx| root.poll_forge(cx));
+        cx.run_until_parked();
+        assert_eq!(notified.get(), 0, "nothing of the header moved");
+        // Due again: the poll starts a refresh, and the header checks.
+        root.update(cx, |root, cx| {
+            let later = Instant::now() + std::time::Duration::from_secs(200);
+            root.forge.model.trigger(None, Trigger::Tick, later);
+            root.poll_forge(cx);
+        });
+        cx.run_until_parked();
+        assert!(notified.get() >= 1, "the header's checking is drawn");
+        settle(&root, cx);
     }
 
     /// The worktree on the repository's main branch is not asked: glab is

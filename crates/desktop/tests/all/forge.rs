@@ -964,3 +964,159 @@ fn a_change_nothing_draws_asks_for_no_frame() {
         other => panic!("{other:?}"),
     }
 }
+
+// --- the repository header's indicator (mr-header-status-and-author)
+
+/// The header draws one indicator from the repository's state: nothing
+/// before an answer, queued while due, checking while a refresh is out —
+/// whatever the last answer said — then checked, or couldn't refresh with
+/// every problem.
+#[test]
+fn the_header_s_indicator_follows_the_refresh() {
+    use guild_desktop::forge::Indicator;
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    assert_eq!(forge.status(&repo()), None);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    assert_eq!(
+        forge.status(&repo()).unwrap().indicator(),
+        Some(Indicator::Queued)
+    );
+    let ask = forge.take_due(now).remove(0);
+    assert_eq!(
+        forge.status(&repo()).unwrap().indicator(),
+        Some(Indicator::Checking)
+    );
+    forge.land(answer(&ask, &[("feat", Some(5))]), now);
+    assert_eq!(
+        forge.status(&repo()).unwrap().indicator(),
+        Some(Indicator::Checked)
+    );
+
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let ask = forge.take_due(later).remove(0);
+    let mut out = answer(&ask, &[]);
+    out.resolutions[0].1 = Resolution::Why(Why::NotLoggedIn(HOST.into()));
+    out.batches.clear();
+    forge.land(out, later);
+    let problem = Problem::Why(Why::NotLoggedIn(HOST.into()));
+    assert_eq!(
+        forge.status(&repo()).unwrap().indicator(),
+        Some(Indicator::Failed(vec![problem.clone()]))
+    );
+    // Not the row's: it keeps its MR and says nothing of the login.
+    match forge.shown(Path::new("/work/app")) {
+        Shown::Mr { mr, failure, .. } => {
+            assert_eq!(mr.iid, 5);
+            assert_eq!(failure, None);
+        }
+        other => panic!("{other:?}"),
+    }
+
+    // A refresh out wins over the last answer's problem: it may clear it.
+    let again = later + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, again);
+    assert_eq!(
+        forge.status(&repo()).unwrap().indicator(),
+        Some(Indicator::Queued)
+    );
+    forge.take_due(again);
+    assert_eq!(
+        forge.status(&repo()).unwrap().indicator(),
+        Some(Indicator::Checking)
+    );
+}
+
+/// A repository taken in and never due, with nothing to ask, draws nothing:
+/// no worktree of it has a destination.
+#[test]
+fn a_repository_with_nothing_to_ask_draws_no_indicator() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), Vec::new(), now);
+    assert_eq!(forge.status(&repo()).unwrap().indicator(), None);
+}
+
+/// What every shown repository's header draws, for the window to compare
+/// with what it drew: it moves when a refresh starts and when an answer
+/// lands, and not for a second answer that changes nothing of it.
+#[test]
+fn the_indicators_move_with_the_refresh() {
+    let now = Instant::now();
+    let mut forge = Forge::new(true);
+    forge.inputs(&repo(), vec![candidate("/work/app", "feat")], now);
+    let queued = forge.indicators();
+    let ask = forge.take_due(now).remove(0);
+    let checking = forge.indicators();
+    assert_ne!(queued, checking);
+    forge.land(answer(&ask, &[("feat", Some(5))]), now);
+    let checked = forge.indicators();
+    assert_ne!(checking, checked);
+    let later = now + Duration::from_secs(200);
+    forge.trigger(None, Trigger::Tick, later);
+    let ask = forge.take_due(later).remove(0);
+    forge.land(answer(&ask, &[("feat", Some(5))]), later);
+    assert_eq!(
+        forge.indicators(),
+        checked,
+        "checked again, at another time"
+    );
+    forge.retain(|_| false);
+    assert!(
+        forge.indicators().is_empty(),
+        "a hidden repository draws none"
+    );
+}
+
+/// The indicator's hover and the author's mark are said in both languages;
+/// a failure names every problem.
+#[test]
+fn the_header_s_hover_and_the_author_s_mark_are_said_in_both_languages() {
+    use guild_desktop::forge::Indicator;
+    use guild_desktop::i18n::Ui;
+    use guild_session::Language;
+    let (en, ru) = (Ui(Language::English), Ui(Language::Russian));
+    assert_eq!(
+        en.mr_indicator(&Indicator::Queued, None),
+        "Merge requests: waiting to be checked"
+    );
+    assert_eq!(
+        ru.mr_indicator(&Indicator::Queued, None),
+        "Merge requests ждут проверки"
+    );
+    assert_eq!(
+        en.mr_indicator(&Indicator::Checking, None),
+        "Checking merge requests…"
+    );
+    assert_eq!(
+        ru.mr_indicator(&Indicator::Checking, None),
+        "Merge requests проверяются…"
+    );
+    assert_eq!(
+        en.mr_indicator(&Indicator::Checked, Some(90)),
+        "Merge requests checked 1m ago"
+    );
+    assert_eq!(
+        ru.mr_indicator(&Indicator::Checked, Some(90)),
+        "Merge requests проверены 1 мин назад"
+    );
+    let failed = Indicator::Failed(vec![
+        Problem::Why(Why::NotLoggedIn(HOST.into())),
+        Problem::Batch {
+            host: HOST.into(),
+            project: PROJECT.into(),
+            error: Error::TimedOut,
+        },
+    ]);
+    assert_eq!(
+        en.mr_indicator(&failed, None),
+        "Couldn’t check merge requests: glab is not logged in to gitlab.example.com; team/app: merge requests not read: glab did not answer in time"
+    );
+    assert_eq!(
+        ru.mr_indicator(&failed, None),
+        "Не удалось проверить merge requests: glab не выполнил вход на gitlab.example.com; team/app: merge requests не прочитаны: glab не ответил вовремя"
+    );
+    assert_eq!(en.mr_mine(), "You created this merge request");
+    assert_eq!(ru.mr_mine(), "Вы создали этот MR");
+}

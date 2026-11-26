@@ -1,7 +1,7 @@
 //! A merge request's path to merge, worded when shown — GLD-063. The model
 //! (`guild_session::merge_requests::status`) keeps facts; the words are here.
 use super::{Language, Ui};
-use crate::forge::{Problem, Why};
+use crate::forge::{Indicator, Problem, Why};
 use guild_session::merge_requests::{
     glab::Error,
     status::{Block, Check, Pipeline},
@@ -232,6 +232,45 @@ impl Ui {
                     format!("{project}: merge requests not read: {why}")
                 }
             }
+        }
+    }
+
+    /// The hover of a repository header's indicator. `checked_ago` is how
+    /// many seconds ago the last answer landed, for *checked*.
+    pub fn mr_indicator(self, indicator: &Indicator, checked_ago: Option<i64>) -> String {
+        let ru = self.0 == Language::Russian;
+        match indicator {
+            Indicator::Queued if ru => "Merge requests ждут проверки".to_owned(),
+            Indicator::Queued => "Merge requests: waiting to be checked".to_owned(),
+            Indicator::Checking if ru => "Merge requests проверяются…".to_owned(),
+            Indicator::Checking => "Checking merge requests…".to_owned(),
+            Indicator::Checked => match (checked_ago, ru) {
+                (Some(ago), true) => format!("Merge requests проверены {}", self.ago(ago.max(0))),
+                (Some(ago), false) => format!("Merge requests checked {}", self.ago(ago.max(0))),
+                (None, true) => "Merge requests проверены".to_owned(),
+                (None, false) => "Merge requests checked".to_owned(),
+            },
+            Indicator::Failed(problems) => {
+                let why = problems
+                    .iter()
+                    .map(|problem| self.mr_problem(problem))
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                if ru {
+                    format!("Не удалось проверить merge requests: {why}")
+                } else {
+                    format!("Couldn\u{2019}t check merge requests: {why}")
+                }
+            }
+        }
+    }
+
+    /// The hover of the mark on a merge request the person created.
+    pub fn mr_mine(self) -> &'static str {
+        if self.0 == Language::Russian {
+            "Вы создали этот MR"
+        } else {
+            "You created this merge request"
         }
     }
 

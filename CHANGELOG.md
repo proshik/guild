@@ -7,6 +7,10 @@ would notice adds its line under `Unreleased` in its own branch.
 
 ## [Unreleased]
 
+### Added
+
+- A repository's header in the column says where its merge requests stand: a clock while a check is waiting, turning arrows while GitLab is being asked, and struck-through arrows in brass when they could not be checked — glab missing or not logged in, a network or proxy problem — with the reason in its hover. When all is well nothing is shown; point at the header to see a faint ✓ and when they were last checked.
+
 ### Changed
 
 - Switching to another workspace and back no longer blanks the merge request icons in the column: the ones last read show at once, and they are brought up to date in the background.

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Release Guild Nightly"
+  short_description: "Publish a verified Nightly and stage its Local update"
+  default_prompt: "Use $release to build a Guild Nightly from remote main, sign it locally, publish the verified prerelease and prepare its Local update in the selected staging directory."
+policy:
+  allow_implicit_invocation: false

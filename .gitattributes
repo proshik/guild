@@ -1,0 +1,3 @@
+# Official renderer bytes and licenses are hash-pinned; never normalize line endings.
+crates/desktop/assets/diagrams/** -text whitespace=-blank-at-eol,-blank-at-eof linguist-vendored
+crates/desktop/assets/diagrams/**/*.js -diff

@@ -1,0 +1,56 @@
+# The project's task configuration — see tasks/README.md.
+
+format = 1
+
+[project]
+# A task's id is "<id_prefix>-<number>", three digits at least: GLD-001.
+id_prefix = "GLD"
+# The branch whose first-parent history decides `merged`.
+main_branch = "main"
+
+# A component is a deliverable with its own release rule. A task names one.
+#
+# rule = "tag"   — `done` when a tag matching `pattern` contains the task's merge commit.
+# rule = "merge" — the component ships nothing separately; `done` once `merged`.
+#
+# Guild ships as one bundle: `just release` cuts a `nightly-<date>` tag on main and
+# bundles the desktop, the session crate and the `guild` CLI together, so the three
+# share one rule. `just install`'s `dogfood-<date>` tags are local builds, not releases.
+
+[components.desktop]
+paths = ["crates/desktop/**", "assets/**"]
+release = { rule = "tag", pattern = "nightly-*" }
+
+[components.session]
+paths = ["crates/session/**"]
+release = { rule = "tag", pattern = "nightly-*" }
+
+[components.cli]
+paths = ["crates/cli/**"]
+release = { rule = "tag", pattern = "nightly-*" }
+
+# The terminal core out of GPUI (GLD-009), the session server (GLD-011) and the TUI
+# client (GLD-016) do not exist yet. Their paths are where the tasks put them;
+# GLD-016 confirms whether the TUI binary ships in the same bundle and changes its
+# rule if it does not.
+[components.terminal]
+paths = ["crates/terminal/**"]
+release = { rule = "tag", pattern = "nightly-*" }
+
+# The session server (GLD-010 to GLD-015) and its ssh bridge (GLD-065, whose
+# `guild server bridge` is in crates/cli); GLD-010 may rename the crate.
+[components.server]
+paths = ["crates/server/**"]
+release = { rule = "tag", pattern = "nightly-*" }
+
+[components.tui]
+paths = ["crates/tui/**"]
+release = { rule = "tag", pattern = "nightly-*" }
+
+[components.docs]
+paths = ["docs/**", "openspec/**", "tasks/**", "AGENTS.md", "README.md", "CHANGELOG.md"]
+release = { rule = "merge" }
+
+[components.tooling]
+paths = ["justfile", "scripts/**", "tools/**", "test-support/**", ".claude/**", ".agents/**"]
+release = { rule = "merge" }

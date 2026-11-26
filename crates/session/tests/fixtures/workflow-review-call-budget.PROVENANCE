@@ -1,0 +1,6 @@
+Recorded from installed revust 0.1.1 on 2026-10-18 during the authorized
+controlled prerequisite fixture. All executors were replaced by an owned Python
+program exiting 7; max_calls=1 and find retries=2. No model/provider ran.
+The captured engine-side stream contains one unsuccessful process attempt and a
+Stopped(CallBudget) terminal report. It qualifies format/accounting only, never
+independent review or clean acceptance. No credentials or personal paths appear.

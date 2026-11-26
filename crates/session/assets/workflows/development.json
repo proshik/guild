@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "id": "development",
+  "label": "Development process",
+  "roles": {
+    "coordinator": {
+      "label": "Coordinator",
+      "owner": "parent"
+    },
+    "designer": {
+      "label": "Designer",
+      "owner": "managed"
+    },
+    "builder": {
+      "label": "Builder",
+      "owner": "managed"
+    },
+    "reviewer": {
+      "label": "Independent reviewer",
+      "owner": "review"
+    },
+    "acceptance": {
+      "label": "Acceptance owner",
+      "owner": "parent"
+    }
+  },
+  "outcomes": {
+    "contract": {
+      "validator": "contract",
+      "required": true
+    },
+    "plan-review": {
+      "validator": "external_review",
+      "required": true
+    },
+    "build": {
+      "validator": "managed_session",
+      "required": true
+    },
+    "code-review": {
+      "validator": "external_review",
+      "required": true
+    },
+    "accept": {
+      "validator": "observation",
+      "required": true
+    },
+    "delivery": {
+      "validator": "local_delivery",
+      "required": true
+    }
+  },
+  "steps": [
+    {
+      "id": "contract",
+      "label": "Prepare contract",
+      "action": "contract.prepare",
+      "role": "coordinator",
+      "depends_on": [],
+      "outcomes": [
+        "contract"
+      ]
+    },
+    {
+      "id": "plan-review",
+      "label": "Review accepted design",
+      "action": "review.request",
+      "role": "reviewer",
+      "depends_on": [
+        "contract"
+      ],
+      "outcomes": [
+        "plan-review"
+      ]
+    },
+    {
+      "id": "build",
+      "label": "Implement accepted contract",
+      "action": "session.assign",
+      "role": "builder",
+      "depends_on": [
+        "plan-review"
+      ],
+      "outcomes": [
+        "build"
+      ],
+      "condition": {
+        "op": "architecture_only",
+        "value": false
+      },
+      "skills": [
+        "engineering-quality"
+      ]
+    },
+    {
+      "id": "code-review",
+      "label": "Review exact source",
+      "action": "review.request",
+      "role": "reviewer",
+      "depends_on": [
+        "build"
+      ],
+      "outcomes": [
+        "code-review"
+      ],
+      "condition": {
+        "op": "architecture_only",
+        "value": false
+      }
+    },
+    {
+      "id": "accept",
+      "label": "Observe final behavior",
+      "action": "acceptance.collect",
+      "role": "acceptance",
+      "depends_on": [
+        "code-review"
+      ],
+      "outcomes": [
+        "accept"
+      ],
+      "condition": {
+        "op": "architecture_only",
+        "value": false
+      },
+      "skills": [
+        "acceptance-testing"
+      ]
+    },
+    {
+      "id": "delivery",
+      "label": "Prepare local delivery",
+      "action": "delivery.prepare",
+      "role": "coordinator",
+      "depends_on": [
+        "accept"
+      ],
+      "outcomes": [
+        "delivery"
+      ],
+      "condition": {
+        "op": "architecture_only",
+        "value": false
+      }
+    }
+  ],
+  "skills": [
+    {
+      "id": "engineering-quality",
+      "name": "engineering-quality",
+      "scope": "auto",
+      "required": true
+    },
+    {
+      "id": "acceptance-testing",
+      "name": "acceptance-testing",
+      "scope": "auto",
+      "required": true
+    }
+  ],
+  "corrections": [
+    {
+      "from": "plan-review",
+      "to": "contract",
+      "max_rounds": 3
+    },
+    {
+      "from": "code-review",
+      "to": "build",
+      "max_rounds": 3
+    }
+  ],
+  "limits": {
+    "review_calls": 18,
+    "correction_rounds": 3
+  }
+}

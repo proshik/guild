@@ -1,0 +1,80 @@
+{
+  "engines": [
+    {
+      "engine": "Mermaid",
+      "version": "11.12.0",
+      "downloadBytes": 14365637,
+      "url": "https://registry.npmjs.org/mermaid/-/mermaid-11.12.0.tgz",
+      "integrity": "sha512-ZudVx73BwrMJfCFmSSJT84y6u5brEoV8DOItdHomNLz32uBjNrelm7mg95X7g+C6UoQH/W6mBLGDEDv73JdxBg==",
+      "id": "mermaid",
+      "files": [
+        {
+          "path": "package/dist/mermaid.min.js",
+          "name": "mermaid.min.js",
+          "bytes": 2748992,
+          "sha256": "07e37dfa97b337ccc85365d57eddf99b9706f09db3b59b260d0333b23b343c4b"
+        },
+        {
+          "path": "package/LICENSE",
+          "name": "LICENSE",
+          "bytes": 1089,
+          "sha256": "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80"
+        }
+      ]
+    },
+    {
+      "engine": "PlantUML",
+      "version": "1.2026.9",
+      "downloadBytes": 2414132,
+      "url": "https://registry.npmjs.org/@plantuml/core/-/core-1.2026.9.tgz",
+      "integrity": "sha512-Qy46og9hEb+wOFtjUfniWkl/BDwHpDuebQX5rF+35s9PS2G4cKZf1iWw4E/ELLQ0pTkESPDoQTbKWcc3ZyVcVA==",
+      "id": "plantuml",
+      "files": [
+        {
+          "path": "package/plantuml.js",
+          "name": "plantuml.js",
+          "bytes": 3359666,
+          "sha256": "21c049ce47d087eff61ae0836f9c62a2b0c0d2528a5f16c2247057544228fae7"
+        },
+        {
+          "path": "package/viz-global.js",
+          "name": "viz-global.js",
+          "bytes": 1445436,
+          "sha256": "fc6ca2de83dd4e3fca967d5214122777890a5cd1ab101115a1f716fc84e6dc5e"
+        },
+        {
+          "path": "package/LICENSE",
+          "name": "LICENSE",
+          "bytes": 3666,
+          "sha256": "b0475db7325c48eede0eee5e44aea92dad28c755aed4484a6cdde99cedea9446"
+        }
+      ]
+    }
+  ],
+  "notices": [
+    {
+      "destination": "plantuml-1.2026.9/VIZ-LICENSE",
+      "url": "https://raw.githubusercontent.com/mdaines/viz-js/0b57111ca020cc19fd4034ce880245c5e8e786b2/LICENSE",
+      "bytes": 1066,
+      "sha256": "f1fb91bf7cbcb42b2af56949e4fa909e1979d5b57c2826cabacdb4b631457720"
+    },
+    {
+      "destination": "plantuml-1.2026.9/GRAPHVIZ-COPYING",
+      "url": "https://gitlab.com/graphviz/graphviz/-/raw/14.1.1/COPYING",
+      "bytes": 11,
+      "sha256": "2ab3d95db12b219307688f163e8488a78c07566a52092c598e17fefcac97a225"
+    },
+    {
+      "destination": "plantuml-1.2026.9/EXPAT-COPYING",
+      "url": "https://raw.githubusercontent.com/libexpat/libexpat/R_2_7_3/expat/COPYING",
+      "bytes": 1144,
+      "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87"
+    },
+    {
+      "destination": "plantuml-1.2026.9/GRAPHVIZ-EPL-1.0",
+      "url": "https://gitlab.com/graphviz/graphviz/-/raw/14.1.1/epl-v10.txt",
+      "bytes": 11798,
+      "sha256": "77d36f258d2abcc3b2fd03db32ca0abfeb71226e9160873bed066f05906b82dd"
+    }
+  ]
+}

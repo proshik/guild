@@ -1,0 +1,11 @@
+# ms phase dx dy — measured two-finger left swipe, followed by momentum
+0 started 0 0
+14 moved -9 -1
+29 moved -18 -1
+45 moved -21 0
+61 moved -23 1
+73 moved -17 0
+86 ended -14 0
+104 moved -9 0
+137 moved -5 0
+190 moved -2 0

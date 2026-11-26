@@ -1,0 +1,220 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+# Read recipient Mach-O headers without requiring Xcode command-line tools.
+object = { version = "=0.37.3", default-features = false, features = ["read_core", "macho"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# Content identities for continuation receipts and update verification.
+sha2 = "0.10.9"
+flate2 = "1.1"
+# Owner-signed update archives and metadata, shared by desktop and release tooling.
+ed25519-dalek = { version = "2.2.0", features = ["digest"] }
+# RFC 3339 for `resets_at`, M12.10 — the person's choice over a parser of our own.
+time = { version = "0.3.55", features = ["parsing", "macros"] }
+# Usage requests and bounded Markdown image loads run off the UI thread;
+# rustls and webpki roots are the HTTP client defaults.
+# The updater idle-read adapter uses ureq's public unversioned transport API.
+ureq = "=3.4.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+thiserror = "2.0"
+anyhow = "1.0"
+uuid = { version = "1.25", features = ["v4", "serde"] }
+# Versions with an equals sign rather than a caret: gpui is pre-1.0 and
+# promises breaking changes between versions. An upgrade is a task of its
+# own with a check of its own, not a side effect of cargo update.
+gpui = { package = "gpui-pre", version = "=0.3.8" }
+gpui-kit = { version = "=0.7.1", features = ["tree-sitter"] }
+# The terminal is drawn by hand on top of alacritty_terminal. The ready-made gpui-terminal 0.1.0 was tried and dropped: it
+# does not handle the DIM flag — claude's suggestions came out at full
+# brightness — nor INVERSE, HIDDEN and STRIKEOUT, and it called shape_line
+# per character.
+#
+# bezel-terminal, whose description looks similar, MUST NOT be taken: it
+# pulls a fork of bezel-gpui, and the binary would end up with two
+# incompatible versions of GPUI. There is a guard for that in just
+# boundaries.
+alacritty_terminal = "=0.25.1"
+portable-pty = "0.9"
+# What `.gitignore` says, read the way ripgrep reads it: the tree
+# shows an ignored entry dimmed rather than hidden, and reads an ignored
+# directory only when it is opened.
+ignore = "0.4"
+notify = "8.2"
+# The hunks of a diff, from two texts already in memory. No dependencies of
+# its own; 11 ms for a 3,000-line file with fifty edits in a debug build.
+similar = "3.2"
+# A jar is a zip, and `f12` into a Kotlin or Java dependency is one entry
+# read out of one — M8.11. Default features off: the archives that matter
+# here are stored or deflated, and the rest is compression nobody writes a
+# jar with. The updater metadata preallocation guard is qualified against this
+# exact parser version; requalify it when upgrading ZIP.
+zip = { version = "=8.6.0", default-features = false, features = ["deflate"] }
+# The editor: gpui-component's, in code-editor mode, on the same gpui line
+# as ours. Its grammar feature is deliberately off — twenty-eight grammars
+# and 31 MB for the six a person here reads — and the six are registered
+# by hand below. tree-sitter is pinned to the line the component depends
+# on: two versions of a crate that links a C runtime would not build.
+gpui-component = { version = "=0.7.1", features = ["tree-sitter"] }
+tree-sitter = "0.26.13"
+# Go to Symbol uses the grammar's tags.scm with the same native parser runtime.
+tree-sitter-tags = "0.26"
+# The vendored grammars: `LanguageFn::from_raw` for a parser our own
+# `build.rs` compiles, and `cc` to compile it.
+tree-sitter-language = "0.1"
+cc = "1.2"
+tree-sitter-rust = "0.24"
+tree-sitter-toml-ng = "0.7"
+tree-sitter-json = "0.24"
+tree-sitter-yaml = "0.7"
+tree-sitter-bash = "0.25"
+tree-sitter-md = "0.5"
+tree-sitter-go = "0.25"
+tree-sitter-ruby = "0.23"
+tree-sitter-elixir = "0.3"
+tree-sitter-java = "0.23"
+tree-sitter-javascript = "0.25"
+tree-sitter-typescript = "0.23"
+tree-sitter-make = "1.1"
+# Published Just grammar binding compatible with the shared 0.26 runtime.
+# The old binding pins tree-sitter 0.25 as a normal dependency.
+tree-sitter-just = { package = "codebook-tree-sitter-just", version = "=0.1.3" }
+tree-sitter-proto = "0.6"
+tree-sitter-properties = "0.3"
+
+# The fourteen of M8.8.6. Every one of them declares `tree-sitter` as a
+# **dev** dependency only and `tree-sitter-language` as the real one, so
+# none of them can put a second version of a crate that declares `links`
+# into the graph — checked against the index before any of them was
+# written down, which is what kotlin and dockerfile cost when it was not.
+# The exception is scss, whose `tree-sitter = ">=0.21.0"` is a normal
+# dependency and resolves to the 0.26 already here.
+tree-sitter-html = "0.23"
+tree-sitter-css = "0.25"
+tree-sitter-scss = "1.0"
+tree-sitter-xml = "0.7"
+# The crate named `tree-sitter-sql` is the dead one — 0.0.2, 2021.
+tree-sitter-sequel = "0.3"
+tree-sitter-python = "0.25"
+tree-sitter-c = "0.24"
+tree-sitter-cpp = "0.23"
+tree-sitter-c-sharp = "0.23"
+tree-sitter-php = "0.24"
+tree-sitter-swift = "0.7"
+tree-sitter-lua = "0.5"
+# `-ng`; the unsuffixed crate has not moved since 2023.
+tree-sitter-svelte-ng = "1.0"
+tree-sitter-nix = "0.3"
+# The parser alone: neither package has a `queries/` directory, so the
+# query beside each is vendored from nvim-treesitter by
+# scripts/vendor-grammars.py.
+tree-sitter-graphql = "0.2"
+tree-sitter-hcl = "1.1"
+
+# What ripgrep is built from: the matcher and the line searcher. The
+# walker beside them, `ignore`, has been a dependency since M8.1 — this
+# is the rest of the same tool, by the same author, rather than a second
+# way of reading a tree. No `rg` on the PATH to depend on, and no
+# `git grep`, which searches tracked files and would be blind to what an
+# agent has just written. M8.7.
+grep-regex = "0.1"
+grep-searcher = "0.1"
+grep-matcher = "0.1"
+
+# The fuzzy matcher every popup's query goes through — the one crate of
+# `nucleo` that matches, without the `rayon` pool above it. M8.9,
+# decision 5. Chosen over `frizbee` (needs rustc 1.89 against our 1.85,
+# scored for a completion menu rather than paths) and `fuzzy-matcher`
+# (untouched since 2020). MPL-2.0 binds changes to its own files, and an
+# unmodified dependency of an MIT OR Apache-2.0 workspace is fine — `option-ext` is
+# already one.
+#
+# **`unicode-segmentation` is off on purpose.** With it, `Utf32Str::new`
+# keeps the first code point of each grapheme and, when those are all
+# ASCII, falls back to the string's bytes — so the indices it answers are
+# characters for one path and bytes for the next. Measured in task 0: `x`
+# in `e\u{301}x` is `[3]` with the defaults and `[2]` without. Without
+# the feature every index is a `char` index, which is what a byte-range
+# conversion can rely on.
+nucleo-matcher = { version = "0.3.1", default-features = false, features = ["unicode-normalization", "unicode-casefold"] }
+
+# The WebSocket `claude --ide` speaks MCP over. Synchronous, which is
+# what this codebase's threads want — the git worker, the terminal's
+# reader and the language server's are all plain threads with channels.
+# No TLS features: the connection is to 127.0.0.1 and nothing else.
+tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
+
+# The LSP types, pinned to the line `gpui-component` depends on: they
+# cross the boundary between us and it — its `DiagnosticSet` takes an
+# `lsp_types::Diagnostic` and its provider traits answer in these types —
+# and two versions of them would be two types that do not convert. The
+# same reasoning as `tree-sitter`.
+lsp-types = "=0.97.0"
+
+# One thing std does not expose: killing a process *group*. A command run
+# in a pty is a session leader — `portable-pty` puts it there — and its
+# children are `just`, then `sh`, then `cargo`; killing the leader alone
+# leaves the rest alive, which is what the window showed after cmd-q in
+# M8.4. Already in the graph under a dozen crates; this adds an edge.
+libc = "0.2"
+
+# AppKit, reached directly for the one thing GPUI does not expose: the
+# system title bar sliding down in full screen over the one we draw.
+# Both already arrive with gpui, so this adds a direct edge rather than
+# a crate — the versions are the ones already resolved.
+objc = "0.2"
+raw-window-handle = "0.6"
+# An Objective-C block, for the one AppKit call whose answer comes back
+# only through one: NSWorkspace's open, which says why a launch failed in
+# its completion handler. 0.6.2 already arrives with gpui (dispatch2), so
+# this adds an edge rather than a crate.
+block2 = "0.6"
+
+# A test's scratch folder, removed when the test lets go of it — a dev
+# dependency only. Before it every test named its folder by hand under
+# `$TMPDIR` and most never removed it: 28,562 entries on 2026-09-24,
+# about ninety more per run. 3.27.0 was already in the lock, so this
+# adds an edge rather than a crate.
+tempfile = "3.27"
+
+# How a development build is made.
+#
+# **Measured on this machine on 2026-09-04, and the first guess was
+# wrong.** The note that used to be here said the desktop's 98 MB binary
+# was "almost all debug information for crates nobody steps through".
+# With `debug = 0` and the debug information stripped it weighs 84 MB, so
+# that was never where the size lived: it is gpui, linked statically.
+#
+# These measurements predate the server split and consolidation of desktop
+# integration tests into tests/all/main.rs. They explain this profile, not the
+# current test count. The consolidated binary avoids linking GPUI per topic.
+# Both `just quick` and `just check` now test the entire workspace; quick omits
+# the dependency boundary guard. Use test-crate for a focused feedback loop.
+#
+# `strip = "debuginfo"` rather than `true`: the symbol table stays, so a
+# panic still names the function it happened in. What is lost is stepping
+# through code in a debugger, which this project has never done, and
+# `RUSTFLAGS="-Cdebuginfo=1"` brings it back for one build when it is.
+#
+# `split-debuginfo = "unpacked"` keeps macOS from running `dsymutil` over
+# the binary after every link.
+[profile.dev]
+debug = 0
+strip = "debuginfo"
+split-debuginfo = "unpacked"
+
+# The same for everything we did not write. Stated separately because a
+# dependency has no claim on a backtrace of ours at all.
+[profile.dev.package."*"]
+debug = 0
+
+# The Kit migration uses its matching GPUI snapshot and
+# unmodified published components. Editor regressions remain guarded in Guild.

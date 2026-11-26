@@ -1,0 +1,32 @@
+[package]
+name = "guild-cli"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# **The binary is `guild`, and the crate is not.** What a person types is
+# `guild`; what cargo builds is one more crate in this workspace.
+[[bin]]
+name = "guild"
+path = "src/main.rs"
+
+# **What `just release` asks, and nothing a session calls** — M5.16. It
+# names a nightly and cuts the changelog through `guild_session::changelog`,
+# the module the window reads with, so the two cannot disagree. Here
+# rather than in the desktop so it links no gpui; not a subcommand of
+# `guild`, which is the window's door for agents.
+[[bin]]
+name = "guild-release"
+path = "src/release.rs"
+
+[dependencies]
+# Only the vocabulary and a JSON codec. Linking the desktop would put
+# gpui behind a command that has to start in two milliseconds — task 0
+# measured the whole round trip at 2.12 ms, of which the socket is 0.13.
+guild-session = { path = "../session" }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tempfile = { workspace = true }

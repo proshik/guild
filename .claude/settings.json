@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(cargo check:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo tree:*)",
+      "Bash(cargo metadata:*)",
+      "Bash(cargo --version)",
+      "Bash(rustc --version)",
+      "Bash(rustup show:*)",
+      "Bash(rustup which:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(just)",
+      "Bash(just --list)",
+      "Bash(just check)",
+      "Bash(just fmt)",
+      "Bash(just fmt-check)",
+      "Bash(just lint)",
+      "Bash(just test)",
+      "Bash(just test-crate:*)",
+      "Bash(just build)",
+      "Bash(just toolchain)",
+      "Bash(just boundaries)",
+      "Bash(claude mcp list)",
+      "Bash(claude mcp get:*)",
+      "Bash(just test-live)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in *.rs) rustfmt --edition 2024 \"$f\" ;; esac; } 2>/dev/null || true",
+            "statusMessage": "rustfmt",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

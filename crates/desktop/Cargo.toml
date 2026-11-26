@@ -1,0 +1,192 @@
+[package]
+name = "guild-desktop"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# There are no server crates here and there will not be: the desktop works
+# without a backend. Checked with cargo tree in the milestone checklist.
+[lib]
+name = "guild_desktop"
+path = "src/lib.rs"
+
+[features]
+default = ["adaptive-terminal-refresh"]
+native-preview = []
+adaptive-terminal-refresh = []
+native-policy-probe = ["native-preview", "gpui/profiler"]
+notice-preview = []
+
+[[example]]
+name = "review-activity-production"
+required-features = ["native-preview"]
+
+[[example]]
+name = "notice-preview"
+required-features = ["notice-preview"]
+
+[[example]]
+name = "resource-preview"
+required-features = ["native-preview"]
+
+[[example]]
+name = "frame-policy-probe"
+required-features = ["native-policy-probe"]
+
+[[example]]
+name = "resource-preparation"
+required-features = ["native-preview"]
+
+[[example]]
+name = "updater-preview"
+required-features = ["native-policy-probe"]
+
+[[example]]
+name = "tree-occurrences-preview"
+required-features = ["native-preview"]
+
+[[example]]
+name = "smart-selection-preview"
+required-features = ["native-policy-probe"]
+
+[[bin]]
+name = "guild-desktop"
+path = "src/main.rs"
+
+[dependencies]
+base64 = "0.22"
+# Existing locked Unicode identifier table and editor rope snapshot identity.
+unicode-ident = "1"
+ropey = "=2.0.0-beta.1"
+# Metadata-only GIF budget preflight; the same locked decoder GPUI/image uses.
+gif = "=0.14.2"
+# Parse configured argument words without shell evaluation; already in the lockfile.
+shell-words = "1.1.1"
+percent-encoding = "2.3.2"
+guild-session = { path = "../session" }
+gpui = { workspace = true }
+gpui-kit = { workspace = true }
+alacritty_terminal = { workspace = true }
+portable-pty = { workspace = true }
+ignore = { workspace = true }
+
+# Searching a project for text: ripgrep's matcher and line searcher.
+grep-matcher = { workspace = true }
+grep-regex = { workspace = true }
+grep-searcher = { workspace = true }
+
+# The fuzzy matcher, with its grapheme feature off — M8.9 decision 5.
+nucleo-matcher = { workspace = true }
+notify = { workspace = true }
+similar = { workspace = true }
+zip = { workspace = true }
+gpui-component = { workspace = true }
+tree-sitter = { workspace = true }
+tree-sitter-tags = { workspace = true }
+tree-sitter-language = { workspace = true }
+tree-sitter-rust = { workspace = true }
+tree-sitter-toml-ng = { workspace = true }
+tree-sitter-json = { workspace = true }
+tree-sitter-yaml = { workspace = true }
+tree-sitter-bash = { workspace = true }
+tree-sitter-md = { workspace = true }
+tree-sitter-go = { workspace = true }
+tree-sitter-ruby = { workspace = true }
+tree-sitter-elixir = { workspace = true }
+tree-sitter-java = { workspace = true }
+tree-sitter-javascript = { workspace = true }
+tree-sitter-typescript = { workspace = true }
+tree-sitter-make = { workspace = true }
+tree-sitter-just = { workspace = true }
+tree-sitter-proto = { workspace = true }
+tree-sitter-properties = { workspace = true }
+tree-sitter-html = { workspace = true }
+tree-sitter-css = { workspace = true }
+tree-sitter-scss = { workspace = true }
+tree-sitter-xml = { workspace = true }
+tree-sitter-sequel = { workspace = true }
+tree-sitter-python = { workspace = true }
+tree-sitter-c = { workspace = true }
+tree-sitter-cpp = { workspace = true }
+tree-sitter-c-sharp = { workspace = true }
+tree-sitter-php = { workspace = true }
+tree-sitter-swift = { workspace = true }
+tree-sitter-lua = { workspace = true }
+tree-sitter-svelte-ng = { workspace = true }
+tree-sitter-nix = { workspace = true }
+tree-sitter-graphql = { workspace = true }
+tree-sitter-hcl = { workspace = true }
+tokio = { version = "1.53", default-features = false, features = ["sync", "macros"] }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+flate2 = { workspace = true }
+tempfile = { workspace = true }
+time = { workspace = true }
+ureq = { workspace = true }
+# A tab's identity. Version from section 11 of the spec, like every other.
+uuid = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# The WebSocket `claude --ide` speaks to us over.
+tungstenite = { workspace = true }
+
+# What a language server says, in the types the editor component takes.
+lsp-types = { workspace = true }
+
+# Only for killing a process group — see terminal::emulator::kill.
+libc = { workspace = true }
+
+# Native services, content size constraints and window state — see src/system.rs.
+objc = { workspace = true }
+raw-window-handle = { workspace = true }
+# The completion handler AppKit answers a launch through — see system/default_app.rs.
+block2 = { workspace = true }
+
+[build-dependencies]
+cc = { workspace = true }
+
+[dev-dependencies]
+# The locked GPUI renderer trait returns this image type; tests record scenes only.
+image = { version = "=0.25.9", default-features = false }
+tokio = { version = "1.53", default-features = false, features = ["rt", "time"] }
+# Exercise tab gestures through GPUI's event dispatch without a native window.
+gpui = { workspace = true, features = ["test-support"] }
+# Native Kit controls expose their painted bounds and accessibility labels.
+gpui-kit = { workspace = true, features = ["test-support"] }
+# A test's scratch folder, gone when the test ends.
+tempfile = { workspace = true }
+# A test writes a jar to read it back — M8.11.
+zip = { workspace = true }
+
+[[example]]
+name = "network-preview"
+required-features = ["native-preview"]
+
+[[example]]
+name = "harness-failure-preview"
+required-features = ["native-preview"]
+
+[[example]]
+name = "tooltip-preview"
+required-features = ["native-preview"]
+
+[[example]]
+name = "frame-navigation-preview"
+required-features = ["native-preview"]
+
+[[example]]
+name = "close-dialog-focus"
+required-features = ["native-preview"]
+
+[[example]]
+name = "update-card-preview"
+required-features = ["native-preview"]
+
+[[example]]
+name = "scale-audit-preview"
+required-features = ["native-preview"]

@@ -1,0 +1,9 @@
+# ms phase dx dy — measured vertical scroll and momentum
+0 started 0 0
+13 moved 1 -9
+27 moved 1 -18
+43 moved 0 -24
+65 ended 0 -13
+84 moved 0 -10
+119 moved 0 -6
+168 moved 0 -2

@@ -1,0 +1,11 @@
+# GPUI compiles Metal shaders, and that needs the toolchain from Xcode.
+#
+# We do not switch xcode-select globally: that would change the toolchain for
+# everything on the machine for the sake of one crate. The variable applies
+# only to a cargo started in this repository, and needs no sudo.
+#
+# The component is installed once:
+#   DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+#     xcodebuild -downloadComponent MetalToolchain
+[env]
+DEVELOPER_DIR = "/Applications/Xcode.app/Contents/Developer"

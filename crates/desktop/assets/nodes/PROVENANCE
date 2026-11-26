@@ -1,0 +1,21 @@
+IntelliJ IDEA's declaration icons, from the IntelliJ platform.
+
+    source:  https://github.com/JetBrains/intellij-community
+    tag:     idea/243.21565.193
+    path:    platform/icons/src/expui/nodes/
+    licence: Apache-2.0, LICENSE beside this file
+
+16 files: class, classAbstract, interface, enum, annotation, record, library, jdk, each with its `_dark`
+variant. The dark one is what Guild's five dark palettes take and the
+plain one is for the light palette — the opposite of the Material set's
+`_light` rule, and the reason `icons::for_declaration` spells it out
+rather than reusing `themed`.
+
+`record` stands in for Kotlin's `data class` and `class` for its
+`object`: the Kotlin plugin's own icons are in neither the open
+repository nor the installed application's jars, and drawing a likeness
+is the one thing the person asked not to do. Where they turn up, they
+are two more rows here and two more arms in `icons::for_declaration`.
+
+Regenerate with `scripts/vendor-node-icons.py`; a test walks this
+directory against `icons::NODES`.

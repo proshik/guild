@@ -1,0 +1,4 @@
+tree-sitter-kotlin 0.3.5, the published crate package.
+Vendored because the crate's manifest pins an incompatible
+tree-sitter; the grammar itself is version-agnostic.
+Regenerate with scripts/vendor-grammars.py — never hand-edit.

@@ -1,0 +1,15 @@
+{
+  "session_id": "b106053c-d8bf-4617-b76f-af82663330a0",
+  "transcript_path": "/Users/person/.claude/projects/-Users-person-work-probe/b106053c-d8bf-4617-b76f-af82663330a0.jsonl",
+  "cwd": "/Users/person/work/probe",
+  "scratchpad_dir": "/Users/person/work/probe",
+  "prompt_id": "dabc9898-3a58-4f10-9d1a-ee5b726a1e49",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "echo guild-probe > probe.txt",
+    "description": "Create probe.txt with content \"guild-probe\""
+  },
+  "tool_use_id": "toolu_01PHu3g9aH1dugm6SsjP9Cte"
+}

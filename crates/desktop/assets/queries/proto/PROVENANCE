@@ -1,0 +1,4 @@
+tree-sitter-proto 0.6.0, queries/highlights.scm.
+Vendored because the crate ships the parser without a way to
+reach this query from Rust.
+Regenerate with scripts/vendor-grammars.py — never hand-edit.

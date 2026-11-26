@@ -1,0 +1,9 @@
+{
+  "session_id": "f2dc479e-164d-4416-aca8-f3d865f45316",
+  "transcript_path": "/Users/person/.claude/projects/-Users-person-work-probe/f2dc479e-164d-4416-aca8-f3d865f45316.jsonl",
+  "cwd": "/Users/person/work/probe",
+  "scratchpad_dir": "/Users/person/work/probe",
+  "prompt_id": "ff535de9-7157-4725-a72f-6f81632a5485",
+  "hook_event_name": "SessionEnd",
+  "reason": "prompt_input_exit"
+}

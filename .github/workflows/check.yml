@@ -1,0 +1,82 @@
+# What just check runs, on the one runner that can host it.
+#
+# There used to be two jobs: the server's on Linux, where the database
+# container lives, and the desktop's on macOS, where `guild-desktop` can be
+# built at all — it links objc and gpui. The server left this repository on
+# 2026-09-05 and its job went with it, to Hallmark.
+name: check
+
+on:
+  push:
+    branches: [main, "m5-*", "m8-*"]
+  pull_request:
+  # The job runs from here and nowhere else — see its `if` below.
+  workflow_dispatch:
+
+# A push that supersedes another cancels it. Seventy-three runs in three
+# days, many of them chasing each other on the same branch, is how a
+# month's minutes went in a week.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # .cargo/config.toml points this at a local Xcode for GPUI's Metal shaders.
+  # Nothing here builds them, and a path that does not exist on a runner is
+  # worse than none.
+  DEVELOPER_DIR: ""
+
+jobs:
+  # Exercise the shared core on Linux as well as in the full macOS job.
+  # Keep the existing manual-only policy; editing this does not launch CI.
+  headless:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - uses: extractions/setup-just@v3
+      - run: cargo clippy -p guild-session -p guild-cli --all-targets --locked -- -D warnings
+      - run: just test-headless
+
+  # **Only when it is started by hand** — the Actions tab's "Run workflow"
+  # button, or `gh workflow run check.yml`.
+  #
+  # Switched off for pushes and pull requests on 2026-09-03, on the day the
+  # account passed 90% of its month: of 1,776 billable minutes, 1,600 were
+  # this job. macOS bills at ten times the Linux rate on a private
+  # repository. It cannot move to Linux: guild-desktop links objc and gpui
+  # and builds on macOS only.
+  #
+  # What replaces it: `just check` before every commit, which runs
+  # everything this job runs and more, on the machine the desktop is
+  # written on. Start this job by hand before a merge to main.
+  desktop:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: rustup component add rustfmt clippy
+      # The offline vendor fixtures execute the real Go toolchain.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.4'
+          cache: false
+      - uses: Swatinem/rust-cache@v2
+      - uses: extractions/setup-just@v3
+
+      # In this order and not another: fmt rewrites the files clippy then
+      # reads, so the other way round gives a false clean.
+      - run: just fmt-check
+      - run: just boundaries
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # Some of these open a pty. kern.tty.ptmx_max is a machine-wide limit
+      # of 511, shared with every terminal on the machine — which is why they
+      # fail locally under load. A fresh runner has it to itself, so a failure
+      # here is real.
+      - run: cargo test --workspace -- --test-threads=4

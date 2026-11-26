@@ -1,0 +1,32 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# The environment — only .env.example lives in the repository
+.env
+.env.*
+!.env.example
+
+# Editors and the OS
+.DS_Store
+.idea/
+.vscode/
+
+# Personal overrides of the Claude Code settings. The shared ones live in
+# .claude/settings.json and are versioned.
+.claude/settings.local.json
+
+# Worktrees made for parallel work on one milestone. They are checkouts of
+# this repository inside itself; git tracks them through .git/worktrees and
+# has no business seeing them as files.
+.claude/worktrees/
+
+# The generated set of sizes for .icns — assembled by the bundle recipe from
+# assets/icon.png.
+*.iconset/
+
+# Local project settings and runtime state are never shared through Git.
+.guild/
+
+# Retained local task requests, logs and acceptance evidence.
+/task-evidence/

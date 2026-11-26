@@ -1,0 +1,9 @@
+nvim-treesitter 41416e81a6c7f4af4984395bfe0cd8d174e70976, runtime/queries/hcl/highlights.scm.
+Apache-2.0; the licence beside this file is nvim-treesitter's own.
+The parser is the crate tree-sitter-hcl 1.1.0, which ships no query
+at all — not commented out, not behind a cfg: there is no
+queries/ directory in the package.
+Not Helix's flavour of the same query: its captures are written
+in Helix's vocabulary and would degrade through paint_of_capture
+into something coarser than the table can use.
+Regenerate with scripts/vendor-grammars.py — never hand-edit.

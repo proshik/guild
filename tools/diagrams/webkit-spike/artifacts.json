@@ -1,0 +1,16 @@
+[
+  {
+    "engine": "Mermaid",
+    "version": "11.12.0",
+    "downloadBytes": 14365637,
+    "url": "https://registry.npmjs.org/mermaid/-/mermaid-11.12.0.tgz",
+    "integrity": "sha512-ZudVx73BwrMJfCFmSSJT84y6u5brEoV8DOItdHomNLz32uBjNrelm7mg95X7g+C6UoQH/W6mBLGDEDv73JdxBg=="
+  },
+  {
+    "engine": "PlantUML",
+    "version": "1.2026.9",
+    "downloadBytes": 2414132,
+    "url": "https://registry.npmjs.org/@plantuml/core/-/core-1.2026.9.tgz",
+    "integrity": "sha512-Qy46og9hEb+wOFtjUfniWkl/BDwHpDuebQX5rF+35s9PS2G4cKZf1iWw4E/ELLQ0pTkESPDoQTbKWcc3ZyVcVA=="
+  }
+]

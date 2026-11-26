@@ -1,0 +1,41 @@
+// What a project depends on, as Gradle resolved it — Guild's External
+// Libraries, M8.14. Given to the project's own wrapper with
+// `--init-script`; it registers one task in every project and runs none
+// of the project's own.
+//
+// Every resolvable `*Classpath` configuration is read — compile and
+// runtime, main and test — the set an IDE's Gradle import lists. Each
+// module artifact is printed once per project with the jar Gradle keeps
+// it in; Guild finds the sources jar beside it itself. The toolchain's
+// JDK is printed with its language version, shown as `< 21 >`.
+//
+// Lines are `GUILD-DEP\t<group:module:version>\t<jar>` and
+// `GUILD-JDK\t<version>\t<home>`; anything else Gradle prints is not ours.
+allprojects {
+    tasks.register('guildDependencies') {
+        doLast {
+            def seen = [] as Set
+            project.configurations
+                .findAll { it.canBeResolved && it.name.toLowerCase().endsWith('classpath') }
+                .each { conf ->
+                    conf.incoming.artifactView { lenient(true) }.artifacts.each { a ->
+                        def id = a.id.componentIdentifier
+                        if (id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier) {
+                            def key = "${id.group}:${id.module}:${id.version}"
+                            if (seen.add(key + a.file)) println "GUILD-DEP\t${key}\t${a.file}"
+                        }
+                    }
+                }
+            def java = project.extensions.findByType(org.gradle.api.plugins.JavaPluginExtension)
+            if (java != null) {
+                def service = project.extensions.getByType(org.gradle.jvm.toolchain.JavaToolchainService)
+                try {
+                    def metadata = service.launcherFor(java.toolchain).get().metadata
+                    println "GUILD-JDK\t${metadata.languageVersion.asInt()}\t${metadata.installationPath.asFile}"
+                } catch (Exception ignored) {
+                    println "GUILD-JDK\t${System.getProperty('java.specification.version')}\t${System.getProperty('java.home')}"
+                }
+            }
+        }
+    }
+}

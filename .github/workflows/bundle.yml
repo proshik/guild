@@ -1,0 +1,110 @@
+name: release bundle
+
+# Explicit release tag pushes build unsigned artifacts; manual rebuilds remain available.
+on:
+  push:
+    tags:
+      - 'nightly-*'
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing nightly-* or vMAJOR.MINOR.PATCH tag on main to build
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-bundle-${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  bundle:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+    runs-on: macos-latest
+    timeout-minutes: 10
+    env:
+      CARGO_TERM_COLOR: always
+      # Use the runner's selected Xcode, not a developer's local path.
+      DEVELOPER_DIR: ""
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify release source
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" == nightly-* || "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 1
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            [[ "$GITHUB_REF" == "refs/tags/$RELEASE_TAG" ]] || exit 1
+            [[ "$(git rev-parse HEAD)" == "$(git rev-parse "${GITHUB_SHA}^{commit}")" ]] || exit 1
+          else
+            [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" == refs/heads/main ]] || exit 1
+          fi
+          [[ "$(git rev-parse HEAD)" == "$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")" ]] || exit 1
+          git rev-list --first-parent origin/main | grep -Fx "$(git rev-parse HEAD)" >/dev/null
+          grep -Fq "## [$RELEASE_TAG] - " CHANGELOG.md
+          [[ "$(uname -m)" == arm64 ]] || exit 1
+          rustup show
+          xcodebuild -version
+      - uses: Swatinem/rust-cache@v2.9.2
+        with:
+          shared-key: nightly-bundle-arm64
+      - uses: extractions/setup-just@v3
+      - name: Build release application
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          started=$(date +%s)
+          /usr/bin/time -l just bundle
+          elapsed=$(( $(date +%s) - started ))
+          {
+            echo "tag=$RELEASE_TAG"
+            echo "commit=$(git rev-parse HEAD)"
+            echo "architecture=$(uname -m)"
+            echo "rust=$(rustc --version)"
+            echo "bundle_seconds=$elapsed"
+          } > dist/build-info.txt
+          {
+            echo "### Release bundle"
+            echo "Tag: $RELEASE_TAG"
+            echo "Commit: $(git rev-parse HEAD)"
+            echo "Architecture: $(uname -m)"
+            echo "just bundle: ${elapsed}s (compilation and app assembly)"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify and archive application
+        shell: bash
+        run: |
+          set -euo pipefail
+          app=target/release/Guild.app
+          codesign --verify --deep --strict "$app"
+          [[ "$(cat "$app/Contents/Resources/commit")" == "$(git rev-parse HEAD)" ]]
+          [[ "$(cat "$app/Contents/Resources/tag")" == "$RELEASE_TAG" ]]
+          lipo "$app/Contents/MacOS/guild-desktop" -verify_arch arm64
+          lipo "$app/Contents/MacOS/guild" -verify_arch arm64
+          lipo "$app/Contents/MacOS/guild-diagram-renderer" -verify_arch arm64
+          python3 tools/diagrams/renderer/verify.py "$app"
+          if otool -L "$app/Contents/MacOS/guild-desktop" | grep -F WebKit; then exit 1; fi
+          otool -L "$app/Contents/MacOS/guild-diagram-renderer" | grep -F WebKit
+          archive="Guild-${RELEASE_TAG}-macos-arm64.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "dist/$archive"
+          (cd dist && shasum -a 256 "$archive" > "$archive.sha256")
+          target/release/guild-release manifest "$app" "dist/$archive" "$GITHUB_REPOSITORY" dist/guild-update.json
+          cp "$app/Contents/Resources/build-info.json" dist/build-info.json
+          echo "archive_bytes=$(stat -f %z "dist/$archive")" >> dist/build-info.txt
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: Guild-${{ env.RELEASE_TAG }}-macos-arm64
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

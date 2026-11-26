@@ -1,0 +1,31 @@
+[package]
+name = "guild-session"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# There is no GPUI here and there will not be: parsing the stream and
+# managing sessions must build and be tested without a window. Checked in the
+# milestone checklist.
+[dependencies]
+object = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+# Already in the graph: parse instruction resource links without a second Markdown dialect.
+markdown = "1.0"
+ed25519-dalek = { workspace = true }
+tempfile = { workspace = true }
+zip = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+# Already in the workspace: unreaped process-group ownership.
+libc = { workspace = true }
+# Already in the workspace: GitLab's RFC 3339 times, for a merge request's age.
+time = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tempfile = { workspace = true }

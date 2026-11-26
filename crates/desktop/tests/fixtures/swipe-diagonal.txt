@@ -1,0 +1,6 @@
+# ms phase dx dy — measured diagonal, x:y approximately 1.4:1
+0 started 0 0
+18 moved -7 -5
+35 moved -7 -5
+54 moved -8 -6
+77 ended -5 -4

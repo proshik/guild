@@ -1,0 +1,29 @@
+{
+  "session_id": "dd6bdfcc-feca-4216-bace-43e5d5a96f27",
+  "transcript_path": "/Users/person/.claude/projects/-Users-person-work-probe/dd6bdfcc-feca-4216-bace-43e5d5a96f27.jsonl",
+  "cwd": "/Users/person/work/probe",
+  "scratchpad_dir": "/Users/person/work/probe",
+  "prompt_id": "ee5705e9-9aef-4b8a-981e-0e12b6edd391",
+  "permission_mode": "default",
+  "hook_event_name": "PermissionRequest",
+  "tool_name": "AskUserQuestion",
+  "tool_input": {
+    "questions": [
+      {
+        "question": "Do you prefer tea or coffee?",
+        "header": "Beverage",
+        "options": [
+          {
+            "label": "Tea",
+            "description": "Hot or cold, various types and flavors"
+          },
+          {
+            "label": "Coffee",
+            "description": "Hot or cold, various roasts and preparations"
+          }
+        ],
+        "multiSelect": false
+      }
+    ]
+  }
+}

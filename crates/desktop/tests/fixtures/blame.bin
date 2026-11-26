@@ -1,0 +1,54 @@
+af80cfc59769d486c4f46ba625811001454d1b43 1 1 1
+author Guild
+author-mail <guild@example.invalid>
+author-time 1788382278
+author-tz +0300
+committer Guild
+committer-mail <guild@example.invalid>
+committer-time 1788382278
+committer-tz +0300
+summary First commit
+boundary
+filename src/old.rs
+	fn main() {}
+1a2d9d3cd9ab9fd90ad57f64603021fd209f34ea 2 2 1
+author Guild
+author-mail <guild@example.invalid>
+author-time 1788383015
+author-tz +0300
+committer Guild
+committer-mail <guild@example.invalid>
+committer-time 1788383015
+committer-tz +0300
+summary Add a helper
+previous aaab2e7bd9b15aa1a35d4e4f4b0eb0c994cc94c6 src/new.rs
+filename src/new.rs
+	fn helper() {}
+a264f9d411a4e9e7ab40b44f2350f9d675c66e52 3 3 2
+author Иван Петров
+author-mail <ivan@example.invalid>
+author-time 1788383090
+author-tz +0300
+committer Иван Петров
+committer-mail <ivan@example.invalid>
+committer-time 1788383090
+committer-tz +0300
+summary Add two more
+previous 1a2d9d3cd9ab9fd90ad57f64603021fd209f34ea src/new.rs
+filename src/new.rs
+	fn third() {}
+a264f9d411a4e9e7ab40b44f2350f9d675c66e52 4 4
+	fn fourth() {}
+0000000000000000000000000000000000000000 5 5 1
+author Not Committed Yet
+author-mail <not.committed.yet>
+author-time 1788383090
+author-tz +0300
+committer Not Committed Yet
+committer-mail <not.committed.yet>
+committer-time 1788383090
+committer-tz +0300
+summary Version of src/new.rs from src/new.rs
+previous a264f9d411a4e9e7ab40b44f2350f9d675c66e52 src/new.rs
+filename src/new.rs
+	// not committed yet

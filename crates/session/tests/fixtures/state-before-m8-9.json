@@ -1,0 +1,134 @@
+{
+  "sessions": [
+    {
+      "id": "20a701ff-6388-49b4-b85b-2909c76d42ca",
+      "project": "31066fd6-b018-4ac3-a037-12e087e3d2e1",
+      "title": "guild",
+      "cwd": "/Users/person/work/guild",
+      "runs": {
+        "claude": "terminal"
+      },
+      "cost_usd": 0.0,
+      "topic": null,
+      "name": null,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 0,
+        "cost_usd": null
+      },
+      "transcript_offset": 0,
+      "had_turn": false,
+      "open": true,
+      "task": false
+    }
+  ],
+  "tabs": [
+    {
+      "shows": {
+        "session": "20a701ff-6388-49b4-b85b-2909c76d42ca"
+      }
+    }
+  ],
+  "panels": {
+    "face": "log",
+    "docks": {
+      "placed": [
+        [
+          "log",
+          "bottom"
+        ],
+        [
+          "output",
+          "bottom"
+        ],
+        [
+          "search",
+          "bottom"
+        ],
+        [
+          "problems",
+          "bottom"
+        ],
+        [
+          "explorer",
+          "right"
+        ],
+        [
+          "commit",
+          "right"
+        ]
+      ],
+      "shown": [
+        [
+          "bottom",
+          "problems"
+        ],
+        [
+          "right",
+          "commit"
+        ]
+      ]
+    },
+    "left": {
+      "open": false,
+      "size": 437.3828
+    },
+    "right": {
+      "open": true,
+      "size": 345.66406
+    },
+    "bottom": {
+      "open": false,
+      "size": 340.0
+    },
+    "columns": {
+      "branches": 248.22266,
+      "details": 357.92188,
+      "message": 113.01953,
+      "push_files": 320.0
+    },
+    "git_face": "log"
+  },
+  "expanded": [
+    "",
+    ".claude",
+    "crates",
+    "crates/desktop",
+    "crates/desktop/src",
+    "crates/desktop/src/root",
+    "crates/desktop/src/view"
+  ],
+  "active": null,
+  "commands": {
+    "last": null,
+    "recent": []
+  },
+  "search": {
+    "query": "",
+    "match_case": false,
+    "whole_word": false,
+    "regex": false,
+    "mask": ""
+  },
+  "recent_files": [
+    "crates/desktop/src/view/log.rs",
+    "crates/desktop/src/scale.rs",
+    "crates/desktop/src/pick.rs",
+    "crates/desktop/build.rs",
+    "crates/desktop/src/lsp.rs",
+    "crates/desktop/src/lib.rs",
+    "crates/desktop/src/logging.rs",
+    "crates/desktop/Cargo.toml",
+    "crates/desktop/src/root/changes.rs",
+    "justfile",
+    ".mcp.json",
+    "Cargo.lock",
+    "CLAUDE.md",
+    "crates/desktop/src/root/mod.rs",
+    "crates/desktop/src/root/docks.rs",
+    "crates/desktop/src/root/branches.rs"
+  ],
+  "external_roots": []
+}

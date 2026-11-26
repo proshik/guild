@@ -34,23 +34,23 @@ and the test runs again in the full workspace run.
 
 ## Acceptance
 
-- [ ] WHEN the task is handed over THEN the root cause of the false
+- [x] WHEN the task is handed over THEN the root cause of the false
       `Ok(false)` is recorded in this file (or in `docs/traps.md` if it is a
       trap of the platform), with the evidence that established it — not
       only a fix that makes the symptom go away.
-- [ ] WHEN a process runs an executable whose bundle directory has been
+- [x] WHEN a process runs an executable whose bundle directory has been
       renamed THEN the recovery guard reports it as in use, under load as
       well as alone; or, if `proc_pidpath` cannot be made reliable, the guard
       identifies the live executable another way (for example by vnode or
       by device and inode taken before the move) and the recovery refuses
       while it runs.
-- [ ] WHEN the fix is in THEN `#[ignore = "flaky in the full workspace run:
+- [x] WHEN the fix is in THEN `#[ignore = "flaky in the full workspace run:
       GLD-068"]` is removed and the test passes in at least three repeated
       full `just check` runs under load comparable to the one that failed
       (load average around 10, another session's tests running).
-- [ ] WHEN the cause is in production code THEN a regression test pins it,
+- [x] WHEN the cause is in production code THEN a regression test pins it,
       failing before the fix for the right reason.
-- [ ] WHEN an error is the cause (a path that cannot be read, a process
+- [x] WHEN an error is the cause (a path that cannot be read, a process
       list that cannot be taken) THEN the guard answers `Err` — which the
       recovery turns into `Failure::Conflict` — rather than "not in use".
 
@@ -181,3 +181,22 @@ exists at any path — such a process holds none of the recovery's slots, and
 refusing on it would block a recovery whenever any of the owner's programs
 outlived its own update (a `claude --chrome-native-host` did, on this
 machine, during the investigation).
+
+## Result
+
+- Acceptance 4 and 5 are met by their condition: neither the cause nor an
+  error is in production code, so `in_use` keeps no new test or `Err`. The
+  fixture's regression is pinned by the test itself: unsigned, it fails 40
+  of 40 at the echo, under load.
+- Six isolated `just check` runs (`GUILD_STATE_DIR` in a scratch folder,
+  `GUILD_NO_GLOBAL_HOOKS=1`, the session variables unset), the other
+  session's tests running beside most of them. The guard's test passed in
+  all six. Three runs were green. Three failed once each, in tests this
+  branch does not touch: `fixed_footer_glyph_corner_alignment` (an
+  `unwrap` on `None`, footer_tests.rs:1202) and
+  `a_failed_status_read_cancels_the_held_commit_and_keeps_the_ticks` (git's
+  `index.lock` exists, commit_tests.rs:1565), both with 8 synthetic busy
+  loops beside them (load median 51, peak 128); and
+  `the_sessions_page_lists_by_urgency_settles_and_takes_keys` (two Working
+  rows in the wrong order, sessions_tests.rs:130) with no synthetic load
+  (median 17, peak 34). They are left to their own tasks.

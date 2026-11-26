@@ -76,9 +76,15 @@ fn a_shell_that_answers_is_read() {
     let shell = shell(
         &dir,
         &format!(
-            "echo 'Welcome back'\nprintf '\\033]0;title\\007'\nprintf '\\n{MARK}/x/bin:/y/bin{MARK}\\n'"
+            "[ \"$1\" = warm ] && exit 0\necho 'Welcome back'\nprintf '\\033]0;title\\007'\nprintf '\\n{MARK}/x/bin:/y/bin{MARK}\\n'"
         ),
     );
+    // Run once first: a new script's first exec has measured over 3 s
+    // under a full run while macOS assesses it — the whole patience below.
+    std::process::Command::new(&shell)
+        .arg("warm")
+        .status()
+        .unwrap();
     let found = resolve(&shell, Duration::from_secs(3)).expect("the shell answered");
     assert_eq!(found, OsString::from("/x/bin:/y/bin"));
 }

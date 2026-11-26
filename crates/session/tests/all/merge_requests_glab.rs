@@ -81,6 +81,19 @@ impl Stand {
         let script = dir.path().join("glab");
         std::fs::write(&script, SCRIPT).unwrap();
         std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        // macOS checks a new executable at its first exec; while the suite
+        // starts dozens at once that took over 2 s — longer than the
+        // deadlines below. Run it once, before any test's clock: without
+        // `GLAB_NO_PROMPT` it exits at its third line, logging nothing.
+        let warm = std::process::Command::new(&script)
+            .env_clear()
+            .current_dir("/")
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .unwrap();
+        assert_eq!(warm.code(), Some(3), "the stand-in refused to prompt");
         Self { dir }
     }
     fn name(endpoint: &str) -> String {

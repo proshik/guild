@@ -5,7 +5,7 @@ kind: chore
 status: backlog
 priority: 2
 component: tooling
-depends_on: [GLD-073, GLD-074, GLD-075, GLD-057, GLD-058, GLD-060]
+depends_on: [GLD-074, GLD-075, GLD-057, GLD-058, GLD-060]
 touches:
   - .claude/skills/release/**
   - README.md
@@ -26,9 +26,10 @@ release is marked as the preview to try, with short notes: what Guild does,
 what works, what does not yet, for whom it is, and how to report a problem.
 The nightlies and the Update button go on as they are.
 
-It waits for the release to open without a warning (GLD-073), the clean
-first run (GLD-074), a place to report (GLD-075) and the data-loss fixes
-GLD-057, GLD-058 and GLD-060.
+It waits for the clean first run (GLD-074), a place to report (GLD-075) and
+the data-loss fixes GLD-057, GLD-058 and GLD-060. It does not wait for
+notarization (GLD-073): the person decided on 2026-11-27 that the preview
+ships without it while there is no Apple Developer account.
 
 ## Acceptance
 
@@ -42,6 +43,9 @@ GLD-057, GLD-058 and GLD-060.
       shown first, and its notes say what is known not to work.
 - [ ] WHEN Guild from the preview runs THEN its Update button still offers
       the later nightlies, unless the person decided otherwise above.
+- [ ] WHEN the preview is not notarized THEN its notes and README say so
+      plainly, with the first-launch steps for macOS 13–14 and for 15 and
+      later, as checked by GLD-074.
 - [ ] README and the site point at the preview rather than at "the
       releases".
 

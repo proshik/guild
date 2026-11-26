@@ -7,6 +7,8 @@ would notice adds its line under `Unreleased` in its own branch.
 
 ## [Unreleased]
 
+## [nightly-2026-11-26-b20911a] - 2026-11-26
+
 ### Changed
 
 - Guild is open source: its code is at https://github.com/proshik/guild, under the MIT or the Apache 2.0 licence, whichever you choose. Nightlies, and the updates the Update button offers, are published from that repository.

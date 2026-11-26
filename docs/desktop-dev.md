@@ -35,7 +35,7 @@ The `bundle.yml` workflow automatically builds a pushed `nightly-*` tag reachabl
 from `main`. It runs `just bundle` on an Apple Silicon macOS runner, verifies
 the ad-hoc signature and embedded commit/tag, and retains a ZIP, SHA-256 checksum
 and `build-info.txt` for seven days. `just bundle` uses Cargo.lock unchanged.
-The job is limited to ten minutes. Optional manual recovery via
+The job is limited to thirty minutes, since a build without the Rust cache runs past ten. Optional manual recovery via
 `workflow_dispatch` runs the workflow from main and checks out the selected
 immutable tag, so a packaging-only correction does not require moving a release tag.
 

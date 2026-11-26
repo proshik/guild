@@ -14,6 +14,7 @@ touches:
   - crates/tui/**
   - scripts/check-boundaries.sh
   - docs/runtime-ownership.md
+  - docs/remote-machines.md
 harness: any
 reviews: {spec: 1, code: 2}
 created: "2026-11-26"
@@ -52,6 +53,21 @@ compression.
       there. WHEN ssh cannot sign in without asking (a password, no key)
       THEN the client fails with "set up a key for <host>" instead of
       hanging, since a window cannot ask for a password.
+- [ ] WHEN the client runs the bridge on a host THEN the remote command
+      does not depend on the `PATH` of a non-interactive ssh shell, which
+      does not reach the binary inside `Guild.app`. By default it is the
+      bundle's own `/Applications/Guild.app/Contents/MacOS/guild`, and a
+      saved machine may name another path. WHEN the command is not found
+      there (ssh's exit 127) THEN the client says "Guild is not installed on
+      <host>" with the path it tried, not a generic failure.
+- [ ] WHEN ssh cannot reach the host at all (connection refused or timed
+      out) THEN the client says so in a plain line, and notes that Remote
+      Login may be off on that Mac. It neither retries in a tight loop nor
+      changes anything there.
+- [ ] `docs/remote-machines.md` says how to prepare a machine: Remote Login
+      turned on in macOS's settings, a key the person's ssh agent offers, the
+      host in `~/.ssh/config`, Guild installed there, and its server running
+      (a window open or GLD-013's setting on).
 - [ ] WHEN the TUI is started with `--remote host` THEN it lists and attaches
       to that machine's sessions exactly as it does locally — one more
       transport behind GLD-016's abstraction, no change to the list or attach
@@ -97,6 +113,14 @@ compression.
   waits for a separate task tool's first version and gets a plan of its own.
 - A remote machine's files, git, language servers and search are not
   reached.
+- **The person's own setup, not Guild's work:**
+  - turning on Remote Login on the remote Mac;
+  - creating and installing the first ssh key;
+  - reaching a machine outside the local network (Tailscale, a VPN or a
+    forwarded port).
+
+  Guild builds no relay, no NAT traversal and no key management. It reports
+  what is missing and points at `docs/remote-machines.md`.
 
 ## Context
 

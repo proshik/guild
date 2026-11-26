@@ -253,8 +253,8 @@ impl Root {
         self.forge.shutdown()
     }
 
-    /// The model, for a test that lands an answer by hand.
-    #[cfg(test)]
+    /// The model, for a test or a native probe that lands an answer by hand.
+    #[cfg(any(test, feature = "native-preview"))]
     pub(crate) fn forge_model_mut(&mut self) -> &mut crate::forge::Forge {
         &mut self.forge.model
     }

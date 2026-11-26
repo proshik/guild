@@ -273,9 +273,9 @@ impl Render for Root {
         // that does not exist yet cannot be listened to.
         self.hear_edits(cx);
         // The disk, on the window's clock — a reload needs the window.
-        #[cfg(test)]
+        #[cfg(any(test, feature = "native-preview"))]
         let background_services = !self.isolated_render;
-        #[cfg(not(test))]
+        #[cfg(not(any(test, feature = "native-preview")))]
         let background_services = true;
         if background_services {
             self.start_watching(window, cx);

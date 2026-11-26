@@ -1,5 +1,6 @@
 //! Development-only generic native acceptance tools.
 pub mod adaptive_refresh_probe;
+pub mod forge_frames;
 pub mod frame_meter;
 pub mod frame_navigation;
 pub mod harness_failure;

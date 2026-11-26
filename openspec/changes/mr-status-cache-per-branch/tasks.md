@@ -20,9 +20,11 @@
 
 - [x] 4.1 Failing tests: `land` of the same answer twice answers `false` the second time; a changed MR, a new failure, a new problem answer `true`; `poll_forge` does not notify `Root` for an unchanged answer
 - [x] 4.2 `Forge::land` compares the repository's picture before and after
-- [ ] 4.3 Measure the column frame before/after: `view::column::perf_bench` (root notify on a large column) and the notifies of a steady refresh; a release dev window, visible, at a time the user chooses
+- [x] 4.3 Measure the column frame before/after: `view::column::perf_bench` (root notify on a large column) and the notifies of a steady refresh; a release dev window, visible, at a time the user chooses
+  - Test platform, 40 repositories / 200 rows / 480 tabs: an answer with the same MRs 11.04 ms → 0.01 ms; a changed one 11.45 ms (a root notify 11.24 ms). Native release window (`examples/forge-frames.rs`, GPUI profiler `Window::draw`): same MRs 40 frames of 10.8 ms median → no frame; changed MR 11.3 ms; one repository 2.6–2.8 ms.
 - [ ] 4.4 If the notify fix is not enough, measure and propose a per-element update with its cost — no code without agreement
-- [ ] 4.5 Decision 56, CHANGELOG `### Fixed`; `just check`; commit
+  - Proposed to the user with its estimate; awaiting a decision.
+- [x] 4.5 Decision 56, CHANGELOG `### Fixed`; `just check`; commit
 
 ## 5. Review
 

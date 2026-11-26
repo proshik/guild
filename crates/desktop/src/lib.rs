@@ -157,8 +157,9 @@ pub struct Root {
     diagrams: gpui::Entity<diagrams::runtime::Manager>,
     _diagram_watch: gpui::Subscription,
     integrations: root::isolation::Policy,
-    // Tests draw the production frame with isolated state, without background services.
-    #[cfg(test)]
+    // Tests — and native probes — draw the production frame with isolated
+    // state, without background services.
+    #[cfg(any(test, feature = "native-preview"))]
     isolated_render: bool,
     #[cfg(test)]
     titlebar_double_clicks: usize,
@@ -1254,7 +1255,7 @@ impl Root {
             diagrams,
             _diagram_watch: diagram_watch,
             integrations,
-            #[cfg(test)]
+            #[cfg(any(test, feature = "native-preview"))]
             isolated_render: false,
             #[cfg(test)]
             titlebar_double_clicks: 0,

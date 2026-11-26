@@ -35,6 +35,10 @@ name = "frame-policy-probe"
 required-features = ["native-policy-probe"]
 
 [[example]]
+name = "forge-frames"
+required-features = ["native-policy-probe"]
+
+[[example]]
 name = "resource-preparation"
 required-features = ["native-preview"]
 

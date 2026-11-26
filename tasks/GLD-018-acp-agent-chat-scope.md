@@ -63,11 +63,11 @@ GLD-010's protocol, after it.
   through ssh without anything new, but the remote-machine window is
   terminal-only (2026-11-22). The question is open in GLD-010.
 
-**Not yet agreed with the person.** Beyond the points above, this is a candidate carried over from the
-former `docs/backlog/future-improvements.md` ("ACP-backed agent chat",
-recorded 2026-10-24); its scope and behaviour are to be agreed with the person
-before any work, and recorded in the task (or an OpenSpec change) in the same
-branch. **A visible UI change:** a mockup in Guild's design system and the
+**Not yet agreed with the person.** Beyond the points above, this is a
+candidate carried over from the former `docs/backlog/future-improvements.md`
+("ACP-backed agent chat", recorded 2026-10-24); its scope and behaviour are to
+be agreed with the person before any work, and recorded in the task (or an
+OpenSpec change) in the same branch. **A visible UI change:** a mockup in Guild's design system and the
 person's decision come before code.
 
 ## Acceptance

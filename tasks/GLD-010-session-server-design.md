@@ -87,6 +87,28 @@ asked again):
   and an incompatible generation is a plain "update Guild on machine X".
   Snapshot plus a sequence-numbered change stream; retried requests
   deduplicated by id; no fd passing or shared memory.
+- **The encoding and the prior art.** No standard the author knows of covers
+  a server that owns terminals and agent conversations, has several
+  observers and is reached through ssh. So Guild writes its own
+  specification, and the design compares it with what exists before choosing.
+  Each entry below is from memory and is to be checked against its source
+  *(ext, not verified)*:
+  - **tmux control mode** (`tmux -CC`, what iTerm2 uses): a server that owns
+    PTYs, several clients, a documented text protocol with `%output`
+    notifications.
+  - **WezTerm's mux** (`wezterm connect`, SSH and Unix domains): a mux server
+    owns the PTYs, and clients attach locally or through ssh, where `wezterm
+    cli proxy` joins stdio to the socket as `guild server bridge` would. Its
+    codec is internal, not a specification.
+  - **Neovim's UI protocol** (`--listen`, `nvim_ui_attach`): state on the
+    server, several UIs drawing it from documented events.
+  - **Jupyter's messaging protocol**: a kernel holds the state, several
+    front ends share an iopub broadcast, and the specification is
+    documented. It is the nearest to a conversation with several observers.
+  - **JetBrains Rd** (Rider's and Gateway's frontend/backend link): a
+    reactive model kept in sync. Heavy, and made for their stack.
+  - **herdr and agterm**, studied on 2026-11-22: ssh only, no network port.
+    herdr's endpoint-generation rules are already above.
 - **A conversation session (ACP).** Its frames carry the agent's structured
   updates (messages, tool calls, plans) beside a terminal's PTY bytes, with
   the same snapshot and sequence rules. A permission request is answered by
@@ -132,6 +154,7 @@ recommendation, and recorded with its date — never assumed.
 | Who speaks LSP to a language server | The window, through the server, which passes its frames to the process it owns. The window keeps its buffers and providers, and the server owns only the process, its lifetime and its group |
 | When a language server stops | When no window has its project open, after the same kind of grace as the server's own |
 | Whether the server offers ACP's `fs` capability | No: the agent reads and writes the disk itself, as a terminal agent does. Answering from the window's buffers would fail with no window open, and files stay in the window |
+| The protocol's encoding | JSON-RPC 2.0 with LSP's `Content-Length` framing: ACP, LSP and MCP share that base, Guild already frames LSP (`crates/desktop/src/lsp.rs`) *(code)*, and ACP's events go inside with little translation. Guild's own methods on top: snapshot, subscribe, sequence numbers, capabilities. PTY bytes need their own answer, binary frames or base64, since JSON is wasteful for them. Against: a binary encoding of Guild's own (or msgpack-RPC, as Neovim does), which is smaller over ssh but needs tooling of its own |
 | Whether a remote-machine window shows an ACP conversation | Not yet: the window stays terminal-only (2026-11-22) until GLD-018 is designed, and a remote agent that waits still reaches the shared waiting list |
 
 Settled by the design itself, recorded in `design.md`:

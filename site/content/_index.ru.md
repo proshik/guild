@@ -14,7 +14,7 @@ description: "Guild — нативное окно для macOS, чтобы ве�
 {{< landing/cli id="cli" title="Управляйте из командной строки"
   lead="Проекты, рабочие области, worktree и сессии создаются через `guild` так же, как в окне, — вами или агентом в одной из вкладок."
   note="У каждой сессии, которую запускает Guild, `guild` есть в PATH. Агент, который сам получил задачу, запустить другого с задачей не может."
-  link="https://github.com/proshik/guild#the-window"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#the-window"
   video="orchestrate"
   alt="Claude Code выполняет guild worktree create и guild agent wait; в колонке появляется worktree readme, и в нём работает Codex"
 >}}
@@ -44,7 +44,7 @@ description: "Guild — нативное окно для macOS, чтобы ве�
 {{< landing/phase id="organize" label="Порядок" icon="folder-tree" video="open"
   title="Проекты, worktree и рабочие области в одной колонке"
   lead="Проект — это репозиторий, а его строки — его worktree, прочитанные из git. Проекты собираются в группы, а наборы проектов — в именованные рабочие области."
-  link="https://github.com/proshik/guild#the-window"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#the-window"
   alt="Worktree, созданный через git в терминале, появляется в колонке; его открывают вместе с файлами и main.go"
 >}}
 {{< landing/detail title="Worktree откуда угодно" >}}
@@ -60,7 +60,7 @@ description: "Guild — нативное окно для macOS, чтобы ве�
 {{< landing/phase id="start" label="Запуск" icon="terminal" video="delegate"
   title="Агент на worktree, во вкладке"
   lead="Запустите Claude Code, Codex или OpenCode в worktree — кнопкой `+` или командой `guild session new`. Каждый работает в своём CLI в терминале Guild, как и везде."
-  link="https://github.com/proshik/guild#terminal-sessions-in-the-desktop"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#terminal-sessions-in-the-desktop"
   alt="Codex работает во вкладке worktree: правит tides.go, добавляет тест и запускает go test"
 >}}
 {{< landing/detail title="Своя команда запуска" >}}
@@ -92,7 +92,7 @@ description: "Guild — нативное окно для macOS, чтобы ве�
 {{< landing/phase id="review" label="Проверка" icon="eye" video="review"
   title="Прочитайте правку до того, как она попадёт в файл"
   lead="С `claude --ide` правка приходит вкладкой с diff и кнопками «Применить» и «Отклонить». Любое изменение открывается бок о бок, а отдельный hunk можно добавить в индекс."
-  link="https://github.com/proshik/guild#the-window"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#the-window"
   alt="Предложенную агентом правку применяют из вкладки с diff; затем один hunk main.go добавляют в индекс из diff бок о бок"
 >}}
 {{< landing/detail title="Агент ждёт вас" >}}
@@ -108,7 +108,7 @@ description: "Guild — нативное окно для macOS, чтобы ве�
 {{< landing/phase id="ship" label="Отправка" icon="upload" video="ship"
   title="Коммит и push из того же окна"
   lead="Отметьте, что войдёт в коммит, и напишите сообщение. Журнал ищет по всей истории, а «Отправка коммитов» показывает, что вот-вот уйдёт."
-  link="https://github.com/proshik/guild#the-window"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#the-window"
   alt="Коммит пишется на панели коммита, появляется наверху журнала и отправляется из окна «Отправка коммитов»"
 >}}
 {{< landing/detail title="Ветки и stash" >}}
@@ -274,17 +274,17 @@ Guild отдаёт свои хуки только тем сессиям, кот�
 {{< landing/qa q="Каких агентов запускает Guild?" >}}
 Claude Code, Codex и OpenCode, каждого в своём CLI. Статус работает с Claude Code 2.1.295,
 Codex 0.163.0 или OpenCode 2.2 и новее.
-[Сессии в терминале](https://github.com/proshik/guild#terminal-sessions-in-the-desktop)
+[Сессии в терминале](https://github.com/proshik/guild/blob/main/docs/guide.md#terminal-sessions-in-the-desktop)
 {{< /landing/qa >}}
 {{< landing/qa q="Может ли агент управлять Guild?" >}}
 Да. У каждой сессии, которую запускает Guild, `guild` есть в PATH: агент может создать
 worktree, запустить там другого агента с задачей, дождаться его и прочитать ответ. Агент,
 который сам получил задачу, другого запустить не может.
-[Окно](https://github.com/proshik/guild#the-window)
+[Окно](https://github.com/proshik/guild/blob/main/docs/guide.md#the-window)
 {{< /landing/qa >}}
 {{< landing/qa q="Нужны ли аккаунт или сервер?" >}}
 Нет. Сессии, вкладки и настройки — локальные файлы в `~/.config/guild`.
-[Запуск](https://github.com/proshik/guild#running-it)
+[Запуск](https://github.com/proshik/guild/blob/main/docs/guide.md#running-it)
 {{< /landing/qa >}}
 {{< landing/qa q="Меняет ли Guild настройки моего агента?" >}}
 Нет. Его хуки получают только сессии, которые он запускает, через собственный файл настроек;

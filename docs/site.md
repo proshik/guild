@@ -47,7 +47,7 @@ release's `hugo_<version>_checksums.txt`.
   serve Inter and JetBrains Mono from `crates/desktop/assets/fonts` and
   `assets/icon.svg` as the logo and favicon.
 
-**Every claim on the page comes from the README, the changelog or the code.**
+**Every claim on the page comes from the README, the [guide](guide.md), the changelog or the code.**
 No figure, quote or logo is made up, and no other product is named. A change of
 behaviour that makes a sentence untrue is a change to the page too.
 

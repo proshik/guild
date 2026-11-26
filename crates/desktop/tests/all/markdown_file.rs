@@ -743,11 +743,8 @@ fn assert_prose_wraps_independently(cx: &mut TestAppContext, narrow: &str, full:
     let mut f = mount(cx, narrow, false);
     f.click("markdown-preview");
     f.cx.simulate_resize(gpui::size(px(600.), px(600.)));
-    let offset = if narrow.starts_with("# Guild") {
-        100.
-    } else {
-        0.
-    };
+    // Below an opening heading, so the selection lands in the prose.
+    let offset = if narrow.starts_with('#') { 100. } else { 0. };
     let baseline = wrapping_selection(&mut f, offset);
     let narrow_bounds = f.cx.debug_bounds("markdown-document").unwrap();
     assert!(
@@ -785,9 +782,13 @@ fn mixed_wide_blocks_preserve_prose_wrapping_at_600px(cx: &mut TestAppContext) {
 
 #[gpui::test]
 fn guild_readme_preserves_prose_wrapping_at_600px(cx: &mut TestAppContext) {
-    let full = include_str!("../../../../README.md");
-    let (intro, _) = full.split_once("\n---\n").unwrap();
-    assert_prose_wraps_independently(cx, intro, full);
+    let readme = include_str!("../../../../README.md");
+    // The README opens with a centred header of images and badges; its prose
+    // starts at the first section, which wide tables and code blocks follow.
+    let (_, body) = readme.split_once("\n## What is Guild\n").unwrap();
+    let full = format!("## What is Guild\n{body}");
+    let (intro, _) = full.split_once("\n## ").unwrap();
+    assert_prose_wraps_independently(cx, intro, &full);
 }
 
 #[gpui::test]

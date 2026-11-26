@@ -14,7 +14,7 @@ description: "Guild is a native macOS window for running many AI agents: it make
 {{< landing/cli id="cli" title="Drive it from the command line"
   lead="Projects, workspaces, worktrees and sessions come from `guild` as well as from the window, typed by you or by an agent in one of its tabs."
   note="Every session Guild starts has `guild` on its PATH. An agent that was itself given a task cannot start another one."
-  link="https://github.com/proshik/guild#the-window"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#the-window"
   video="orchestrate"
   alt="Claude Code runs guild worktree create and guild agent wait; a readme worktree appears in the column and Codex works in it"
 >}}
@@ -44,7 +44,7 @@ Waits for the agent’s turn to end; `guild agent read` returns what it said.
 {{< landing/phase id="organize" label="Organize" icon="folder-tree" video="open"
   title="Projects, worktrees and workspaces in one column"
   lead="A project is a repository, and its rows are its worktrees, read from git. Gather projects into groups, and sets of them into named workspaces."
-  link="https://github.com/proshik/guild#the-window"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#the-window"
   alt="A worktree made with git in a terminal appears in the column; it is opened with its files and main.go"
 >}}
 {{< landing/detail title="Worktrees from anywhere" >}}
@@ -60,7 +60,7 @@ Before a worktree goes, a sheet names what git would delete without a word.
 {{< landing/phase id="start" label="Start" icon="terminal" video="delegate"
   title="An agent per worktree, in a tab"
   lead="Start Claude Code, Codex or OpenCode in a worktree, from its `+` or with `guild session new`. Each runs its own CLI in Guild’s terminal, the way it runs anywhere else."
-  link="https://github.com/proshik/guild#terminal-sessions-in-the-desktop"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#terminal-sessions-in-the-desktop"
   alt="Codex at work in a worktree’s tab: it edits tides.go, adds a test and runs go test"
 >}}
 {{< landing/detail title="Your launch command" >}}
@@ -92,7 +92,7 @@ Agents idle for days and closed conversations wait at the bottom, ready to conti
 {{< landing/phase id="review" label="Review" icon="eye" video="review"
   title="Read the change before it lands"
   lead="With `claude --ide`, an edit arrives as a diff tab with Apply and Refuse. Any change opens side by side, and one hunk can be staged on its own."
-  link="https://github.com/proshik/guild#the-window"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#the-window"
   alt="An agent’s proposed change is applied from its diff tab; then one hunk of main.go is staged from the side-by-side diff"
 >}}
 {{< landing/detail title="The agent waits for you" >}}
@@ -108,7 +108,7 @@ Annotate shows who wrote each run of lines and when; a click opens the commit.
 {{< landing/phase id="ship" label="Ship" icon="upload" video="ship"
   title="Commit and push from the same window"
   lead="Tick what goes into the commit and write its message. The Log searches the whole history, and Push Commits shows what is about to leave."
-  link="https://github.com/proshik/guild#the-window"
+  link="https://github.com/proshik/guild/blob/main/docs/guide.md#the-window"
   alt="A commit is written in the Commit panel, appears at the top of the Log, and is pushed from the Push Commits window"
 >}}
 {{< landing/detail title="Branches and stashes" >}}
@@ -274,16 +274,16 @@ One Rust workspace on GPUI. The terminal is Guild’s own, on alacritty_terminal
 {{< landing/qa q="Which agents does Guild run?" >}}
 Claude Code, Codex and OpenCode, each in its own CLI. Their status needs Claude Code 2.1.295,
 Codex 0.163.0 or OpenCode 2.2 or later.
-[Terminal sessions](https://github.com/proshik/guild#terminal-sessions-in-the-desktop)
+[Terminal sessions](https://github.com/proshik/guild/blob/main/docs/guide.md#terminal-sessions-in-the-desktop)
 {{< /landing/qa >}}
 {{< landing/qa q="Can an agent drive Guild?" >}}
 Yes. Every session Guild starts has `guild` on its PATH: an agent can make a worktree, start
 another agent there with a task, wait for it and read its answer. One that was itself given a task
-cannot start another. [The window](https://github.com/proshik/guild#the-window)
+cannot start another. [The window](https://github.com/proshik/guild/blob/main/docs/guide.md#the-window)
 {{< /landing/qa >}}
 {{< landing/qa q="Does it need an account or a server?" >}}
 No. Sessions, tabs and settings are local files in `~/.config/guild`.
-[Running it](https://github.com/proshik/guild#running-it)
+[Running it](https://github.com/proshik/guild/blob/main/docs/guide.md#running-it)
 {{< /landing/qa >}}
 {{< landing/qa q="Does Guild change my agent’s settings?" >}}
 No. Its hooks go only to the sessions it starts, through a settings file of its own; your

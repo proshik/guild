@@ -3,7 +3,7 @@ id: GLD-073
 title: Sign Guild with a Developer ID and notarize it, so it opens on a first launch
 kind: chore
 status: backlog
-priority: 1
+priority: 3
 component: tooling
 depends_on: []
 touches:
@@ -32,6 +32,10 @@ macOS 15 and later that path is believed to be gone: the person has to find
 *Open Anyway* in System Settings ▸ Privacy & Security (not verified by this
 task's author). For someone trying Guild for the first time, this is the
 first screen they see, and it reads as "this may be malware".
+
+**Waits for the Apple Developer account** (2026-11-27): the person cannot
+get one yet, so the priority was lowered from 1 to 3. Until then, README's
+first-launch steps have to be right for macOS 15 and later.
 
 ## Acceptance
 

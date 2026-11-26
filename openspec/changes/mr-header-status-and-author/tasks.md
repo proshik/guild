@@ -16,4 +16,4 @@
 
 - [x] 3.1 The isolated dev window against the approved boards
 - [x] 3.2 revust with the configured profile (dry run first), at most two rounds
-- [ ] 3.3 Penpot: the proposal promoted into the Library and Screens, its boards removed, the token script checked
+- [x] 3.3 Penpot: the proposal promoted into the Library and Screens, its boards removed, the token script checked

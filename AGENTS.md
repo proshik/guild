@@ -6,7 +6,7 @@ An ADE where AI agents do the work: the window a person works in all day — a f
 - **Design system:** `docs/design-system.md` — tokens, anatomy and measures; `theme/` and its tests read it
 - **Traps:** `docs/traps.md` — read before working in the area a trap names
 - **Penpot:** `docs/penpot.md` — where the window is designed, and the process for a change a person would see
-- **Behaviour baseline:** `openspec/specs/` and `openspec/README.md`
+- **Tasks:** `tasks/README.md` — one file per task, holding its agreed behaviour and, when it needs one, its design and plan
 
 Documentation, comments and commit messages are in English.
 
@@ -352,14 +352,15 @@ its group has been stopped. See `docs/runtime-ownership.md`.
 
 Small, settled fixes need the request, the expected result, the change and
 targeted checks — not a separate specification or plan. A substantial or
-ambiguous change records its agreed behaviour, scenarios and one
-implementation plan as an OpenSpec change (`openspec/README.md`); the
-presence of `openspec/` alone does not require one. Decision evidence is
-`docs/decisions.md` and the OpenSpec baseline in `openspec/specs/`.
-Architecture-only work stops at a reviewed design.
+ambiguous change records its agreed behaviour, scenarios, design decisions
+and one implementation plan in its own `tasks/GLD-*.md` — Acceptance,
+Design and Plan, as `tasks/README.md` says. Decision evidence is
+`docs/decisions.md`: a rule that outlives the task goes there, and the
+plan's last step records it there or says none arose. Architecture-only work
+stops at a reviewed design.
 
-When OpenSpec is used, work follows its accepted tasks in dependency order,
-each one to green tests and a commit.
+Work follows the task file's plan in dependency order, each step to green
+tests and a commit; a disagreement with the plan is recorded in the plan.
 
 - **Test first, implementation second.** The test pins down an acceptance criterion from the request or the plan; first make sure it fails for the right reason, not because of a typo.
 - **A task is closed by a commit.** The body explains why it was done this way, when the decision is not obvious.

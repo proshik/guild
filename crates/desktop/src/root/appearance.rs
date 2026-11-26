@@ -1,5 +1,5 @@
 //! Which palette is in effect, and the one path that hands it to
-//! everything that draws — `openspec/specs/appearance-themes`.
+//! everything that draws — decision 53.
 //!
 //! The palette is not read off the settings file: System follows the
 //! macOS appearance, which only the window can answer. So the window

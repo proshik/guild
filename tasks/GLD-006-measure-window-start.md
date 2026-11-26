@@ -7,7 +7,7 @@ priority: 2
 component: docs
 depends_on: []
 touches:
-  - openspec/changes/light-start/**
+  - tasks/GLD-006-measure-window-start.md
 harness: any
 reviews: {spec: 1, code: 0}
 created: "2026-11-07"
@@ -42,14 +42,14 @@ an absent setting means **enabled** (`session/settings.rs:155-156`,
       network requests, CPU time and memory in the first 60 s and at idle
       after it.
 - [ ] Every number says how it was taken (tool, command, run count) and the
-      runs are repeatable from the change's text.
-- [ ] WHEN the measurement is done THEN an OpenSpec change `light-start`
-      holds it in `design.md` and proposes the list of features off by
-      default, each with its setting's scope (global, per project or both),
-      what the person sees while it is off, and how existing settings migrate
+      runs are repeatable from this file's text.
+- [ ] WHEN the measurement is done THEN this file holds it, and its Design
+      section proposes the list of features off by default, each with its
+      setting's scope (global, per project or both), what the person sees
+      while it is off, and how existing settings migrate
       (an explicit setting is kept; an absent LSP setting changes meaning).
 - [ ] The proposal is put to the person as a decision (one question per open
-      choice) and their answer recorded in the change before it is merged.
+      choice) and their answer recorded in this file before it is merged.
 - [ ] WHEN the approved list is more than one merge can carry THEN this task
       writes one task file per feature (new ids, `depends_on: [GLD-006]`)
       and narrows GLD-007 to the first, in the same branch.
@@ -61,14 +61,14 @@ an absent setting means **enabled** (`session/settings.rs:155-156`,
 - `ps`/`lsof`/`nettop`-style sampling or `scripts/resource-probe.py` where it
   fits (it measures a preview binary, `native-preview`); `tracing` lines for
   timing.
-- `openspec validate light-start --strict --no-interactive`.
+- This file's measurement, Design and Plan sections written.
 - One spec review round, `codex-only` profile, if the person wants it before
   approving.
 
 ## Limits / non-goals
 
 - No production code. The measurement may add nothing to the crate; a probe
-  script beside the change is fine if it is needed and kept small.
+  script is fine if it is needed and kept small, its commands recorded here.
 - No harness launched, no provider called — usage polling is measured with
   the network request it makes, not with a signed-in harness session.
 - Not lazy auto-start: the proposal is switches, off by default.

@@ -1,4 +1,4 @@
-//! The theme customizer's window half — `openspec/specs/theme-customizer`.
+//! The theme customizer's window half — decision 53.
 //!
 //! [`crate::customizer::Draft`] decides what a choice means; this owns the
 //! card's live parts — the three sliders, the hex text being typed, the

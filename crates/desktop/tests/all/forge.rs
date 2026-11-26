@@ -967,7 +967,7 @@ fn a_change_nothing_draws_asks_for_no_frame() {
     }
 }
 
-// --- the repository header's indicator (mr-header-status-and-author)
+// --- the repository header's indicator (GLD-063)
 
 /// The header draws one indicator from the repository's state: nothing
 /// before an answer, queued while due, checking while a refresh is out —
@@ -1123,7 +1123,7 @@ fn the_header_s_hover_and_the_author_s_mark_are_said_in_both_languages() {
     assert_eq!(ru.mr_mine(), "Вы создали этот MR");
 }
 
-// --- "You created this merge request" (mr-header-status-and-author)
+// --- "You created this merge request" (GLD-063)
 
 /// An answer whose MR was written by `author`, with glab's account on the
 /// host as `account` says.

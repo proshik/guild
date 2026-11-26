@@ -70,6 +70,6 @@ narrowed `touches` replaces this one before the task starts.
 
 ## Context
 
-- GLD-006's `openspec/changes/light-start/`.
+- GLD-006's measurement and the approved list, in its task file.
 - `AGENTS.md` — "Where Guild takes text" for any new field; design system
   for the rows.

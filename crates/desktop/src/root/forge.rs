@@ -631,7 +631,7 @@ esac"#
         ))
     }
 
-    /// mr-header-status-and-author: the account is read once per host,
+    /// GLD-063: the account is read once per host,
     /// however many of its projects found an MR, with the host pinned.
     #[test]
     fn the_account_is_read_once_per_host() {
@@ -984,7 +984,7 @@ esac"#,
         );
     }
 
-    /// mr-header-status-and-author: a refresh starting changes what the
+    /// GLD-063: a refresh starting changes what the
     /// repository's header draws, and the root is notified for it, though
     /// no answer landed; a poll that changes nothing of it notifies nothing.
     #[gpui::test]

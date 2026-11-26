@@ -23,8 +23,8 @@ joins Guild, and with what guard — or that they stay out.
 **Not yet agreed with the person.** This is a candidate carried over from the
 former `docs/backlog/2026-10-17-product-improvements.md` (historical P3
 "Extended Git actions" — the separately decided part); its scope and behaviour
-are to be agreed with the person before any work, and recorded in the task (or
-an OpenSpec change) in the same branch.
+are to be agreed with the person before any work, and recorded in this file
+in the same branch.
 
 ## Acceptance
 
@@ -37,8 +37,8 @@ an OpenSpec change) in the same branch.
 
 ## Checks
 
-- The decision recorded in an OpenSpec change (`openspec validate <change>
-  --strict --no-interactive`) or in this file if no change is warranted.
+- The decision recorded in this file: its Design and Plan sections written
+  and agreed with the person.
 - No production code.
 
 ## Limits / non-goals

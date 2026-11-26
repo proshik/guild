@@ -31,7 +31,7 @@ three-pane, editable-result proposal is history, not a requirement).
 **Not yet agreed with the person.** This is a candidate carried over from the
 former `docs/backlog/2026-10-17-product-improvements.md` (P1 "Text conflict
 resolution"); its scope and behaviour are to be agreed with the person before
-any work, and recorded in the task (or an OpenSpec change) in the same branch.
+any work, and recorded in this file in the same branch.
 **A visible UI change:** a mockup in Guild's design system and the person's
 decision come before code.
 

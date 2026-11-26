@@ -45,6 +45,12 @@ touches:
   - crates/desktop/tests/all/main.rs
   - crates/desktop/tests/all/forge.rs
   - crates/desktop/tests/fixtures/forge/**
+  - crates/desktop/src/view/activity.rs
+  - crates/desktop/src/view/column/perf_bench.rs
+  - crates/desktop/src/native_preview.rs
+  - crates/desktop/src/native_preview/forge_frames.rs
+  - crates/desktop/examples/forge-frames.rs
+  - crates/desktop/Cargo.toml
   - docs/runtime-ownership.md
   - docs/decisions.md
   - AGENTS.md
@@ -644,8 +650,11 @@ send — the same question Push Commits answers.
       401 is remembered until the next refresh window.)
 - [x] WHEN glab is configured for the remote's host but not logged in THEN
       the glyph's hover says glab is not logged in to that host.
+      *Superseded by follow-up A: the repository's header says it, not the
+      row.*
 - [x] WHEN glab is missing and the remote's host looks like GitLab THEN the
-      hover says glab was not found.
+      hover says glab was not found. *Superseded by follow-up A: the
+      repository's header says it, not the row.*
 - [x] WHEN the remote is github.com, a host glab does not know, or absent
       THEN the glyph has no hover. A pure test covers each case.
 - [x] WHEN Settings is opened THEN the GitLab merge request toggle is in the
@@ -735,6 +744,78 @@ send — the same question Push Commits answers.
         added to the script and both files; common 543, palettes 74 / 74,
         the same hashes in the script, the Library and Screens.
 
+### Follow-up A: cached, per-branch answers (2026-11-26)
+
+Agreed after the first merge: a workspace switch lost every badge, one
+failed branch blanked its project's others, `main` was asked, and every
+answer rebuilt the whole column.
+
+- [x] WHEN a repository whose worktree showed !5 leaves the column and later
+      returns THEN the row shows !5 before any new answer, and a refresh is
+      started for it. While it is out of the column it is not asked, a
+      refresh out for it is stopped, and nothing is written to disk.
+- [x] WHEN a refresh is out, the repository leaves the column, and the answer
+      lands THEN nothing of that answer is shown, on return or ever.
+- [x] WHEN the setting is turned off and on again while a repository is
+      hidden THEN none of its earlier MRs is shown on its return until a new
+      answer lands.
+- [x] WHEN a project's batch reads branch `a` with !1 and branch `b` fails
+      THEN `a`'s row shows !1 with no failure, and `b`'s row keeps its last
+      known MR with the failure, or is unknown with it — never "no MR".
+- [x] WHEN the refresh's deadline passes after `a` was read and before `b`
+      THEN `a` is published and `b` alone is timed out, without a glab call
+      for it.
+- [x] WHEN glab is missing, not logged in (a 401 included), the host has a
+      port, or a batch fails as a whole (glab's own proxy, the network
+      policy, the deadline spent before it started) THEN no row shows a
+      reason, and the repository's state (`Forge::status`) lists the problem
+      with its text, beside queued / checking and when it last answered.
+- [x] WHEN a row showed !5 and the next refresh answers 401 THEN the row
+      still shows !5 and the repository's state lists the host as signed out.
+- [x] WHEN a repository shows worktrees on its default branch
+      (`git::main_branch`: `origin/HEAD`'s local branch, else `main` or
+      `master`) and on `feat` THEN glab is asked for `feat` only, and the
+      default branch's row shows neither an MR nor a failure.
+- [x] WHEN a refresh brings exactly what is already drawn THEN the window is
+      not notified; a changed MR, a new failure or a new problem notifies it.
+
+### Follow-up B: the header's state and the person's own MR (2026-11-26)
+
+Agreed after A moved the repository-wide failures off the rows, so nothing
+drew them. Designed in Penpot first (*MR header status — column*, *MR
+author — worktree row*) and approved before code.
+
+- [x] WHEN a refresh is out for a repository THEN its header draws turning
+      arrows (*checking*) before `⋯ +`, whatever the last answer was; WHEN
+      one is due and not out THEN a clock (*queued*).
+- [x] WHEN the last answer could not ask something and nothing is due THEN
+      the header draws struck-through arrows in brass (*couldn't refresh*),
+      every problem in its hover on one line — e.g. "glab is not logged in
+      to <host>" — and no row says it.
+- [x] WHEN the last answer had no problem and nothing is due THEN the header
+      draws nothing until the pointer is on it, then a faint ✓ whose hover
+      says when it was checked. No ✓ before the first answer.
+- [x] WHEN the setting is off, the repository has nothing left to ask, or it
+      is off GitLab — every worktree found to push elsewhere, or, before its
+      first answer, none pushing to a host with GitLab in its name — THEN
+      the header draws nothing, before, during and after a refresh.
+- [x] WHEN the indicator a repository would draw changes — a refresh starts,
+      an answer lands with a new problem — THEN the window is notified, and
+      only then.
+- [x] WHEN a branch's MR has `author.id` 42 and `glab api --hostname <host>
+      user` answers `id` 42 THEN its row shows a faint person after `!<iid>`,
+      hovering "You created this merge request"; WHEN the author is 7 THEN
+      no person.
+- [x] WHEN no account was read for the host before and the account read
+      times out or answers garbage THEN the MR is shown without the person
+      and the header shows no problem for it; WHEN 42 was read before and the
+      next read fails THEN an MR by 42 keeps the person.
+- [x] WHEN a refresh runs THEN the account is read once per host, only where
+      a batch found an MR and no 401 signed the host out in that refresh,
+      under the same admission, deadline, caps, scrubbed environment and
+      proxy as every read; the last account per host is kept in memory for
+      the window's life.
+
 ## Checks
 
 - **Test first:** each acceptance item gets a failing test before its code,
@@ -809,6 +890,8 @@ send — the same question Push Commits answers.
 - One setting only, the toggle. There are no per-repository or per-host
   switches and no refresh-interval setting.
 - No notifications, sounds or Dock badge when an MR's state changes.
+- No click on the header's indicator: a click on the header still folds it.
+- No MR or account kept on disk or past the window's life.
 - `CHANGELOG.md` is not in `touches`, by `tasks/README.md`'s rule for
   append-only files.
 
@@ -1101,6 +1184,97 @@ the person's Guild untouched), against the approved boards:
 - !299 is green with a threads badge: GitLab says it is mergeable while 3
   threads are open (a project that does not require them resolved). The
   colour follows GitLab, the badge the threads, as the model decides.
+
+## Design (follow-ups A and B, 2026-11-26)
+
+- **Hidden, not forgotten** (`crate::forge`, `Repo::hidden`). `retain`
+  hides a repository the column stops showing: its epoch is bumped so an
+  answer out is dropped, `trigger`, `take_due` and `shown` skip it, and its
+  answers stay. `inputs` unhides it and makes it due. Only
+  `set_enabled(false)` forgets. *Rejected:* a separate cache map — two
+  places to keep the same facts consistent.
+- **Per-branch results, project-wide errors apart.**
+  `Glab::read_until` answers `Result<Vec<(branch, Result<Option<MergeRequest>,
+  Error>)>, Error>`: the outer error is the whole read's (stopped, not
+  installed, a 401, the deadline before the first branch), the inner one a
+  branch's own. `Repo` keeps failures per branch and `problems` — the last
+  answer's project-wide failures; `Shown::Why` and the row's reason arm are
+  gone. *Rejected:* copying a batch's error to each branch — the behaviour
+  being removed.
+- **The default branch from the existing rule**: `git::main_branch` is read
+  with the worktree snapshot in `root/git.rs::counted`, marked as
+  `Worktree::main_branch`, and left out of the candidates in
+  `root/forge.rs`. *Rejected:* deciding it in the refresh thread — the
+  candidate, and a stale badge, would still exist.
+- **Notify on a visible change**: `Forge::land` compares the repository's
+  owned picture (`Repo::picture`: each row's drawn MR, its failure, the
+  author mark, the problems) before and after, and answers `true` only on a
+  difference. Progress moves outside `land` (`trigger`, `take_due`, `wrote`,
+  `abandon`, `inputs`), so `poll_forge` compares `Forge::indicators()` with
+  the ones last drawn; *checked*'s time is left out, its hover reads the
+  clock as it opens.
+- **The indicator is the model's, the look the view's**:
+  `RepoStatus::indicator` folds progress, problems and `checked` into one
+  `Indicator`, checking over queued over failed over checked — a refresh
+  due or out may clear a problem. `RepoStatus::gitlab` keeps a GitHub
+  repository quiet. `view::column` draws it; `view::activity::turning` is
+  the ring's clock for any glyph, animating only while visible and not under
+  reduced motion. The ✓ wears the head's `group_hover`, so it costs no
+  notify. *Rejected* by the person (code review r1's proposal): a wrapping
+  card for long failure reasons — the approved board's one line stays.
+- **The account rides the answer**: `Glab::account(host, deadline)` through
+  `Glab::call`, after a host's batches; `Answer::accounts`;
+  `MergeRequest::author: Option<u64>` from the list's `author.id`, provider
+  neutral.
+
+Known limits, accepted: a login switched to another account marks by the old
+one until a refresh reads the new; a host a 401 signed out is asked nothing
+more in that refresh, its account included; a problem is drawn only while
+the repository has something to ask, since no answer would clear it
+otherwise; one more glab call per host per refresh, only where an MR was
+found.
+
+## Plan (follow-ups A and B, 2026-11-26)
+
+Each step test first, to `just check` and a commit.
+
+- [x] A1. Hidden repositories keep their MRs (`tests/all/forge.rs` first);
+      `retain` hides, `inputs` unhides, off forgets.
+- [x] A2. Per-branch answers and the repository's state: `read_until` per
+      branch (`merge_requests_glab.rs` first), `Repo` failures and
+      `problems`, `Progress`, `Problem`, `RepoStatus`, `Forge::status`,
+      `Ui::mr_problem`; the row's reason arm removed.
+- [x] A3. The default branch is not asked: `Worktree::main_branch` from
+      `root/git.rs::counted`, excluded in `root/forge.rs`.
+- [x] A4. Notify only on a visible change: `land` compares pictures.
+- [x] A5. Measure the column's frame: `view::column::perf_bench` and
+      `examples/forge-frames.rs` (GPUI profiler, native release window).
+      Forty repositories, two hundred rows: an unchanged answer 40 frames of
+      10.8 ms median → none; a changed MR still 11.3 ms (11.45 ms on the test
+      platform), against 2.6–2.8 ms for a one-repository column.
+- [ ] A6. If the notify fix is not enough, measure and propose a per-element
+      update with its cost — no code without agreement.
+      **Deferred by the person (2026-11-26): not now.** A changed MR still
+      rebuilds the whole column (A5's numbers); 2.7 ms is the floor a
+      per-row cached view could approach. Its cost — rows read many `Root`
+      fields, and every row a cached view risks stale regions
+      (`docs/traps.md`, `view::region`) — was not taken on.
+- [x] B1. The header's indicator: `Indicator`, `RepoStatus::indicator`,
+      `Forge::indicators`, the notify in `poll_forge`; `mr-queued` and
+      `mr-refresh-failed` in `assets/ui` and `icons::UI`; the turning glyph;
+      the hover in `i18n`; a view test per state.
+- [x] B2. "You created this merge request": `MergeRequest::author`,
+      `Glab::account`, `Answer::accounts`, `Shown::Mr::mine`; `mr-author`
+      in `assets/ui`; the row's mark and hover.
+- [x] B3. The isolated dev window against the approved boards; revust with
+      the configured profile, at most two rounds; Penpot brought to what was
+      merged — the proposal promoted into the Library and Screens, its boards
+      removed, the token script checked.
+- [x] B4. Decisions: decision 56 amended — hidden repositories, per-branch
+      answers, the repository's state and its header, the default branch not
+      asked, the notify on a visible change, and the account read (its
+      earlier "no account read" revised). CHANGELOG lines under
+      `### Added`, `### Changed` and `### Fixed`.
 
 ## Open questions for the person
 

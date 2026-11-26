@@ -7,7 +7,7 @@ priority: 4
 component: docs
 depends_on: []
 touches:
-  - openspec/changes/session-model-choice/**
+  - tasks/GLD-042-model-choice-for-sessions.md
 harness: any
 reviews: {spec: 1, code: 0}
 created: "2026-11-07"
@@ -26,7 +26,7 @@ former `docs/backlog/2026-10-17-product-improvements.md` (historical P3 "Model
 pools" and the rows 2026-10-09 (follow-ups keep model and
 reasoning), 2026-10-06 (provider model discovery) and 2026-10-01 (validate and
 apply overrides)); its scope and behaviour are to be agreed with the person
-before any work, and recorded in the task (or an OpenSpec change) in the same
+before any work, and recorded in this file in the same
 branch. **A visible UI change:** a mockup in Guild's design system and the
 person's decision come before code.
 
@@ -44,8 +44,8 @@ person's decision come before code.
 
 ## Checks
 
-- The decision recorded in an OpenSpec change (`openspec validate <change>
-  --strict --no-interactive`) or in this file if no change is warranted.
+- The decision recorded in this file: its Design and Plan sections written
+  and agreed with the person.
 - No production code.
 
 ## Limits / non-goals

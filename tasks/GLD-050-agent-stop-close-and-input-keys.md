@@ -27,7 +27,7 @@ text.
 former `docs/backlog/2026-10-17-product-improvements.md` (row
 2026-10-06 (`agent stop --close`, named terminal input keys)); its scope and
 behaviour are to be agreed with the person before any work, and recorded in
-the task (or an OpenSpec change) in the same branch.
+this file in the same branch.
 
 ## Acceptance
 

@@ -288,7 +288,7 @@ crates/
 - [Developing Guild in Guild](docs/desktop-dev.md) — releases, dev builds and the dev window beside the installed one
 - [GPUI Kit](docs/gpui-kit-migration.md) — what to know before raising the GPUI and component versions
 - [Update sources](docs/updates/owner-guide.md) — the owner's runbook for distribution
-- [OpenSpec](openspec/README.md) — how a change's behaviour is agreed before it is built; `openspec/specs/` is the baseline
+- [Tasks](tasks/README.md) — one file per task: what is agreed before it is built, its design and its plan
 - [Changelog](CHANGELOG.md) — what changed, nightly by nightly
 
 The window is designed in Penpot before it is coded — [docs/penpot.md](docs/penpot.md) says where and how.

@@ -1063,9 +1063,11 @@ hyphen, turning 100,000 characters into 8.91 seconds on the UI thread with the
 terminal lock held. Keep the end of the scheme-character run already examined;
 a physical row width does not bound this work. Do not restore broad `name:` URI
 inference: its boundary heuristics broke grep, JSON and Markdown locations.
-The scheme guard (`openspec/specs/terminal-file-links/spec.md`) limits exclusion
-to `scheme://` and a short opaque-scheme list, ending at whitespace, quotes or
-angle brackets. Other candidates are deliberately left to the path/disk rules.
+The scheme guard (`terminal::links::unsupported_scheme_at`, pinned by
+`hierarchical_and_listed_opaque_schemes_hide_embedded_links` and
+`a_long_non_link_does_not_block_the_terminal` in
+`tests/all/terminal_links.rs`) limits exclusion to `scheme://` and a short
+opaque-scheme list, ending at whitespace, quotes or angle brackets. Other candidates are deliberately left to the path/disk rules.
 
 ### Named NSSound instances reject overlapping play requests
 

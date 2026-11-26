@@ -27,7 +27,7 @@ are Go to Definition (`f12`) and Go to Symbol.
 former `docs/backlog/2026-10-17-product-improvements.md` (historical P2
 "OpenSpec UI and editor navigation" — Go to Implementation and formatting);
 its scope and behaviour are to be agreed with the person before any work, and
-recorded in the task (or an OpenSpec change) in the same branch. **A visible
+recorded in this file in the same branch. **A visible
 UI change:** a mockup in Guild's design system and the person's decision come
 before code.
 

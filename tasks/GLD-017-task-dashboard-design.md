@@ -7,7 +7,7 @@ priority: 2
 component: docs
 depends_on: []
 touches:
-  - openspec/changes/task-dashboard/**
+  - tasks/GLD-017-task-dashboard-design.md
   - tasks/README.md
   - tasks/task.schema.json
   - tasks/state.schema.json
@@ -24,7 +24,7 @@ the project's tasks with their live lifecycle and harness status; launching a
 task through a harness in its own worktree; merging with the `Task:` trailer;
 and per-component release rules that turn `merged` into `done` — for
 projects with several deliverables (backend, frontend, desktop, mobile, CLI).
-The output is the decision recorded in an OpenSpec change `task-dashboard`;
+The output is the decision recorded in this file's Design and Plan sections;
 no code.
 
 **Open decision of this task:** whether the dashboard is part of Guild (a
@@ -34,7 +34,7 @@ recommendation.
 
 ## Acceptance
 
-- [ ] WHEN the change is written THEN it decides, with the person's answer
+- [ ] WHEN the design is written THEN it decides, with the person's answer
       recorded: Guild page versus separate tool, and if separate, its relation
       to `guild` and to the session server (GLD-010–014).
 - [ ] The board: columns by lifecycle, the harness status per running task,
@@ -59,7 +59,8 @@ recommendation.
       status/checks/diff summary.)
 - [ ] Any change the design needs in the format is made in the same branch
       in `tasks/README.md` and the schemas, with the reason.
-- [ ] `openspec validate task-dashboard --strict --no-interactive`.
+- [ ] This file's Design and Plan sections are written and agreed with the
+      person.
 
 ## Checks
 

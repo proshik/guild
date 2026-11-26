@@ -124,7 +124,7 @@ compression.
 
 ## Context
 
-- GLD-010's `openspec/changes/guild-session-server/` — the protocol, its
+- GLD-010's Design section — the protocol, its
   generation and capabilities, and the remote layer.
 - GLD-014 (the API this carries), GLD-016 (the transport abstraction).
 - `docs/decisions.md` — decision 35 (provenance); `AGENTS.md` — "`guild` is a

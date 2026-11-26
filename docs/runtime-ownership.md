@@ -1,7 +1,8 @@
 # Runtime ownership and audit decisions
 
 This is the implementation map after the 2026-10-06 reliability audit. Historical
-milestones explain decisions; OpenSpec changes state current acceptance scenarios.
+milestones explain decisions; `docs/decisions.md` holds the rules in force, and
+a task's file under `tasks/` its acceptance scenarios.
 
 | Owner | Responsibility | Failure contract |
 | --- | --- | --- |

@@ -7,7 +7,7 @@ priority: 4
 component: docs
 depends_on: []
 touches:
-  - openspec/changes/build-coordination/**
+  - tasks/GLD-036-build-coordination.md
 harness: any
 reviews: {spec: 1, code: 0}
 created: "2026-11-07"
@@ -24,7 +24,7 @@ compare-and-set alone is not a lock or a lease.
 former `docs/backlog/2026-10-17-product-improvements.md` (historical P3 "Build
 coordination" and the note on versioned coordination state
 (`--if-version`, watch)); its scope and behaviour are to be agreed with the
-person before any work, and recorded in the task (or an OpenSpec change) in
+person before any work, and recorded in this file in
 the same branch.
 
 ## Acceptance
@@ -38,8 +38,8 @@ the same branch.
 
 ## Checks
 
-- The decision recorded in an OpenSpec change (`openspec validate <change>
-  --strict --no-interactive`) or in this file if no change is warranted.
+- The decision recorded in this file: its Design and Plan sections written
+  and agreed with the person.
 - No production code.
 
 ## Limits / non-goals

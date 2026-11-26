@@ -7,7 +7,7 @@ priority: 3
 component: docs
 depends_on: []
 touches:
-  - openspec/changes/guild-session-server/**
+  - tasks/GLD-010-session-server-design.md
   - tasks/GLD-011-session-server-terminals.md
   - tasks/GLD-012-session-server-agents-and-jobs.md
   - tasks/GLD-013-session-server-keep-running.md
@@ -30,8 +30,8 @@ harnesses, terminal jobs, ACP agents and the language servers' processes, and
 keeps their statuses; the window, `guild`, a
 TUI and the windows of other machines attach to it — locally through a Unix
 socket, from another machine through ssh. Before any server code, decide its
-shape and protocol and record them in an OpenSpec change
-`guild-session-server`. The output is the decision and the protocol outline,
+shape and protocol and record them in this file's Design and Plan
+sections. The output is the decision and the protocol outline,
 not code; GLD-011–016 are edited to match, and GLD-065–067 (the remote
 layer) are brought to the same decision.
 
@@ -172,7 +172,7 @@ recommendation, and recorded with its date — never assumed.
 | The protocol's encoding | JSON-RPC 2.0 with LSP's `Content-Length` framing: ACP, LSP and MCP share that base, Guild already frames LSP (`crates/desktop/src/lsp.rs`) *(code)*, and ACP's events go inside with little translation. Guild's own methods on top: snapshot, subscribe, sequence numbers, capabilities. PTY bytes need their own answer, binary frames or base64, since JSON is wasteful for them. Against: a binary encoding of Guild's own (or msgpack-RPC, as Neovim does), which is smaller over ssh but needs tooling of its own |
 | Whether a remote-machine window shows an ACP conversation | Not yet: the window stays terminal-only (2026-11-22) until GLD-018 is designed, and a remote agent that waits still reaches the shared waiting list |
 
-Settled by the design itself, recorded in `design.md`:
+Settled by the design itself, recorded in the Design section:
 
 - The PTY reader never waits on a client; a lagging client catches up with a
   new snapshot. Today it blocks on a bounded channel
@@ -186,16 +186,17 @@ Settled by the design itself, recorded in `design.md`:
 A small experiment in scratch, not production code: an alacritty grid
 snapshot restored into another `Term` yields the same screen, OSC 133 marks
 and hyperlinks. If it does not, the wire format is revisited here, in
-GLD-010, and not discovered in GLD-011. The result goes into `design.md`.
+GLD-010, and not discovered in GLD-011. The result goes into the Design
+section.
 
 ## Acceptance
 
-- [ ] WHEN the change is written THEN `design.md` presents both shapes and
+- [ ] WHEN the design is written THEN the Design section presents both shapes and
       both wire formats with their costs against Guild's code and the
       recommendations, and each of the person's decisions in *Open
       questions* is recorded with its date — each asked as its own question,
       not assumed.
-- [ ] WHEN the probe has run THEN `design.md` records whether a restored
+- [ ] WHEN the probe has run THEN the Design section records whether a restored
       grid snapshot gives the same screen, OSC 133 marks and hyperlinks, and
       the wire format is confirmed or changed accordingly.
 - [ ] The protocol outline: one ordered stream of frames over a Unix socket;
@@ -223,7 +224,8 @@ GLD-010, and not discovered in GLD-011. The result goes into `design.md`.
 - [ ] GLD-011–016 are edited in the same branch to match the decision
       (split, merged or re-scoped), each still one merge, and GLD-065–067
       are created or edited to match.
-- [ ] `openspec validate guild-session-server --strict --no-interactive`.
+- [ ] This file's Design and Plan sections are written and agreed with the
+      person.
 
 ## Checks
 
@@ -231,7 +233,7 @@ GLD-010, and not discovered in GLD-011. The result goes into `design.md`.
 - Facts about today's code cited with paths and marked *(code)*; external
   facts marked *(ext)* with sources.
 - The probe's code and output kept in scratch and summarised in
-  `design.md`; it is not committed as production code.
+  the Design section; it is not committed as production code.
 
 ## Limits / non-goals
 

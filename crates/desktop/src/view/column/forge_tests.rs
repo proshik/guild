@@ -275,7 +275,7 @@ fn a_worktree_s_merge_request_is_drawn_opened_and_explained(cx: &mut TestAppCont
     );
 }
 
-/// mr-header-status-and-author: the repository's header draws its merge
+/// GLD-063: the repository's header draws its merge
 /// requests' state from the model — queued, checking, couldn't refresh,
 /// checked — and nothing when the setting is off; a problem of the
 /// repository is on its header, never on a row.
@@ -465,7 +465,7 @@ fn the_repository_header_draws_its_merge_requests_state(cx: &mut TestAppContext)
     only(cx, "none");
 }
 
-/// mr-header-status-and-author: a merge request whose author is glab's
+/// GLD-063: a merge request whose author is glab's
 /// account wears a person after its number, with its hover; another's
 /// wears none.
 #[gpui::test]

@@ -42,13 +42,31 @@ words.
 folder Explorer made the case easy to reach: before it, the only way was a
 worktree opened from inside another checkout.
 
-**Open question for the person.** Is the refusal visible before the
-gesture — Rename, Move to Trash, Cut and Move disabled in the row's menu and
-the row not draggable — or is the gesture allowed to start and refused with
-a notice ("<name> is open in Guild as a project; close it first")? Both
-need the guard in the handlers. The choice is what the person sees, so it
-is drawn in Penpot from the Library's components and approved before code
-(`docs/penpot.md`).
+**Open question — answered by the person (2026-11-27):** the refusal is
+visible *before* the gesture — Rename, Move to Trash, Cut and Move are
+disabled in the row's menu, and the row is not draggable — and the guard
+still lives in each handler (a key binding reaches the same handler), so an
+attempt through a binding is refused with a notice too. The menu and drag
+surfaces read the same guard as the handlers. To be drawn in Penpot from
+the Library's components and approved before code (`docs/penpot.md`); the
+person's answer here is the decision, the Penpot approval is the gate.
+
+## Plan
+
+- [ ] Draw the refusal in Penpot (menu items disabled, row not draggable)
+      on the Screens file's Proposals page and get the person's approval
+      before any code (`docs/penpot.md`).
+- [ ] Reproduce: a test in `crates/desktop/tests/all/tree.rs` that renames
+      / trashes / moves an open-root member row today and fails for that
+      reason before the fix (acceptance 1).
+- [ ] Add the guard: a source that is an open root, or contains one, is
+      refused at `file_operations`/`tree`/`transfers`/`tree_drag` handlers
+      on the resolved source path, and the menu (`view/menu/tree.rs`) and
+      drag (`view/tree_drag.rs`) stop offering it (acceptances 3-7).
+- [ ] Tell the person why in English and Russian (`i18n/english.rs`,
+      `i18n/russian.rs`).
+- [ ] `just check`, isolated; the window check against the approved
+      proposal; then the Penpot file brought to what was merged.
 
 ## Acceptance
 

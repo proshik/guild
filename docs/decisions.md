@@ -746,6 +746,14 @@ here; the comment beside the citation carries the rule it names.
     downloading about 109 MB for opencode on an account that had never run
     either. The `--version` probes that decide *not on PATH* are exempt;
     `docs/traps.md` notes that opencode's own probe creates its folders.
+    - **A launch's door is written once per window, and only for an agent
+      on that launch's `PATH`.** The window remembers the doors it wrote
+      and a later launch does no disk work for them; the one write left on
+      the window's thread is the first launch of an agent never run on
+      the machine. A restored tab of a removed agent writes nothing.
+    - **Codex's config is replaced only over the bytes that were read**: a
+      block already in place writes nothing, so Codex's own writes to
+      `config.toml` while it runs are never lost to an older copy.
 
 59. **A preference the person has not chosen is not written down.** An
     unset value is `None` and skipped when serialized, and its effective
@@ -754,3 +762,13 @@ here; the comment beside the citation carries the rule it names.
     agent until a default is chosen (`Settings::default_tab_among`), and a
     file that names one keeps it even when that agent goes missing
     (GLD-081).
+    - **An automatic default is resolved when it is used.** What is
+      installed is not assumed before the first probe answers (the default
+      is drawn as the Terminal until then), the picture is refreshed while
+      the window is in front, and a press with no chosen default asks
+      again.
+    - **`guild` follows the window.** A session without `--harness` runs the
+      window's default; a Terminal default is refused with the way out,
+      and an agent that is not installed is refused with its install page
+      before any record, tab or worktree is made — the command line is
+      never told *started* for a session that cannot run.

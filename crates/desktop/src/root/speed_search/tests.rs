@@ -1,4 +1,5 @@
 use crate::Root;
+mod open_roots;
 mod rows;
 use gpui::Focusable;
 use gpui::{AppContext, Context, Entity, Render, TestAppContext, Window, div, prelude::*, px};

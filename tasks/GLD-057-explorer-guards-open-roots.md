@@ -42,13 +42,105 @@ words.
 folder Explorer made the case easy to reach: before it, the only way was a
 worktree opened from inside another checkout.
 
-**Open question for the person.** Is the refusal visible before the
-gesture — Rename, Move to Trash, Cut and Move disabled in the row's menu and
-the row not draggable — or is the gesture allowed to start and refused with
-a notice ("<name> is open in Guild as a project; close it first")? Both
-need the guard in the handlers. The choice is what the person sees, so it
-is drawn in Penpot from the Library's components and approved before code
-(`docs/penpot.md`).
+**Open question — answered by the person (2026-11-27):** the refusal is
+visible *before* the gesture — Rename, Move to Trash, Cut and Move are
+disabled in the row's menu, and the row is not draggable — and the guard
+still lives in each handler (a key binding reaches the same handler), so an
+attempt through a binding is refused with a notice too. The menu and drag
+surfaces read the same guard as the handlers. To be drawn in Penpot from
+the Library's components and approved before code (`docs/penpot.md`); the
+person's answer here is the decision, the Penpot approval is the gate.
+
+## Proposal (Penpot) — approved 2026-11-27
+
+What the code draws today (read 2026-11-27, main f65258f):
+- A row's right-button menu is `view/menu/tree.rs`: a directory gets the
+  transform group (`MenuMove`, `MenuCutFiles`, `MenuCopyFiles`,
+  `MenuPasteFiles`, `MenuRename`, `MenuDelete` — `entries_for_directory`,
+  `transform_group()`); the tree's own row passes `root: true` and gets only
+  *Paste* (the two writes are withheld). The refusal today is
+  `writable_row` (tree.rs:231) — only the tree's own empty path.
+- `view/tree_drag.rs:70` — a row is a drag source only when
+  `project_row && writable_row(&path)`. A member/worktree row is `writable`
+  (its relative path is non-empty), so it is draggable today.
+- `root/transfers.rs:106` `operation_sources` and `:73` `select_operation_target`
+  filter by `writable_row` only.
+
+Drawn on 2026-11-27 on Guild — Screens › Proposals and approved by the
+person the same day. The unchanged parts of each screen are an image of
+`Main window — group folder Explorer`; what changes is built from Library
+copies and tokens:
+
+1. `GLD-057 — group folder Explorer · open member row`: `backend` (an open
+   project in the group folder `acme`) right-clicked. The directory menu
+   (`menu / row` copies): *Move…*, *Cut*, *Rename…* and *Delete* are the
+   Library's `Kind=Disabled shortcut` — drawn faint, their strokes kept, not
+   taken; *Copy* and *Paste* stay enabled (Copy does not write the source,
+   Paste writes into the folder, not over it). A footnote at the menu's foot,
+   the `Entry::Note` Open In already uses (`popup::note`: one line, eyebrow,
+   `text.faint`, truncated, never widens the menu), says why: **Open as a
+   project** / **Открыт как проект**.
+2. `GLD-057 — group folder Explorer · refused by a key`: the same row
+   selected and ⇧F6, ⌘Backspace, ⌘X or F6 pressed: nothing on disk changes
+   and a Warning notice (`Root::warn`, the Library's `notice`
+   `Level=Warning`) says **“backend” is open in Guild as a project — close
+   it first** / **«backend» открыт в Guild как проект — сначала закройте
+   его**. In the containing case the name is the open root's path relative
+   to the tree, e.g. “services/backend”.
+3. `GLD-057 — menu of a folder that holds an open project (part)`: the same
+   menu for a folder that contains an open root; the footnote reads **Holds
+   an open project** / **Внутри открытый проект**.
+
+Not drawn, because nothing shows: the row is not a drag source (no drag
+starts), and a drop of other rows onto it is unchanged.
+
+## Plan
+
+- [x] Draw the refusal in Penpot (menu items disabled, row not draggable)
+      on the Screens file's Proposals page and get the person's approval
+      before any code (`docs/penpot.md`).
+- [x] Reproduce: a test in `crates/desktop/tests/all/tree.rs` that renames
+      / trashes / moves an open-root member row today and fails for that
+      reason before the fix (acceptance 1).
+      *Changed while doing it:* the handlers are `Root`'s and reachable only
+      inside the crate, so the window test is
+      `src/root/speed_search/tests/open_roots.rs`, beside the Explorer's
+      other clipboard and move tests and run the same isolated way; the
+      menu's pure rule is pinned in `tests/all/menu.rs`. Against the base
+      commit it fails on its first gesture: ⇧F6 on the open member opens
+      the rename field.
+- [x] Add the guard: a source that is an open root, or contains one, is
+      refused at `file_operations`/`tree`/`transfers`/`tree_drag` handlers
+      on the resolved source path, and the menu (`view/menu/tree.rs`) and
+      drag (`view/tree_drag.rs`) stop offering it (acceptances 3-7).
+- [x] Tell the person why in English and Russian (`i18n/english.rs`,
+      `i18n/russian.rs`).
+- [x] `just check`, isolated; the window check against the approved
+      proposal; then the Penpot file brought to what was merged.
+      *Done 2026-11-27:* `just check` green (isolated state). In a dev
+      window, `acme` with `backend` opened as a project: the row's menu
+      matches board 1 (Move…, Cut, Rename…, Delete faint with strokes,
+      Copy and Paste live, "Open as a project" at the foot); clicking the
+      faint Rename… does nothing; ⇧F6 and ⌘X raise board 2's Warning and
+      arm nothing; ⌘V into `plain` moves nothing. ⌘Backspace, F6 and the
+      drag were not driven in the window — the person took the machine
+      back — and are covered by the window test.
+      *Penpot, 2026-11-27:* the footnote is the Library component
+      `menu / note` (Components › section *Explorer open roots*); Screens
+      has `Menu — open project row in a group folder Explorer` and `Main
+      window — group folder Explorer, an open project refused` at x 13300,
+      y 7200 and 8100, built from Library copies. No token changed, so the
+      token script's counts are untouched. The three GLD-057 boards are
+      gone from Proposals.
+- [x] Code review, round 1 of 1 (revust, project profile `comprehensive`,
+      2026-11-27): partial — verification of two single-source findings
+      did not finish. All five reported findings checked against the code
+      and fixed, each with a test that fails without its fix: a refused
+      Paste now puts its Cut away; a move's collision retry asks again for
+      a root opened while the question was up; the handlers also compare
+      resolved paths, so a symlinked ancestor does not hide a member; the
+      window test drives a real drag; `project_root`'s doc is back on it.
+- [x] The lasting rule: decision 57 in `docs/decisions.md`.
 
 ## Acceptance
 

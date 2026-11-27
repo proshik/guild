@@ -232,6 +232,76 @@ pub(crate) fn writable_row(relative: &Path) -> bool {
     !relative.as_os_str().is_empty()
 }
 
+/// The root Guild has open that one of `sources` is, or holds — GLD-057 —
+/// by its path in the tree whose root is `tree_root`.
+///
+/// **`writable_row`'s rule, for the roots below the tree's own.** A group
+/// folder's Explorer shows its open members as ordinary rows, and a
+/// checkout shows a worktree opened from inside it; renaming, moving or
+/// trashing either takes a project away from under the tabs and sessions
+/// Guild holds in it, which is what `writable_row` refuses for the tree's
+/// own root. A source holding several answers with the shallowest, and
+/// the tree's own root is not a source here: `writable_row` keeps it.
+pub(crate) fn open_root_among<'a>(
+    tree_root: &Path,
+    sources: &[PathBuf],
+    open: impl IntoIterator<Item = &'a Path>,
+) -> Option<PathBuf> {
+    let open: Vec<&Path> = open.into_iter().collect();
+    sources
+        .iter()
+        .filter(|source| writable_row(source))
+        .find_map(|source| {
+            let at = tree_root.join(source);
+            open.iter()
+                .filter(|root| root.starts_with(&at))
+                .filter_map(|root| root.strip_prefix(tree_root).ok())
+                .min_by_key(|relative| relative.components().count())
+                .map(Path::to_path_buf)
+        })
+}
+
+/// [`open_root_among`] with every path resolved on the disk — GLD-057's
+/// review: a tree opened through a symlinked ancestor spells its rows
+/// `/alias/acme/member` while the member was opened as `/real/acme/member`,
+/// and the spelling alone misses that one holds the other.
+///
+/// **A source resolves only up to its parent.** Renaming or trashing a
+/// symlink moves the link, not what it points at, so the link's own name
+/// is kept; an open root is resolved whole, since moving what its path
+/// leads to takes it away. A path that cannot be resolved is left out —
+/// the spelling check has already had its say. It reads the disk: for the
+/// handlers, not for drawing.
+pub(crate) fn open_root_resolved<'a>(
+    tree_root: &Path,
+    sources: &[PathBuf],
+    open: impl IntoIterator<Item = &'a Path>,
+) -> Option<PathBuf> {
+    let open: Vec<PathBuf> = open
+        .into_iter()
+        .filter_map(|root| std::fs::canonicalize(root).ok())
+        .collect();
+    let resolved_tree = std::fs::canonicalize(tree_root).ok();
+    sources
+        .iter()
+        .filter(|source| writable_row(source))
+        .find_map(|source| {
+            let at = tree_root.join(source);
+            let at = std::fs::canonicalize(at.parent()?)
+                .ok()?
+                .join(at.file_name()?);
+            open.iter()
+                .filter(|root| root.starts_with(&at))
+                .min_by_key(|root| root.components().count())
+                .map(|root| {
+                    resolved_tree
+                        .as_deref()
+                        .and_then(|tree| root.strip_prefix(tree).ok())
+                        .map_or_else(|| root.clone(), Path::to_path_buf)
+                })
+        })
+}
+
 /// A name being typed into the tree.
 ///
 /// **A field of the tree's own, not a sheet.** `window.prompt` has no
@@ -927,6 +997,12 @@ impl Root {
         if self.file_operations.busy.is_some() {
             return;
         }
+        if naming.what == For::Rename
+            && let (Some(tree_root), Some(from)) = (self.project_root(), naming.from.clone())
+            && self.refuse_open_root(&tree_root, &[from])
+        {
+            return;
+        }
         if let (Some(project), Some(from)) = (
             self.active_project,
             self.tree()
@@ -1059,6 +1135,22 @@ impl Root {
         let Some(root) = self.project_root() else {
             return;
         };
+        // A root opened while the field was up is refused at the write,
+        // and the field goes away as Escape would take it.
+        if naming.what == For::Rename
+            && let Some(from) = naming.from.clone()
+            && self.refuse_open_root(&root, std::slice::from_ref(&from))
+        {
+            if let Some(project) = self.active_project {
+                self.freeze_moving_editors(project, &[from], false, window, cx);
+            }
+            if let Some(state) = self.tree_mut() {
+                state.naming = None;
+                window.focus(&state.focus, cx);
+            }
+            cx.notify();
+            return;
+        }
         let target = root.join(&relative);
         let ui = self.ui();
 
@@ -1171,6 +1263,10 @@ impl Root {
         if sources.iter().any(|p| !writable_row(p)) {
             return;
         }
+        if self.refuse_open_root(&project_root, &sources) {
+            cx.notify();
+            return;
+        }
         if sources.is_empty() {
             return;
         }
@@ -1225,11 +1321,14 @@ impl Root {
                         root.asking = false;
                         let mut errors = Vec::new();
                         let mut completed = Vec::new();
+                        // A root opened while the question was up is
+                        // refused at the write — GLD-057.
                         if accepted
                             && root
                                 .desk
                                 .project(project)
                                 .is_some_and(|p| p.path == project_root)
+                            && !root.refuse_open_root(&project_root, &sources)
                         {
                             for path in &sources {
                                 let result =
@@ -1461,6 +1560,54 @@ impl Root {
             return;
         };
         self.run_git_write(project, crate::git::Write::Stage(vec![relative]));
+    }
+
+    /// The root Guild has open that a source under `tree_root` is, or
+    /// holds — [`open_root_among`] over every project the desk holds, in
+    /// every workspace, since each of them may hold tabs and sessions.
+    ///
+    /// **By spelling only**, so the menu and the rows can ask it on every
+    /// frame without touching the disk; the handlers' refusal also asks
+    /// [`open_root_resolved`], which follows symlinks.
+    pub(crate) fn open_root_in(&self, tree_root: &Path, sources: &[PathBuf]) -> Option<PathBuf> {
+        open_root_among(
+            tree_root,
+            sources,
+            self.desk.projects().map(|project| project.path.as_path()),
+        )
+    }
+
+    /// Refuse a rename, a move or a Trash whose sources are, or hold, an
+    /// open root, and say why — GLD-057. `true` when refused.
+    ///
+    /// **Each gesture's handler asks, not only its menu item.** A key
+    /// binding reaches the handler without the menu, and a drop reaches
+    /// the transfer without either.
+    pub(crate) fn refuse_open_root(&mut self, tree_root: &Path, sources: &[PathBuf]) -> bool {
+        let Some(open) = self.open_root_in(tree_root, sources).or_else(|| {
+            open_root_resolved(
+                tree_root,
+                sources,
+                self.desk.projects().map(|project| project.path.as_path()),
+            )
+        }) else {
+            return false;
+        };
+        let said = self.ui().notice_open_root(&open.display().to_string());
+        self.warn(said);
+        true
+    }
+
+    /// How a row of the active tree stands to the open roots, for its
+    /// menu — GLD-057.
+    pub(crate) fn open_root_of_row(&self, path: &Path) -> Option<crate::view::menu::OpenRoot> {
+        let tree_root = self.project_root()?;
+        let open = self.open_root_in(&tree_root, &[path.to_path_buf()])?;
+        Some(if open == path {
+            crate::view::menu::OpenRoot::Is
+        } else {
+            crate::view::menu::OpenRoot::Holds
+        })
     }
 
     /// The active project's directory.
@@ -1826,6 +1973,62 @@ mod tests {
         assert!(!writable_row(Path::new("")));
         assert!(writable_row(Path::new("src")));
         assert!(writable_row(Path::new("src/lib.rs")));
+    }
+
+    /// GLD-057's review: a tree opened through a symlinked ancestor still
+    /// finds a member opened by its real path, and a symlink row that
+    /// points at an open root is the link, not the root.
+    #[test]
+    fn an_open_root_is_found_through_a_symlinked_ancestor() {
+        let dir = tempfile::tempdir().unwrap();
+        let real = dir.path().join("real/acme");
+        std::fs::create_dir_all(real.join("member")).unwrap();
+        std::fs::create_dir_all(real.join("plain")).unwrap();
+        std::os::unix::fs::symlink(dir.path().join("real"), dir.path().join("alias")).unwrap();
+        std::os::unix::fs::symlink(real.join("member"), real.join("link")).unwrap();
+        let tree = dir.path().join("alias/acme");
+        let member = real.join("member");
+        let open = [member.as_path()];
+        let find = |source: &str| open_root_resolved(&tree, &[PathBuf::from(source)], open);
+        assert_eq!(
+            open_root_among(&tree, &[PathBuf::from("member")], open),
+            None,
+            "the spelling alone misses it"
+        );
+        assert_eq!(find("member"), Some(PathBuf::from("member")));
+        assert_eq!(find("plain"), None);
+        assert_eq!(find("link"), None, "the link is renamed, not its target");
+    }
+
+    /// GLD-057: a source is refused when it is, or holds, an open root —
+    /// by components, so a sibling whose name merely begins the same way
+    /// is not; and the tree's own root is `writable_row`'s, not this.
+    #[test]
+    fn an_open_root_is_found_at_or_under_a_source_and_nowhere_else() {
+        let tree = Path::new("/w/acme");
+        let open = [
+            Path::new("/w/acme"),
+            Path::new("/w/acme/member"),
+            Path::new("/w/acme/outer/deep/inner"),
+            Path::new("/w/acme/outer/shallow"),
+            Path::new("/w/elsewhere"),
+        ];
+        let find = |source: &str| open_root_among(tree, &[PathBuf::from(source)], open);
+        assert_eq!(find("member"), Some(PathBuf::from("member")));
+        assert_eq!(find("outer"), Some(PathBuf::from("outer/shallow")));
+        assert_eq!(find("outer/deep"), Some(PathBuf::from("outer/deep/inner")));
+        assert_eq!(find("member-fix"), None);
+        assert_eq!(find("member/src"), None);
+        assert_eq!(find("plain"), None);
+        assert_eq!(find(""), None);
+        assert_eq!(
+            open_root_among(
+                tree,
+                &[PathBuf::from("plain"), PathBuf::from("member")],
+                open
+            ),
+            Some(PathBuf::from("member"))
+        );
     }
 
     /// A folder of the test's own, gone when the test lets go of it.

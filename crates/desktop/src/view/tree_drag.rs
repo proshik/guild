@@ -21,7 +21,10 @@ pub(crate) fn row(
     path: PathBuf,
     is_dir: bool,
     project_row: bool,
-    project: guild_session::ProjectId,
+    // The project to drag the row out of, or `None` for a row that is no
+    // drag source: the tree's own row, and one that is or holds another
+    // open root — GLD-057. Such a row is still a drop target.
+    drag_source: Option<guild_session::ProjectId>,
     theme: theme::Theme,
     cx: &mut Context<Root>,
 ) -> gpui::Stateful<gpui::Div> {
@@ -67,9 +70,11 @@ pub(crate) fn row(
                 root.clear_tree_drag(cx);
             }
         }));
-    if !project_row || !crate::root::tree::writable_row(&path) {
+    let Some(project) =
+        drag_source.filter(|_| project_row && crate::root::tree::writable_row(&path))
+    else {
         return element;
-    }
+    };
     let root = cx.weak_entity();
     let out = root.clone();
     element

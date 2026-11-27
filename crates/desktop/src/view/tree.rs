@@ -245,6 +245,7 @@ impl Root {
                                 )
                             }));
                     let dim = |cut: bool| if cut { 0.5 } else { 1.0 };
+                    let tree_root = _root.project_root();
                     range
                         .map(|index| {
                             let row = &rows[index];
@@ -255,12 +256,22 @@ impl Root {
                             div()
                                 .id(("tree-row", index))
                                 .map(|element| {
+                                    let holds_open_root = is_dir
+                                        && row.of == Of::Project
+                                        && tree_root.as_deref().is_some_and(|tree_root| {
+                                            _root
+                                                .open_root_in(
+                                                    tree_root,
+                                                    std::slice::from_ref(&drag_path),
+                                                )
+                                                .is_some()
+                                        });
                                     super::tree_drag::row(
                                         element,
                                         drag_path,
                                         is_dir,
                                         row.of == Of::Project,
-                                        _root.active_project.unwrap(),
+                                        _root.active_project.filter(|_| !holds_open_root),
                                         theme,
                                         cx,
                                     )

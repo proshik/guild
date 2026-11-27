@@ -108,6 +108,7 @@ fn delete_is_next_to_rename_and_never_last() {
         Subject::TreeDirectory {
             expanded: false,
             root: false,
+            open_root: None,
         },
     ] {
         let items = entries(subject);
@@ -180,6 +181,7 @@ fn a_directory_folds_and_says_which_way() {
     let closed = entries(Subject::TreeDirectory {
         expanded: false,
         root: false,
+        open_root: None,
     });
     assert_eq!(
         deeds(&closed),
@@ -206,6 +208,7 @@ fn a_directory_folds_and_says_which_way() {
     let open = entries(Subject::TreeDirectory {
         expanded: true,
         root: false,
+        open_root: None,
     });
     assert!(
         open.contains(&Entry::Item(
@@ -238,6 +241,7 @@ fn the_projects_own_row_offers_neither_rename_nor_delete() {
         let items = entries(Subject::TreeDirectory {
             expanded,
             root: true,
+            open_root: None,
         });
         let offered = deeds(&items);
         assert!(
@@ -261,6 +265,58 @@ fn the_projects_own_row_offers_neither_rename_nor_delete() {
             "and the rule that separated the group it lost goes with it: {items:?}"
         );
     }
+}
+
+/// GLD-057: a directory that is, or holds, another root Guild has open —
+/// a member in its group folder's Explorer, a worktree inside its
+/// checkout — keeps its menu's items, as the approved proposal draws it,
+/// but the four that write the directory itself cannot be taken; *Copy*
+/// and *Paste* can. The footnote at the foot says which case it is.
+#[test]
+fn a_directory_that_is_or_holds_an_open_root_offers_its_writes_disabled() {
+    use guild_desktop::view::menu::OpenRoot;
+    let plain = entries(Subject::TreeDirectory {
+        expanded: false,
+        root: false,
+        open_root: None,
+    });
+    for (open_root, note) in [
+        (OpenRoot::Is, Text::MenuOpenAsProject),
+        (OpenRoot::Holds, Text::MenuHoldsOpenProject),
+    ] {
+        let items = entries(Subject::TreeDirectory {
+            expanded: false,
+            root: false,
+            open_root: Some(open_root),
+        });
+        assert_eq!(deeds(&items), deeds(&plain), "the same items, in order");
+        let disabled: Vec<Deed> = items
+            .iter()
+            .filter_map(|entry| match entry {
+                Entry::Choice(choice) if !choice.enabled => Some(choice.deed),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            disabled,
+            [
+                Deed::Tree(TreeDeed::Move),
+                Deed::Tree(TreeDeed::Cut),
+                Deed::Tree(TreeDeed::Rename),
+                Deed::Tree(TreeDeed::Delete),
+            ]
+        );
+        assert!(items.contains(&Entry::Item(
+            Text::MenuCopyFiles,
+            Deed::Tree(TreeDeed::Copy)
+        )));
+        assert!(items.contains(&Entry::Item(
+            Text::MenuPasteFiles,
+            Deed::Tree(TreeDeed::Paste)
+        )));
+        assert_eq!(items.last(), Some(&Entry::Note(Label::Text(note))));
+    }
+    assert!(!plain.iter().any(|entry| matches!(entry, Entry::Note(_))));
 }
 
 /// A tab in the middle of a full strip offers everything: the three
@@ -1492,6 +1548,7 @@ fn explorer_exposes_file_clipboard_and_move_but_libraries_do_not() {
         Subject::TreeDirectory {
             expanded: false,
             root: false,
+            open_root: None,
         },
     ] {
         let mut found = Vec::new();

@@ -14,7 +14,7 @@
 
 use gpui::{Context, Window};
 
-use super::{Deed, Entry, PathDeed, Target};
+use super::{Choice, Deed, Entry, Label, Mark, OpenRoot, PathDeed, Target};
 use crate::Root;
 use crate::i18n::Text;
 
@@ -91,6 +91,35 @@ fn transform_group() -> [Entry; 6] {
     ]
 }
 
+/// The transform group of a directory that is, or holds, a root Guild
+/// has open — GLD-057: drawn whole, so the menu reads the same, but the
+/// four that write the directory itself are drawn and never taken. *Copy*
+/// does not write its source and *Paste* writes into the directory, not
+/// over it, so both stay. The handlers refuse as well
+/// ([`Root::refuse_open_root`]): an item that is merely disabled is one
+/// key binding away from being reachable.
+fn transform_group_refused() -> [Entry; 6] {
+    let refused = |text, deed| {
+        Entry::Choice(Choice {
+            label: Label::Text(text),
+            mark: Mark::None,
+            deed: Deed::Tree(deed),
+            check: None,
+            enabled: false,
+            detail: None,
+            trailing: None,
+        })
+    };
+    [
+        refused(Text::MenuMove, TreeDeed::Move),
+        refused(Text::MenuCutFiles, TreeDeed::Cut),
+        Entry::Item(Text::MenuCopyFiles, Deed::Tree(TreeDeed::Copy)),
+        Entry::Item(Text::MenuPasteFiles, Deed::Tree(TreeDeed::Paste)),
+        refused(Text::MenuRename, TreeDeed::Rename),
+        refused(Text::MenuDelete, TreeDeed::Delete),
+    ]
+}
+
 /// What can be copied off any row that stands for a path.
 ///
 /// Paths only. Content root, source root, repository root and a hosting
@@ -149,7 +178,15 @@ pub fn entries_for_file() -> Vec<Entry> {
 /// itself lives beside the gestures as well (`delete_asking` and
 /// `Naming::rename`), because an item that is merely not offered is one
 /// keymap away from being reachable again.
-pub fn entries_for_directory(expanded: bool, root: bool) -> Vec<Entry> {
+///
+/// **A directory that is, or holds, another open root keeps its items
+/// but cannot take the writes** — GLD-057: they are drawn disabled, and a
+/// footnote at the menu's foot says why, in the one line a footnote has.
+pub fn entries_for_directory(
+    expanded: bool,
+    root: bool,
+    open_root: Option<OpenRoot>,
+) -> Vec<Entry> {
     let mut items = vec![
         new_group(),
         Entry::Separator,
@@ -173,7 +210,11 @@ pub fn entries_for_directory(expanded: bool, root: bool) -> Vec<Entry> {
         ));
     }
     if !root {
-        items.extend(transform_group());
+        if open_root.is_some() {
+            items.extend(transform_group_refused());
+        } else {
+            items.extend(transform_group());
+        }
         items.push(Entry::Separator);
     }
     items.push(Entry::Item(
@@ -182,6 +223,12 @@ pub fn entries_for_directory(expanded: bool, root: bool) -> Vec<Entry> {
     ));
     items.push(Entry::Separator);
     items.extend(copy_group());
+    if !root && let Some(open_root) = open_root {
+        items.push(Entry::Note(Label::Text(match open_root {
+            OpenRoot::Is => Text::MenuOpenAsProject,
+            OpenRoot::Holds => Text::MenuHoldsOpenProject,
+        })));
+    }
     items
 }
 

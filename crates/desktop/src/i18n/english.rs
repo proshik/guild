@@ -1306,6 +1306,8 @@ pub(super) fn english(text: Text) -> &'static str {
         Text::MenuCutFiles => "Cut",
         Text::MenuCopyFiles => "Copy",
         Text::MenuPasteFiles => "Paste",
+        Text::MenuOpenAsProject => "Open as a project",
+        Text::MenuHoldsOpenProject => "Holds an open project",
         Text::FileTransferCompleted => "Transferred",
         Text::FileTransferRemaining => "Not transferred",
         Text::FileClipboardChanged => {

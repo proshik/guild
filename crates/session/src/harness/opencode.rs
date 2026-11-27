@@ -11,12 +11,50 @@
 //!   translation is the shared table.
 
 use std::ffi::OsString;
+use std::path::PathBuf;
 
 use super::{Harness, HarnessKind};
 use crate::settings::PermissionMode;
 
 /// OpenCode.
 pub struct OpenCodeHarness;
+
+impl OpenCodeHarness {
+    /// opencode's own config directory, where its plugins live:
+    /// `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`. Whether it
+    /// exists is whether opencode is [known](super::known) for its plugin.
+    pub fn config_dir() -> PathBuf {
+        Self::config_dir_in(
+            std::env::var_os("XDG_CONFIG_HOME"),
+            std::env::var_os("HOME"),
+        )
+    }
+
+    /// [`Self::config_dir`] with the two variables given rather than read.
+    pub fn config_dir_in(xdg_config_home: Option<OsString>, home: Option<OsString>) -> PathBuf {
+        xdg_config_home
+            .map(PathBuf::from)
+            .or_else(|| home.map(|home| PathBuf::from(home).join(".config")))
+            .unwrap_or_default()
+            .join("opencode")
+    }
+
+    /// opencode's own data directory, where its sessions are kept:
+    /// `$XDG_DATA_HOME/opencode`, else `~/.local/share/opencode`. No such
+    /// directory is no sessions, so nothing is worth running opencode for.
+    pub fn data_dir() -> PathBuf {
+        Self::data_dir_in(std::env::var_os("XDG_DATA_HOME"), std::env::var_os("HOME"))
+    }
+
+    /// [`Self::data_dir`] with the two variables given rather than read.
+    pub fn data_dir_in(xdg_data_home: Option<OsString>, home: Option<OsString>) -> PathBuf {
+        xdg_data_home
+            .map(PathBuf::from)
+            .or_else(|| home.map(|home| PathBuf::from(home).join(".local").join("share")))
+            .unwrap_or_default()
+            .join("opencode")
+    }
+}
 
 impl Harness for OpenCodeHarness {
     fn kind(&self) -> HarnessKind {

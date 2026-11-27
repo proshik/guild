@@ -13,7 +13,9 @@
 //! first deliberate write to another tool's config. Codex's hooks live in
 //! its `config.toml`, the second. Both are no-ops outside a session Guild
 //! started, and the exceptions are explained at [`install_opencode`] and
-//! [`install_codex`].
+//! [`install_codex`]. Neither is written for an agent never run on this
+//! machine until the person starts it from Guild — [`install_door_if_known`],
+//! GLD-078.
 //!
 //! A command hook with a script rather than the CLI's own HTTP hook, by the
 //! person's choice: a script is the common, proven form, and the HTTP hook
@@ -201,20 +203,19 @@ pub fn install(dir: &Path) -> io::Result<Installed> {
     })
 }
 
-/// Where opencode loads its local plugins: `$XDG_CONFIG_HOME/opencode/plugins`
-/// or `~/.config/opencode/plugins`, whichever the environment says.
+/// Where opencode loads its local plugins: `<config>/plugins`, under
+/// opencode's config directory ([`OpenCodeHarness::config_dir`]:
+/// `$XDG_CONFIG_HOME/opencode` or `~/.config/opencode`).
 ///
 /// A local `.js` plugin need only be dropped into this directory to be
 /// loaded — opencode's plugin command lists one that is simply there, and
 /// other tools may keep their own status plugins beside it. Guild's is
-/// written here by [`install_opencode`] when the window starts, under its
-/// own name, so it never touches theirs.
+/// written here by [`install_opencode`] under its own name, so it never
+/// touches theirs.
+///
+/// [`OpenCodeHarness::config_dir`]: guild_session::harness::OpenCodeHarness::config_dir
 pub fn opencode_plugins_dir() -> PathBuf {
-    let config = std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| Path::new(&home).join(".config")))
-        .unwrap_or_default();
-    config.join("opencode").join("plugins")
+    guild_session::harness::OpenCodeHarness::config_dir().join("plugins")
 }
 
 /// Write opencode's status plugin into opencode's own plugins directory.
@@ -227,10 +228,54 @@ pub fn opencode_plugins_dir() -> PathBuf {
 /// Guild sets on what it launches, so the person's own opencode runs bear
 /// the file and nothing else.
 pub fn install_opencode() -> io::Result<PathBuf> {
-    let dir = opencode_plugins_dir();
+    install_opencode_into(&guild_session::harness::OpenCodeHarness::config_dir())
+}
+
+/// [`install_opencode`] into an opencode config directory of the caller's
+/// choosing — a test's scratch dir, as [`install_codex_into`] is.
+pub fn install_opencode_into(config: &Path) -> io::Result<PathBuf> {
+    let dir = config.join("plugins");
     std::fs::create_dir_all(&dir)?;
     write_if_changed(&dir.join(OPENCODE_PLUGIN_NAME), OPENCODE_PLUGIN, 0o644)?;
     Ok(dir.join(OPENCODE_PLUGIN_NAME))
+}
+
+/// Whether the window may write the agents' global status doors at all.
+/// `GUILD_NO_GLOBAL_HOOKS` says no — an isolated dev window may use the
+/// real harnesses without rewriting their global integration files — at
+/// the start and at a launch alike.
+pub fn global_hooks_allowed() -> bool {
+    std::env::var_os("GUILD_NO_GLOBAL_HOOKS").is_none()
+}
+
+/// Write `harness`'s status door into its directory in `dirs` — the Codex
+/// hook block or the opencode plugin — known or not: what a launch from
+/// Guild does before the process starts, so the first session's status
+/// moves (GLD-078). `None` for Claude, which has no door to write.
+pub fn install_door(
+    dirs: &guild_session::harness::AgentDirs,
+    harness: guild_session::HarnessKind,
+) -> Option<io::Result<PathBuf>> {
+    let dir = dirs.of(harness)?;
+    Some(match harness {
+        guild_session::HarnessKind::Codex => install_codex_into(dir),
+        _ => install_opencode_into(dir),
+    })
+}
+
+/// [`install_door`], only for an agent [known] here — what the window's
+/// start does. An agent never run on this machine gets no directory and no
+/// file from a window that merely opened (GLD-078).
+///
+/// [known]: guild_session::harness::known
+pub fn install_door_if_known(
+    dirs: &guild_session::harness::AgentDirs,
+    harness: guild_session::HarnessKind,
+) -> Option<io::Result<PathBuf>> {
+    if !dirs.known(harness) {
+        return None;
+    }
+    install_door(dirs, harness)
 }
 
 /// The start of the block the window owns in Codex's config.

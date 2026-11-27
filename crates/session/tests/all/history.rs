@@ -15,6 +15,7 @@ fn stores(dir: &Scratch) -> Stores {
         claude: dir.join("claude-projects"),
         codex: dir.join("codex"),
         path: dir.join("bin").into_os_string(),
+        opencode: dir.join("opencode-data"),
     }
 }
 
@@ -467,6 +468,29 @@ fn codex_s_home_is_codex_home_else_dot_codex() {
     assert_eq!(CodexHarness::home_in(None, None), Path::new(""));
 }
 
+/// opencode's two directories, by the XDG variables, else under `HOME` —
+/// the config one its plugin goes in, the data one its sessions are in.
+#[test]
+fn opencode_s_directories_follow_xdg_else_home() {
+    use guild_session::harness::OpenCodeHarness;
+    assert_eq!(
+        OpenCodeHarness::config_dir_in(Some("/x/config".into()), Some("/Users/p".into())),
+        Path::new("/x/config/opencode")
+    );
+    assert_eq!(
+        OpenCodeHarness::config_dir_in(None, Some("/Users/p".into())),
+        Path::new("/Users/p/.config/opencode")
+    );
+    assert_eq!(
+        OpenCodeHarness::data_dir_in(Some("/x/data".into()), Some("/Users/p".into())),
+        Path::new("/x/data/opencode")
+    );
+    assert_eq!(
+        OpenCodeHarness::data_dir_in(None, Some("/Users/p".into())),
+        Path::new("/Users/p/.local/share/opencode")
+    );
+}
+
 /// A cache is per file, not per folder; the same `History` must not
 /// leak one folder's cached session into another's answer (Task 7 keeps
 /// one `History` across a worktree switch).
@@ -498,7 +522,9 @@ fn codex_cache_does_not_leak_a_session_between_folders() {
 /// runs `body` in the folder it was started in. The test's `PATH` is only
 /// `<scratch>/bin`, so `body` names any tool it needs — `cat`, `sleep` —
 /// by its absolute path; `echo`, `exit` and `wait` are `sh` builtins.
+/// Its data directory is made too: an opencode that has sessions has one.
 fn opencode(dir: &Scratch, body: &str) {
+    std::fs::create_dir_all(dir.join("opencode-data")).unwrap();
     let bin = dir.join("bin");
     std::fs::create_dir_all(&bin).unwrap();
     let script = bin.join("opencode");
@@ -641,6 +667,45 @@ fn opencode_s_own_exit_does_not_wait_for_what_it_left_running() {
         seen,
         [(HarnessKind::OpenCode, "ses_a", "Осталось после выхода")]
     );
+}
+
+/// GLD-078: an `opencode` on the `PATH` that was never run has no data
+/// directory, and is not run to say it has no sessions — running it is what
+/// created its directories, and ~109 MB in `~/.npm`, on a fresh account.
+#[test]
+fn an_opencode_without_its_data_directory_is_not_run() {
+    let dir = Scratch::new("history-opencode-unknown-");
+    let stores = stores(&dir);
+    let folder = dir.join("guild");
+    std::fs::create_dir_all(&folder).unwrap();
+    let ran = dir.join("ran");
+    let answer = serde_json::json!([
+        {"id":"ses_a","title":"Found","updated":1790355564437_u64,"created":1,"directory":folder,"projectId":"p"}
+    ]);
+    std::fs::write(dir.join("answer.json"), answer.to_string()).unwrap();
+    opencode(
+        &dir,
+        &format!(
+            "echo > '{}'\n/bin/cat '{}'",
+            ran.display(),
+            dir.join("answer.json").display()
+        ),
+    );
+    std::fs::remove_dir(&stores.opencode).unwrap();
+
+    let mut history = History::default();
+    assert!(history.recent(&stores, &folder, 50).is_empty());
+    assert!(
+        history
+            .since(&stores, &folder, SystemTime::UNIX_EPOCH)
+            .is_empty()
+    );
+    assert!(!ran.exists(), "opencode was run without its data directory");
+
+    // Its directory there, the same opencode is asked as before.
+    std::fs::create_dir_all(&stores.opencode).unwrap();
+    assert_eq!(history.recent(&stores, &folder, 50).len(), 1);
+    assert!(ran.exists());
 }
 
 #[test]

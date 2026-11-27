@@ -473,6 +473,13 @@ impl Root {
         if !self.integrations.external() {
             return;
         }
+        // GLD-078: `codex app-server` is not run for a Codex never run
+        // here — it is what creates `~/.codex` and its databases. The card
+        // shows the agent in front, and a Codex tab in front has a home by
+        // then: the next tick asks.
+        if !guild_session::harness::known(&guild_session::harness::CodexHarness::home()) {
+            return;
+        }
         self.usage.codex.ask(|| {
             let path = guild_session::login_path::path();
             Fetched {

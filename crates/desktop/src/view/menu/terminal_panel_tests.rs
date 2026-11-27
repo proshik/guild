@@ -1679,6 +1679,9 @@ fn codex_queued_hooks_and_disk_completion_keep_exact_request(cx: &mut TestAppCon
             r.active_tab = None;
             r.window_focused = false;
             r.attach_test_hooks(dir.path());
+            // GLD-078: a diagnostic window's launches write no agent's
+            // global door — only a production window's may.
+            assert_eq!(r.hook_launch().unwrap().doors, None);
             (session, r.hook_launch().unwrap().socket)
         })
     });

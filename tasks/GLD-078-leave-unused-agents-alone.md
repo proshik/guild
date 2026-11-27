@@ -40,22 +40,22 @@ when the person starts it from Guild.
 
 ## Acceptance
 
-- [ ] WHEN Guild starts and Codex's home (`$CODEX_HOME`, else `~/.codex`)
+- [x] WHEN Guild starts and Codex's home (`$CODEX_HOME`, else `~/.codex`)
       does not exist THEN Guild writes no Codex hook block, creates no
       Codex directory and runs no `codex app-server`.
-- [ ] WHEN Guild starts and opencode's config directory
+- [x] WHEN Guild starts and opencode's config directory
       (`$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`) does not
       exist THEN Guild writes no plugin there, and it runs no `opencode`
       for history while opencode's data directory does not exist.
-- [ ] WHEN the agent's directory already exists THEN everything behaves as
+- [x] WHEN the agent's directory already exists THEN everything behaves as
       today (the author's machine sees no change).
-- [ ] WHEN the person starts Codex or OpenCode from Guild for the first time
+- [x] WHEN the person starts Codex or OpenCode from Guild for the first time
       THEN its hook block or plugin is installed before the process starts,
       so its status moves from the first session.
-- [ ] `<program> --version` probes stay as they are (they decide *not on
+- [x] `<program> --version` probes stay as they are (they decide *not on
       PATH*); a probe that is found to create the agent's files is reported
       in the plan rather than changed silently.
-- [ ] `GUILD_NO_GLOBAL_HOOKS` keeps its meaning.
+- [x] `GUILD_NO_GLOBAL_HOOKS` keeps its meaning.
 
 ## Checks
 
@@ -72,6 +72,34 @@ when the person starts it from Guild.
 
 - Not a change to what Guild writes once an agent is in use.
 - No new setting, notice or interface.
+
+## Plan
+
+One rule, `guild_session::harness::known(dir)` — the directory exists —
+over each agent's own directory: `CodexHarness::home()`,
+`OpenCodeHarness::config_dir()` (the plugin) and `OpenCodeHarness::data_dir()`
+(its sessions). `AgentDirs` names the first two for the doors.
+
+1. History: `Stores` carries opencode's data directory; `opencode::recent`
+   runs nothing while it does not exist.
+2. Start: `start_hooks` writes each door through `hooks::install_door_if_known`;
+   Codex still also needs `codex` on the login `PATH`, as before.
+3. Limits card: `ask_codex` asks nothing while Codex's home does not exist;
+   the card shows the agent in front, and a Codex tab in front has its home
+   by the next tick.
+4. Launch: `guild_session::Hooks` carries `doors`, set by `hook_launch` only
+   for a production window with `GUILD_NO_GLOBAL_HOOKS` unset, and
+   `terminal::view::open_with_selection` — every agent tab's one launch path
+   — writes the harness's door through `write_door` before the process is
+   built and spawned. A diagnostic window's launches carry `None`.
+
+**Probe finding (not changed):** measured with an empty scratch `HOME`,
+`opencode --version` (v2.4.2) itself creates `~/.config/opencode`,
+`~/.local/{share,state}/opencode` and `~/.cache/opencode`; `codex --version`
+(0.172.0) creates nothing. The probe (`Root::opencode_floor_missed`) runs
+only when the person opens or resumes an OpenCode tab, never at the start,
+so it does not break this task's start rule — but after that first probe
+opencode is "known" by its directories.
 
 ## Context
 

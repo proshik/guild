@@ -404,6 +404,7 @@ mod tests {
             statusline_settings: dir.join("statusline.json"),
             socket: dir.join("fixture.sock"),
             user_statusline: None,
+            doors: None,
         };
         let prompt = "literal first task ' \" $(touch never) ; Привет";
         let mut invalid = settings.clone();

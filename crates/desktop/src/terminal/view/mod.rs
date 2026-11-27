@@ -1521,6 +1521,12 @@ pub fn open_with_selection(
             .flatten(),
         ..hooks.clone()
     });
+    // GLD-078: the agent's status door, written before the process starts
+    // — an agent the window's start left alone, because it was never run
+    // here, is started now, and its first session's status must move.
+    if let Some(Err(err)) = write_door(harness, hooks.as_ref()) {
+        tracing::warn!(%err, ?harness, "Guild could not write its status door before the launch");
+    }
     let mut command = harness_command(
         harness,
         session,
@@ -1602,6 +1608,17 @@ pub fn open_with_selection(
         view.restoring = preview.map(std::rc::Rc::new);
     });
     Ok(view)
+}
+
+/// What a launch writes before its process starts: `harness`'s status door
+/// in the directories `hooks` names — nothing when it names none, which is
+/// a window that may not touch the agents' global files, or for Claude.
+/// Known or not, the person is starting this agent now (GLD-078).
+pub(crate) fn write_door(
+    harness: HarnessKind,
+    hooks: Option<&guild_session::Hooks>,
+) -> Option<std::io::Result<std::path::PathBuf>> {
+    crate::hooks::install_door(hooks?.doors.as_ref()?, harness)
 }
 
 /// The program a tab runs, as a command — what `open` launches, without
@@ -2307,12 +2324,52 @@ mod tests {
         );
     }
 
+    /// GLD-078: a launch writes its agent's door into the directories its
+    /// hooks name — even where none was, an agent first started from Guild —
+    /// and nothing when they name none, or for Claude.
+    #[test]
+    fn a_launch_writes_the_door_its_hooks_name_and_only_then() {
+        let root = tempfile::tempdir().unwrap();
+        let dirs = guild_session::harness::AgentDirs {
+            codex: root.path().join("codex"),
+            opencode: root.path().join("opencode"),
+        };
+        let quiet = hooks();
+        assert!(write_door(HarnessKind::Codex, None).is_none());
+        assert!(write_door(HarnessKind::Codex, Some(&quiet)).is_none());
+        assert!(write_door(HarnessKind::OpenCode, Some(&quiet)).is_none());
+        let doors = guild_session::Hooks {
+            doors: Some(dirs.clone()),
+            ..quiet
+        };
+        assert!(write_door(HarnessKind::Claude, Some(&doors)).is_none());
+        assert!(!dirs.codex.exists() && !dirs.opencode.exists());
+
+        let codex = write_door(HarnessKind::Codex, Some(&doors))
+            .unwrap()
+            .unwrap();
+        assert_eq!(codex, dirs.codex.join("config.toml"));
+        assert!(
+            std::fs::read_to_string(codex)
+                .unwrap()
+                .contains("# >>> guild hooks >>>")
+        );
+        let plugin = write_door(HarnessKind::OpenCode, Some(&doors))
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            plugin,
+            dirs.opencode.join("plugins").join("opencode-status.js")
+        );
+    }
+
     fn hooks() -> guild_session::Hooks {
         guild_session::Hooks {
             settings: PathBuf::from("/state/hooks/claude-settings.json"),
             statusline_settings: PathBuf::from("/state/hooks/claude-settings-statusline.json"),
             socket: PathBuf::from("/tmp/guild-hooks-1.sock"),
             user_statusline: None,
+            doors: None,
         }
     }
 
@@ -2325,6 +2382,7 @@ mod tests {
             statusline_settings: installed.statusline_settings.clone(),
             socket: root.path().join("synthetic-unbound.sock"),
             user_statusline: None,
+            doors: None,
         };
         let conversation = Conversation::Resume("synthetic-saved".into());
         for broken in [false, true] {
@@ -2391,6 +2449,7 @@ mod tests {
                 statusline_settings: installed.statusline_settings.clone(),
                 socket: root.path().join("synthetic-unbound.sock"),
                 user_statusline: statusline.then(|| "synthetic-user-statusline".into()),
+                doors: None,
             };
             let original: serde_json::Value = serde_json::from_slice(
                 &std::fs::read(if statusline {

@@ -6,7 +6,7 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::time::{Duration, UNIX_EPOCH};
 
-use super::{Past, one_line};
+use super::{Past, Stores, one_line};
 use crate::HarnessKind;
 
 const DEADLINE: Duration = Duration::from_secs(5);
@@ -17,8 +17,15 @@ const DEADLINE: Duration = Duration::from_secs(5);
 /// orphan is still caught quickly.
 const GRACE: Duration = Duration::from_millis(200);
 
-pub(crate) fn recent(path: &OsStr, folder: &Path, limit: usize) -> Vec<Past> {
-    ask(path, folder, limit)
+/// opencode's sessions of `folder` — none, and opencode not run, while
+/// its data directory does not exist: running it there is what creates its
+/// directories, and with Guild's plugin present it then installs the
+/// plugin's dependencies — GLD-078.
+pub(crate) fn recent(stores: &Stores, folder: &Path, limit: usize) -> Vec<Past> {
+    if !crate::harness::known(&stores.opencode) {
+        return Vec::new();
+    }
+    ask(&stores.path, folder, limit)
         .map(|out| parse(&out, folder))
         .unwrap_or_default()
 }

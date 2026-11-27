@@ -34,13 +34,25 @@ click.
 
 ## Acceptance
 
-- [ ] WHEN no project is open THEN the start screen lists *Open…* first,
+- [x] WHEN no project is open THEN the start screen lists *Open…* first,
       with *File ▸ Open…*'s shortcut, then *New project*, *Recent
       projects*, *Settings*.
-- [ ] WHEN the person clicks any of those rows, or chooses it with the
+- [x] WHEN the person clicks any of those rows, or chooses it with the
       keys, THEN its deed runs (the click reproduced and fixed first).
-- [ ] The look follows the Penpot proposal the person approves.
-- [ ] README's *Download* steps name what the screen and the menu say.
+- [x] The look follows the Penpot proposal the person approves.
+- [x] README's *Download* steps name what the screen and the menu say.
+
+## Design
+
+Approved by the person on 2026-11-27 (board `GLD-080 — Window — no project ·
+Open first, rows clickable` on Screens › Proposals). The rows were never
+broken: they were drawn as hints for the keys, with no click, and *Open
+project* was filtered out because `cmd-o` went to Open In and the list kept
+only actions with a stroke. Now every row is a 32 px row (`MENU_ROW`,
+`CARD_GAP` inside, `radius::ROW`) lit `surface.raised` with `text.primary`
+under the pointer, as the start screen's history rows are; a click
+dispatches the row's action, the one its menu item and stroke reach; a row
+without a stroke shows none. *Open…* (`Named::AddProject`) is first.
 
 ## Checks
 

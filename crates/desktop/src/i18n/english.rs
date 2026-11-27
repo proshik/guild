@@ -659,7 +659,7 @@ pub(super) fn english(text: Text) -> &'static str {
         Text::NoProjects => "No project open.",
         Text::HintNewTerminal => "New terminal",
         Text::HintRecentProjects => "Recent projects",
-        Text::HintOpenProject => "Open project",
+        Text::HintOpenProject => "Open…",
         Text::HintNewProject => "New project",
         Text::HintSettings => "Settings",
         Text::StartChoose => "choose what to start",

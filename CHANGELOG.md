@@ -10,6 +10,7 @@ would notice adds its line under `Unreleased` in its own branch.
 ### Fixed
 
 - Guild's very first launch no longer opens What's new with the whole changelog; it appears from the next update on, with what that update brings.
+- The empty window offers **Open…** first, to pick a folder that is already on the disk, and its rows can now be clicked, not only reached by their keys.
 - The Explorer no longer renames, moves, cuts or sends to the Trash a folder that is open in Guild as a project, or that holds one: those menu items are disabled with a note saying why, the row cannot be dragged, and their keys show a warning instead.
 - Guild no longer sets up Codex or OpenCode on a Mac where you have never used them: opening the window no longer creates `~/.codex`, `~/.config/opencode` or OpenCode's other folders, and no longer starts either program in the background. Their status hooks are added the first time you start them from Guild, so the status still shows from that first session.
 

@@ -115,7 +115,7 @@ starts), and a drop of other rows onto it is unchanged.
       drag (`view/tree_drag.rs`) stop offering it (acceptances 3-7).
 - [x] Tell the person why in English and Russian (`i18n/english.rs`,
       `i18n/russian.rs`).
-- [ ] `just check`, isolated; the window check against the approved
+- [x] `just check`, isolated; the window check against the approved
       proposal; then the Penpot file brought to what was merged.
       *Done 2026-11-27:* `just check` green (isolated state). In a dev
       window, `acme` with `backend` opened as a project: the row's menu
@@ -130,9 +130,8 @@ starts), and a drop of other rows onto it is unchanged.
       has `Menu — open project row in a group folder Explorer` and `Main
       window — group folder Explorer, an open project refused` at x 13300,
       y 7200 and 8100, built from Library copies. No token changed, so the
-      token script's counts are untouched. *Open:* the three GLD-057 boards
-      on Proposals — selected, not yet deleted (the tab crashed twice on
-      the heavy Screens page, then the person took the machine back).
+      token script's counts are untouched. The three GLD-057 boards are
+      gone from Proposals.
 - [x] Code review, round 1 of 1 (revust, project profile `comprehensive`,
       2026-11-27): partial — verification of two single-source findings
       did not finish. All five reported findings checked against the code

@@ -25,6 +25,7 @@ mod selection;
 pub use selection::LaunchSelection;
 
 use std::ffi::OsString;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -33,6 +34,60 @@ use crate::settings::PermissionMode;
 pub use claude::ClaudeHarness;
 pub use codex::CodexHarness;
 pub use opencode::OpenCodeHarness;
+
+/// Whether an agent is **known** on this machine: its own directory —
+/// [`CodexHarness::home`], [`OpenCodeHarness::config_dir`] for its plugin,
+/// [`OpenCodeHarness::data_dir`] for its sessions — exists. GLD-078, the
+/// person's decision "only the agents already known": the window writes into
+/// an agent's directory, and runs the agent in the background, only for an
+/// agent known here, or one the person starts from Guild. A program on the
+/// `PATH` that was never run is not known — running it, or writing its
+/// config, is what makes its directory, and the first run is the person's.
+///
+/// The one rule, so the start's writes, the limits card and the start
+/// screen's history cannot part on what "known" means.
+pub fn known(dir: &Path) -> bool {
+    !dir.as_os_str().is_empty() && dir.is_dir()
+}
+
+/// Each agent's own directory, where Guild writes its status door — Codex's
+/// home for the hook block, opencode's config directory for the plugin. The
+/// real ones from [`AgentDirs::here`], a test's own otherwise.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentDirs {
+    /// [`CodexHarness::home`]: `$CODEX_HOME`, else `~/.codex`.
+    pub codex: PathBuf,
+    /// [`OpenCodeHarness::config_dir`]: `$XDG_CONFIG_HOME/opencode`, else
+    /// `~/.config/opencode`.
+    pub opencode: PathBuf,
+}
+
+impl AgentDirs {
+    /// This machine's, by the environment.
+    pub fn here() -> Self {
+        Self {
+            codex: CodexHarness::home(),
+            opencode: OpenCodeHarness::config_dir(),
+        }
+    }
+
+    /// The directory `harness`'s door is written into — `None` for Claude,
+    /// whose hooks are handed on its command line and written into nothing
+    /// of its own.
+    pub fn of(&self, harness: HarnessKind) -> Option<&Path> {
+        match harness {
+            HarnessKind::Claude => None,
+            HarnessKind::Codex => Some(&self.codex),
+            HarnessKind::OpenCode => Some(&self.opencode),
+        }
+    }
+
+    /// Whether `harness` is [`known`] here; Claude, with nothing written of
+    /// its own, never is.
+    pub fn known(&self, harness: HarnessKind) -> bool {
+        self.of(harness).is_some_and(known)
+    }
+}
 
 /// Which agent CLI a session tab runs.
 ///

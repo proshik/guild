@@ -44,6 +44,9 @@ pub struct Stores {
     pub codex: PathBuf,
     /// The `PATH` `opencode` is looked up on.
     pub path: std::ffi::OsString,
+    /// opencode's data directory: while it does not exist opencode has no
+    /// sessions and is not run to say so — GLD-078.
+    pub opencode: PathBuf,
 }
 
 impl Stores {
@@ -53,6 +56,7 @@ impl Stores {
             claude: crate::transcript::projects_dir(),
             codex: crate::harness::CodexHarness::home(),
             path,
+            opencode: crate::harness::OpenCodeHarness::data_dir(),
         }
     }
 }
@@ -78,7 +82,7 @@ impl History {
     pub fn recent(&mut self, stores: &Stores, folder: &Path, limit: usize) -> Vec<Past> {
         let mut all = self.claude(stores, folder, limit, None);
         all.extend(codex::recent(&mut self.codex, &stores.codex, folder, limit));
-        all.extend(opencode::recent(&stores.path, folder, limit));
+        all.extend(opencode::recent(stores, folder, limit));
         all.sort_by_key(|p| std::cmp::Reverse(p.touched));
         all.truncate(limit);
         all
@@ -97,7 +101,7 @@ impl History {
             since,
             SINCE_LIMIT,
         ));
-        all.extend(opencode::recent(&stores.path, folder, SINCE_LIMIT));
+        all.extend(opencode::recent(stores, folder, SINCE_LIMIT));
         all.retain(|p| p.touched >= since);
         all.sort_by_key(|p| std::cmp::Reverse(p.touched));
         all.truncate(SINCE_LIMIT);
@@ -182,6 +186,7 @@ mod tests {
             claude: root.join("projects"),
             codex: root.join("codex"),
             path: root.join("bin").into_os_string(),
+            opencode: root.join("opencode"),
         };
         let write = |folder: &Path, id: &str| {
             let dir = stores.claude.join(claude::folder_name(folder));

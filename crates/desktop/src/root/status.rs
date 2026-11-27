@@ -55,26 +55,32 @@ impl Root {
 
         // An isolated dev window may use the real harnesses without rewriting
         // their global integration files. Per-session hooks below stay local.
-        if std::env::var_os("GUILD_NO_GLOBAL_HOOKS").is_none() {
-            // opencode's status lives in opencode's own plugins directory (no
-            // per-launch plugin flag in V2). The plugin is a no-op outside a
-            // session Guild started, so a failure here means only that opencode's
-            // dot will not move — never that the window is broken.
-            if let Err(err) = hooks::install_opencode() {
+        if hooks::global_hooks_allowed() {
+            // Each agent's status door is written at the start only for an
+            // agent already known here — its own directory exists (GLD-078,
+            // "only the agents already known"). One never run on this machine
+            // gets its door when the person first starts it from Guild
+            // (`terminal::view::open`), never from a window that merely
+            // opened. Both doors are no-ops outside a session Guild started,
+            // so a failure means only that a dot will not move.
+            let dirs = guild_session::harness::AgentDirs::here();
+            // opencode's lives in opencode's own plugins directory (no
+            // per-launch plugin flag in V2).
+            if let Some(Err(err)) =
+                hooks::install_door_if_known(&dirs, guild_session::HarnessKind::OpenCode)
+            {
                 tracing::warn!(%err, "Guild could not install its status plugin for opencode");
             }
-            // Codex's status lives in `~/.codex/config.toml` (no per-launch
-            // settings file as Claude's `--settings` is; its hooks have one
-            // home, the person's own config). Registered only when
-            // Codex is actually on the PATH — a person who has never run it
-            // should not acquire a `~/.codex/config.toml` from a window that
-            // merely read their disk. The script is a no-op without the socket
-            // Guild sets on what it launches, so this is the same guard as the
-            // opencode plugin.
+            // Codex's lives in `~/.codex/config.toml` (no per-launch settings
+            // file as Claude's `--settings` is; its hooks have one home, the
+            // person's own config) — and only while Codex is on the PATH.
             let login_path = guild_session::login_path::path_or_inherited();
             let codex_there = guild_session::HarnessKind::available_on(&login_path)
                 .contains(&guild_session::HarnessKind::Codex);
-            if codex_there && let Err(err) = hooks::install_codex() {
+            if codex_there
+                && let Some(Err(err)) =
+                    hooks::install_door_if_known(&dirs, guild_session::HarnessKind::Codex)
+            {
                 tracing::warn!(%err, "Guild could not register its status hooks for codex");
             }
         }
@@ -107,6 +113,10 @@ impl Root {
             socket: state.receiver.path().to_path_buf(),
             // Found per launch, by the folder it starts in.
             user_statusline: None,
+            // A launch writes its agent's door only from a window that may
+            // touch the agents' global files, as the start's writes are.
+            doors: (self.integrations.external() && hooks::global_hooks_allowed())
+                .then(guild_session::harness::AgentDirs::here),
         })
     }
 

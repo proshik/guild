@@ -176,6 +176,7 @@ fn a_launch_takes_the_taps_settings_only_with_a_status_line_to_chain() {
         statusline_settings: PathBuf::from("/s/claude-settings-statusline.json"),
         socket: PathBuf::from("/tmp/guild-hooks-1.sock"),
         user_statusline: None,
+        doors: None,
     };
     assert_eq!(plain.args()[1], "/s/claude-settings.json");
 

@@ -10,6 +10,7 @@ would notice adds its line under `Unreleased` in its own branch.
 ### Fixed
 
 - The Explorer no longer renames, moves, cuts or sends to the Trash a folder that is open in Guild as a project, or that holds one: those menu items are disabled with a note saying why, the row cannot be dragged, and their keys show a warning instead.
+- Guild no longer sets up Codex or OpenCode on a Mac where you have never used them: opening the window no longer creates `~/.codex`, `~/.config/opencode` or OpenCode's other folders, and no longer starts either program in the background. Their status hooks are added the first time you start them from Guild, so the status still shows from that first session.
 
 ## [nightly-2026-11-27] - 2026-11-27
 

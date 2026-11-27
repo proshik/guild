@@ -397,6 +397,89 @@ fn the_opencode_plugin_dirs_end_in_opencode_plugins() {
     );
 }
 
+/// GLD-078, "only the agents already known": at the window's start an
+/// agent whose own directory does not exist — `codex` and `opencode` on the
+/// `PATH`, never run — gets no directory and no file; one whose directory
+/// exists gets its door as before.
+#[test]
+fn the_start_writes_a_door_only_for_an_agent_already_known() {
+    use guild_session::HarnessKind::{Claude, Codex, OpenCode};
+    let dir = scratch("known");
+    let dirs = guild_session::harness::AgentDirs {
+        codex: dir.join("home").join(".codex"),
+        opencode: dir.join("home").join(".config").join("opencode"),
+    };
+
+    for harness in [Claude, Codex, OpenCode] {
+        assert!(hooks::install_door_if_known(&dirs, harness).is_none());
+    }
+    assert!(
+        !dir.join("home").exists(),
+        "nothing made for agents never run"
+    );
+
+    std::fs::create_dir_all(&dirs.codex).unwrap();
+    std::fs::create_dir_all(&dirs.opencode).unwrap();
+    let codex = hooks::install_door_if_known(&dirs, Codex).unwrap().unwrap();
+    assert_eq!(codex, dirs.codex.join("config.toml"));
+    assert!(
+        std::fs::read_to_string(&codex)
+            .unwrap()
+            .contains("# >>> guild hooks >>>")
+    );
+    let plugin = hooks::install_door_if_known(&dirs, OpenCode)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        plugin,
+        dirs.opencode.join("plugins").join("opencode-status.js")
+    );
+    assert_eq!(
+        std::fs::read_to_string(&plugin).unwrap(),
+        hooks::OPENCODE_PLUGIN
+    );
+    assert!(hooks::install_door_if_known(&dirs, Claude).is_none());
+}
+
+/// A launch from Guild writes its agent's door known or not — the person is
+/// starting it now, and its first session's status must move.
+#[test]
+fn a_launch_writes_its_agent_s_door_even_where_none_was() {
+    use guild_session::HarnessKind::{Claude, Codex, OpenCode};
+    let dir = scratch("launch-door");
+    let dirs = guild_session::harness::AgentDirs {
+        codex: dir.join("codex"),
+        opencode: dir.join("opencode"),
+    };
+
+    assert!(hooks::install_door(&dirs, Claude).is_none());
+    assert!(!dirs.codex.exists() && !dirs.opencode.exists());
+    let codex = hooks::install_door(&dirs, Codex).unwrap().unwrap();
+    assert!(
+        std::fs::read_to_string(codex)
+            .unwrap()
+            .contains("guild-hook.sh")
+    );
+    assert!(
+        !dirs.opencode.exists(),
+        "a Codex launch leaves opencode alone"
+    );
+    let plugin = hooks::install_door(&dirs, OpenCode).unwrap().unwrap();
+    assert!(plugin.is_file());
+}
+
+/// The known rule is one: a directory that exists, and nothing else — not an
+/// empty path (no `HOME`), not a file of the same name.
+#[test]
+fn an_agent_is_known_by_its_directory_alone() {
+    let dir = scratch("known-rule");
+    assert!(!guild_session::harness::known(Path::new("")));
+    assert!(!guild_session::harness::known(&dir.join("missing")));
+    std::fs::write(dir.join("file"), "").unwrap();
+    assert!(!guild_session::harness::known(&dir.join("file")));
+    assert!(guild_session::harness::known(&dir));
+}
+
 /// Codex's hooks live in the person's `config.toml`, beside another tool's,
 /// and Guild owns only the block between its own markers: the model line and
 /// the other tool's block must come back byte for byte, and a second install
@@ -452,6 +535,7 @@ fn a_launch_carries_the_settings_flag() {
         statusline_settings: PathBuf::from("/tmp/claude-settings-statusline.json"),
         socket: PathBuf::from("/tmp/guild-hooks-1.sock"),
         user_statusline: None,
+        doors: None,
     };
     assert_eq!(
         launch.args(),

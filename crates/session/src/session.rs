@@ -158,6 +158,12 @@ pub struct Hooks {
     /// tap is given only to a person who has a status line to chain to,
     /// so nobody gets a status row they did not have.
     pub user_statusline: Option<String>,
+    /// Where a Codex or OpenCode launch writes its agent's status door
+    /// before the process starts — GLD-078: an agent never run here gets
+    /// its door at its first launch from Guild, not at the window's start.
+    /// `None` writes nothing: a window that may not touch the agents'
+    /// global files (`GUILD_NO_GLOBAL_HOOKS`, a diagnostic window, a test).
+    pub doors: Option<crate::harness::AgentDirs>,
 }
 
 impl Hooks {

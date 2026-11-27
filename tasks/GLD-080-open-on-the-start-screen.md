@@ -59,6 +59,28 @@ without a stroke shows none. *Open…* (`Named::AddProject`) is first.
 - A test for the start model's rows and a window test for the click.
 - `just check`, isolated; the dev window compared with the approved board.
 
+## Open: Penpot not brought to what was merged
+
+Deferred by the person on 2026-11-28. The change is merged (main
+`f8991bb`), but the Penpot files still show the old empty window:
+
+- [ ] Library: the hint row as a component `start / hint` with
+      `Lit=No|Yes` (32 px, `space.card_gap` inside, `radius.row`;
+      `Lit=Yes` fills `color.surface.raised`, name `color.text.primary`),
+      and `start / nothing open` with four of them — *Open…* first, with
+      no stroke, then *New project*, *Recent projects*, *Settings* — and
+      the hints' gap 0.
+- [ ] Screens: relink the `start / nothing open` copy on `Window — no
+      project` (and any other copy) after the structural change.
+- [ ] Proposals: remove `GLD-080 — Window — no project · Open first, rows
+      clickable` (its backdrop image is inside it); it is the drawing to
+      copy from.
+- [ ] Token script: no new tokens were used; confirm the counts.
+
+Why deferred: on 2026-11-28 the Penpot tab would not open Guild — Library
+(two reloads, the editor never drew, while `design.penpot.app` answered
+200).
+
 ## Limits / non-goals
 
 - No change to *New project*, the Open panel or Recent projects.

@@ -59,27 +59,25 @@ without a stroke shows none. *Open…* (`Named::AddProject`) is first.
 - A test for the start model's rows and a window test for the click.
 - `just check`, isolated; the dev window compared with the approved board.
 
-## Open: Penpot not brought to what was merged
+## Penpot brought to what was merged
 
-Deferred by the person on 2026-11-28. The change is merged (main
-`f8991bb`), but the Penpot files still show the old empty window:
+Deferred on 2026-11-28 when the Penpot tab would not open the Library
+(the dedicated Chrome had hung; restarting it fixed it), and done the same
+day:
 
-- [ ] Library: the hint row as a component `start / hint` with
-      `Lit=No|Yes` (32 px, `space.card_gap` inside, `radius.row`;
-      `Lit=Yes` fills `color.surface.raised`, name `color.text.primary`),
-      and `start / nothing open` with four of them — *Open…* first, with
-      no stroke, then *New project*, *Recent projects*, *Settings* — and
-      the hints' gap 0.
-- [ ] Screens: relink the `start / nothing open` copy on `Window — no
-      project` (and any other copy) after the structural change.
-- [ ] Proposals: remove `GLD-080 — Window — no project · Open first, rows
-      clickable` (its backdrop image is inside it); it is the drawing to
-      copy from.
-- [ ] Token script: no new tokens were used; confirm the counts.
-
-Why deferred: on 2026-11-28 the Penpot tab would not open Guild — Library
-(two reloads, the editor never drew, while `design.penpot.app` answered
-200).
+- [x] Library: `start / hint` with `Lit=No|Yes` (32 px, `space.card_gap`
+      inside, `radius.row`; `Lit=Yes` fills `color.surface.raised`, name
+      `color.text.primary`), in a new Components section *Start hints*;
+      `start / nothing open` holds four of them — *Open…* first with its
+      stroke hidden, then *New project*, *Recent projects*, *Settings* —
+      with the hints' gap 0.
+- [x] Screens: the `start / nothing open` copy on `Window — no project`
+      swapped to the changed component; it was the only copy.
+- [x] Proposals: the GLD-080 board removed.
+- [x] Tokens: `view.start.hint_gap` (the `.gap(px(7.0))` the code no longer
+      spells) unbound and removed from `common` in both files, and from
+      `scripts/penpot-tokens.py`; the script's counts are 541 / 74 / 74,
+      as both files' sets.
 
 ## Limits / non-goals
 

@@ -479,7 +479,6 @@ DERIVED = [
     ("opacity", "view.start.faint_mark", "0.35", "view/kind.rs FAINT: a full-colour harness mark not on PATH"),
     ("sizing", "view.start.rows", "{space.start_column} + 2 * {space.card_gap}", "view/start.rs the recent rows .mx(-CARD_GAP): wider than the column by a gap either side"),
     ("sizing", "view.start.hints", "300", "view/body.rs HINTS: the two columns of keyboard hints"),
-    ("spacing", "view.start.hint_gap", "7", "view/body.rs hints .gap(px(7.0))"),
     ("number", "view.sheet.leading", str(round(px("LINE", "worktree_confirmation") / px("BODY", "size"), 4)), "view/worktree_removal.rs card .line_height(LINE) at BODY: LINE / BODY, computed here because Penpot applies no number token that refers to a sizing one"),
     ("spacing", "view.problems.depth_1", "{space.tree_padding} + {space.tree_indent}", "view/problems.rs row .pl(TREE_PADDING + TREE_INDENT * depth), depth 1"),
     ("spacing", "view.problems.depth_2", "{space.tree_padding} + 2 * {space.tree_indent}", "view/problems.rs row padding at depth 2: a file's problems under src/"),

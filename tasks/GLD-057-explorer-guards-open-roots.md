@@ -51,7 +51,7 @@ surfaces read the same guard as the handlers. To be drawn in Penpot from
 the Library's components and approved before code (`docs/penpot.md`); the
 person's answer here is the decision, the Penpot approval is the gate.
 
-## Proposal (Penpot) — to draw on Screens › Proposals, then approve
+## Proposal (Penpot) — approved 2026-11-27
 
 What the code draws today (read 2026-11-27, main f65258f):
 - A row's right-button menu is `view/menu/tree.rs`: a directory gets the
@@ -66,39 +66,37 @@ What the code draws today (read 2026-11-27, main f65258f):
 - `root/transfers.rs:106` `operation_sources` and `:73` `select_operation_target`
   filter by `writable_row` only.
 
-Board to add (built from Library components + tokens, real states only):
-1. `Explorer — group folder · member row` (a directory row that is itself an
-   open root): the transform group's *Rename…*, *Move to Trash*, *Cut*,
-   *Move* drawn disabled (the Library's disabled state), *Copy* and
-   *Paste* stay enabled (Copy is not a write to the source); the row's drag
-   handle absent / row not draggable.
-2. `Explorer — directory containing an open root` (e.g. a checkout holding a
-   worktree): same — the whole directory row's writes disabled.
-3. The same two rows with the menu open on a key-binding route: the gesture
-   is refused with the notice "<name> is open in Guild as a project; close it
-   first" (EN) and its Russian string, drawn as a Notice (Library Dialogs/Notices).
+Drawn on 2026-11-27 on Guild — Screens › Proposals and approved by the
+person the same day. The unchanged parts of each screen are an image of
+`Main window — group folder Explorer`; what changes is built from Library
+copies and tokens:
 
-States that must NOT appear: the tree's own root row is already refused
-(`writable_row`) and is unchanged (limits); Copy stays enabled.
+1. `GLD-057 — group folder Explorer · open member row`: `backend` (an open
+   project in the group folder `acme`) right-clicked. The directory menu
+   (`menu / row` copies): *Move…*, *Cut*, *Rename…* and *Delete* are the
+   Library's `Kind=Disabled shortcut` — drawn faint, their strokes kept, not
+   taken; *Copy* and *Paste* stay enabled (Copy does not write the source,
+   Paste writes into the folder, not over it). A footnote at the menu's foot,
+   the `Entry::Note` Open In already uses (`popup::note`: one line, eyebrow,
+   `text.faint`, truncated, never widens the menu), says why: **Open as a
+   project** / **Открыт как проект**.
+2. `GLD-057 — group folder Explorer · refused by a key`: the same row
+   selected and ⇧F6, ⌘Backspace, ⌘X or F6 pressed: nothing on disk changes
+   and a Warning notice (`Root::warn`, the Library's `notice`
+   `Level=Warning`) says **“backend” is open in Guild as a project — close
+   it first** / **«backend» открыт в Guild как проект — сначала закройте
+   его**. In the containing case the name is the open root's path relative
+   to the tree, e.g. “services/backend”.
+3. `GLD-057 — menu of a folder that holds an open project (part)`: the same
+   menu for a folder that contains an open root; the footnote reads **Holds
+   an open project** / **Внутри открытый проект**.
+
+Not drawn, because nothing shows: the row is not a drag source (no drag
+starts), and a drop of other rows onto it is unchanged.
 
 ## Plan
 
-- [ ] Draw the refusal in Penpot (menu items disabled, row not draggable)
-      on the Screens file's Proposals page and get the person's approval
-      before any code (`docs/penpot.md`).
-- [ ] Reproduce: a test in `crates/desktop/tests/all/tree.rs` that renames
-      / trashes / moves an open-root member row today and fails for that
-      reason before the fix (acceptance 1).
-- [ ] Add the guard: a source that is an open root, or contains one, is
-      refused at `file_operations`/`tree`/`transfers`/`tree_drag` handlers
-      on the resolved source path, and the menu (`view/menu/tree.rs`) and
-      drag (`view/tree_drag.rs`) stop offering it (acceptances 3-7).
-- [ ] Tell the person why in English and Russian (`i18n/english.rs`,
-      `i18n/russian.rs`).
-- [ ] `just check`, isolated; the window check against the approved
-      proposal; then the Penpot file brought to what was merged.
-
-- [ ] Draw the refusal in Penpot (menu items disabled, row not draggable)
+- [x] Draw the refusal in Penpot (menu items disabled, row not draggable)
       on the Screens file's Proposals page and get the person's approval
       before any code (`docs/penpot.md`).
 - [ ] Reproduce: a test in `crates/desktop/tests/all/tree.rs` that renames

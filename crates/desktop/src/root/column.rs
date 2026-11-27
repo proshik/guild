@@ -2020,7 +2020,7 @@ impl Root {
                     self.select_workspace(workspace, cx);
                 }
                 self.select_project(project, cx);
-                let runs = self.runs_for_default_tab();
+                let runs = self.runs_for_default_tab(cx);
                 if let Some(kind) = Self::harness_missing(runs) {
                     return self.say_missing(kind, cx);
                 }

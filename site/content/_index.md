@@ -315,7 +315,7 @@ macOS 13 or later, on Apple silicon.
 1. Download Guild from the [releases](https://github.com/proshik/guild/releases) and move it to
    Applications.
 2. Choose **File ▸ Open…** and pick a repository.
-3. Press **+** beside the tabs and choose an agent.
+3. Choose an agent on the start screen that appears, or with the agent button beside the tabs.
 
 Guild is not notarized yet, so macOS refuses it the first time. On macOS 15 and later, open it once, then choose Open Anyway in System Settings ▸ Privacy & Security. On macOS 13 and 14, Control-click it in Applications and choose Open.
 {{< /landing/close >}}

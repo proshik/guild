@@ -837,8 +837,8 @@ fn inspect_continuation_snapshot(
     }
     if let Some(kind) = Root::harness_missing(record.runs) {
         return Err(format!(
-            "adapter_unavailable: {} is not on the PATH",
-            kind.program()
+            "adapter_unavailable: {}",
+            guild_session::command::not_installed(kind)
         ));
     }
     if record.runs.harness() == Some(guild_session::HarnessKind::OpenCode)

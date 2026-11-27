@@ -85,12 +85,24 @@ impl Root {
                     });
                     return;
                 };
+                // The agent is decided before the worktree is made, so a
+                // refusal leaves nothing behind.
+                let harness = match prompt {
+                    Some(_) => match self.command_harness(*harness, cx) {
+                        Ok(harness) => harness,
+                        Err(because) => {
+                            let _ = answer.send(Answer::Refused { because });
+                            return;
+                        }
+                    },
+                    None => guild_session::HarnessKind::Claude,
+                };
                 let task = prompt.clone().map(|prompt| Task {
                     prompt,
                     caller: caller.clone(),
                     front: *front,
                     workspace: workspace.clone(),
-                    harness: harness.unwrap_or(guild_session::HarnessKind::Claude),
+                    harness,
                 });
                 if let Some(task) = &task
                     && let Err(because) = self.refuses_task(project, task)
@@ -116,16 +128,19 @@ impl Root {
                 front,
                 workspace,
                 harness,
-            } => self.command_session_new(
-                worktree,
-                prompt.clone(),
-                caller.as_deref(),
-                *front,
-                workspace.as_deref(),
-                harness.unwrap_or(guild_session::HarnessKind::Claude),
-                None,
-                cx,
-            ),
+            } => match self.command_harness(*harness, cx) {
+                Ok(harness) => self.command_session_new(
+                    worktree,
+                    prompt.clone(),
+                    caller.as_deref(),
+                    *front,
+                    workspace.as_deref(),
+                    harness,
+                    None,
+                    cx,
+                ),
+                Err(because) => Answer::Refused { because },
+            },
             Command::SessionNewInGroup {
                 group,
                 prompt,
@@ -133,15 +148,18 @@ impl Root {
                 front,
                 workspace,
                 harness,
-            } => self.command_session_new_in_group(
-                group,
-                prompt.clone(),
-                caller.as_deref(),
-                *front,
-                workspace.as_deref(),
-                harness.unwrap_or(guild_session::HarnessKind::Claude),
-                cx,
-            ),
+            } => match self.command_harness(*harness, cx) {
+                Ok(harness) => self.command_session_new_in_group(
+                    group,
+                    prompt.clone(),
+                    caller.as_deref(),
+                    *front,
+                    workspace.as_deref(),
+                    harness,
+                    cx,
+                ),
+                Err(because) => Answer::Refused { because },
+            },
             Command::GroupCheck {
                 group,
                 workspace,
@@ -314,13 +332,15 @@ impl Root {
 
     /// Why a task for a worktree of `project`'s repository would not start,
     /// asked **before the worktree is made** — M13.1, decision 3. The same
-    /// three questions `command_session_new` asks after, so a worktree is
-    /// never made for a session that will be refused: a task may not start
-    /// a task, OpenCode must be v2, and the workspace must be decidable.
+    /// questions `command_session_new` asks after, so a worktree is never
+    /// made for a session that will be refused: a task may not start a
+    /// task, its agent must be installed, OpenCode must be v2, and the
+    /// workspace must be decidable.
     fn refuses_task(&self, project: guild_session::ProjectId, task: &Task) -> Result<(), String> {
         if guild_session::command::refuses_session(true, self.is_task(task.caller.as_deref())) {
             return Err(TASK_FROM_A_TASK.to_owned());
         }
+        self.command_agent_installed(task.harness)?;
         if task.harness == guild_session::HarnessKind::OpenCode && Self::opencode_floor_missed() {
             return Err(OPENCODE_FLOOR.to_owned());
         }
@@ -516,8 +536,10 @@ impl Root {
                 worktree.display()
             ));
         }
-        if let Some(kind) = Self::harness_missing(record.runs) {
-            return Err(format!("{} is not on the PATH", kind.program()));
+        if let Some(kind) = record.runs.harness()
+            && !self.available.probe().contains(&kind)
+        {
+            return Err(guild_session::command::not_installed(kind));
         }
         if record.runs.harness() == Some(guild_session::HarnessKind::OpenCode)
             && Self::opencode_floor_missed()
@@ -683,6 +705,47 @@ impl Root {
     /// session that ran it, which is exactly right: a task's children are
     /// that task's.
     ///
+    /// The agent a command's session runs — GLD-081's review: the one it
+    /// named, or **the default the window's own `+` would open**, asked
+    /// now: the person's choice, else the first agent installed. The
+    /// command line cannot see what is installed where the window runs, so
+    /// it names nothing and the window decides.
+    ///
+    /// **A default that is the Terminal is refused, not replaced.** A
+    /// chosen one is the person's, and picking an agent behind it would
+    /// overrule them; one nobody chose means no agent is installed, which
+    /// is said with where each comes from. Both are told the way out.
+    fn command_harness(
+        &mut self,
+        named: Option<guild_session::HarnessKind>,
+        cx: &mut Context<Root>,
+    ) -> Result<guild_session::HarnessKind, String> {
+        use guild_session::{DefaultTab, HarnessKind, command};
+        if let Some(named) = named {
+            return Ok(named);
+        }
+        let chosen = self.settings.default_tab.is_some();
+        match self.default_tab_now(cx) {
+            DefaultTab::Claude => Ok(HarnessKind::Claude),
+            DefaultTab::OpenCode => Ok(HarnessKind::OpenCode),
+            DefaultTab::Codex => Ok(HarnessKind::Codex),
+            DefaultTab::Terminal if chosen => Err(command::TERMINAL_IS_THE_DEFAULT.to_owned()),
+            DefaultTab::Terminal => Err(command::no_agent_installed()),
+        }
+    }
+
+    /// Refuse a command's session whose agent is not on the `PATH`, with
+    /// where it is installed from — GLD-081's review. Before, the tab was
+    /// opened, its agent failed to start, and the command line was told
+    /// *started*: an agent waiting on a session that never ran.
+    fn command_agent_installed(&self, harness: guild_session::HarnessKind) -> Result<(), String> {
+        if self.available.probe().contains(&harness) {
+            Ok(())
+        } else {
+            Err(guild_session::command::not_installed(harness))
+        }
+    }
+
     /// The `Runs` a `session new` starts a tab with, for a chosen harness.
     /// All harnesses run in terminals.
     fn runs_for(harness: guild_session::HarnessKind) -> guild_session::Runs {
@@ -736,8 +799,9 @@ impl Root {
     }
 
     /// What refuses a session before anything is opened: provenance — a
-    /// task may not start a task — the launch selection, and the OpenCode
-    /// floor. The same for `session new` and its `--group` door.
+    /// task may not start a task — the launch selection, an agent that is
+    /// not installed, and the OpenCode floor. The same for `session new`
+    /// and its `--group` door.
     fn command_session_refusal(
         &self,
         task: bool,
@@ -749,6 +813,7 @@ impl Root {
             return Err(TASK_FROM_A_TASK.to_owned());
         }
         validate_launch_selection(harness, selection)?;
+        self.command_agent_installed(harness)?;
         // The `guild session new --harness opencode` door is the agent's
         // and the shell's opencode — an opencode below V2 would launch and
         // never report status. The menu refuses at `open_harness_tab`; this
@@ -1991,6 +2056,185 @@ mod workflow_selection_tests {
             assert!(matches!(result,Answer::Refused {because} if because.contains("model")));
             assert_eq!(root.desk.sessions().count(), before);
             assert!(root.tabs.is_empty());
+        });
+    }
+}
+
+#[cfg(test)]
+mod agent_choice_tests {
+    //! GLD-081's review: a command's session runs the agent the window's
+    //! own `+` would open, and a missing one is refused with where it is
+    //! installed from — never a *started* for a tab whose agent never ran.
+    use super::*;
+    use gpui::{AppContext, TestAppContext};
+    use guild_session::{DefaultTab, HarnessKind, SessionMode, SessionRecord};
+
+    fn claude_only() -> Vec<HarnessKind> {
+        vec![HarnessKind::Claude]
+    }
+
+    fn codex_only() -> Vec<HarnessKind> {
+        vec![HarnessKind::Codex]
+    }
+
+    fn nothing() -> Vec<HarnessKind> {
+        Vec::new()
+    }
+
+    struct Fixture {
+        _state: tempfile::TempDir,
+        folder: tempfile::TempDir,
+        root: gpui::Entity<Root>,
+    }
+
+    fn fixture(cx: &mut TestAppContext) -> Fixture {
+        let folder = tempfile::tempdir().unwrap();
+        let state = tempfile::tempdir().unwrap();
+        let mut desk = guild_session::Desk::default();
+        desk.normalise();
+        desk.open_in(desk.active_workspace(), folder.path());
+        let root = cx.new(|cx| Root::diagnostic(desk, state.path().into(), cx));
+        Fixture {
+            _state: state,
+            folder,
+            root,
+        }
+    }
+
+    /// What the window answers `command`, at once.
+    fn ask(root: &mut Root, command: Command, cx: &mut Context<Root>) -> Answer {
+        let (answer, answered) = std::sync::mpsc::channel();
+        root.take_command(Asked { command, answer }, cx);
+        answered.try_recv().expect("answered at once")
+    }
+
+    fn session_new(fixture: &Fixture, harness: Option<HarnessKind>) -> Command {
+        Command::SessionNew {
+            worktree: fixture.folder.path().into(),
+            prompt: Some("the task".into()),
+            caller: None,
+            front: false,
+            workspace: None,
+            harness,
+        }
+    }
+
+    fn refused(answer: Answer) -> String {
+        match answer {
+            Answer::Refused { because } => because,
+            other => panic!("expected a refusal, got {other:?}"),
+        }
+    }
+
+    /// `guild session new` without `--harness` on a Mac with Codex and no
+    /// Claude Code runs Codex, as the `+` would; with a default chosen,
+    /// that one.
+    #[gpui::test]
+    fn without_a_harness_a_command_runs_the_window_s_default(cx: &mut TestAppContext) {
+        let fixture = fixture(cx);
+        fixture.root.update(cx, |root, cx| {
+            root.available.probe = codex_only;
+            assert_eq!(root.command_harness(None, cx), Ok(HarnessKind::Codex));
+            root.settings.default_tab = Some(DefaultTab::OpenCode);
+            assert_eq!(root.command_harness(None, cx), Ok(HarnessKind::OpenCode));
+            assert_eq!(
+                root.command_harness(Some(HarnessKind::Claude), cx),
+                Ok(HarnessKind::Claude),
+                "a named harness is the command's"
+            );
+        });
+    }
+
+    /// A default that is the Terminal starts nothing and says why: the
+    /// person's choice names `--harness`; no agent at all names where each
+    /// comes from. Nothing is opened either way.
+    #[gpui::test]
+    fn a_terminal_default_is_refused_with_the_way_out(cx: &mut TestAppContext) {
+        let fixture = fixture(cx);
+        fixture.root.update(cx, |root, cx| {
+            root.available.probe = nothing;
+            let because = refused(ask(root, session_new(&fixture, None), cx));
+            assert_eq!(because, guild_session::command::no_agent_installed());
+            assert!(because.contains("https://code.claude.com/docs/en/setup"));
+
+            root.available.probe = codex_only;
+            root.settings.default_tab = Some(DefaultTab::Terminal);
+            let because = refused(ask(root, session_new(&fixture, None), cx));
+            assert!(because.contains("--harness"), "{because}");
+            assert_eq!(root.desk.sessions().count(), 0);
+            assert!(root.tabs.is_empty());
+        });
+    }
+
+    /// The pre-existing hole the review found: `--harness codex` with no
+    /// Codex opened a tab whose agent died at once and answered *started*.
+    #[gpui::test]
+    fn a_missing_agent_is_refused_with_its_install_page(cx: &mut TestAppContext) {
+        let fixture = fixture(cx);
+        fixture.root.update(cx, |root, cx| {
+            root.available.probe = claude_only;
+            let because = refused(ask(
+                root,
+                session_new(&fixture, Some(HarnessKind::Codex)),
+                cx,
+            ));
+            assert_eq!(
+                because,
+                "Codex is not installed: install it from https://github.com/openai/codex"
+            );
+            assert_eq!(root.desk.sessions().count(), 0);
+            assert!(root.tabs.is_empty());
+        });
+    }
+
+    /// `worktree create --prompt` decides its agent before git is asked
+    /// for anything, so a refusal leaves no worktree behind.
+    #[gpui::test]
+    fn a_worktree_s_task_is_refused_before_the_worktree_is_made(cx: &mut TestAppContext) {
+        let fixture = fixture(cx);
+        fixture.root.update(cx, |root, cx| {
+            for (probe, harness) in [
+                (nothing as fn() -> Vec<HarnessKind>, None),
+                (claude_only, Some(HarnessKind::Codex)),
+            ] {
+                root.available.probe = probe;
+                let command = Command::WorktreeCreate {
+                    from: fixture.folder.path().into(),
+                    name: "topic".into(),
+                    base: None,
+                    prompt: Some("the task".into()),
+                    caller: None,
+                    front: false,
+                    workspace: None,
+                    harness,
+                };
+                let because = refused(ask(root, command, cx));
+                assert!(because.contains("installed"), "{because}");
+                assert!(root.pending_writes.is_empty());
+                assert!(root.pending_tasks.is_empty());
+            }
+        });
+    }
+
+    /// `session resume` of a session whose agent has gone says how to get
+    /// it back, in the words a new session is refused with.
+    #[gpui::test]
+    fn a_resume_whose_agent_is_missing_names_its_install_page(cx: &mut TestAppContext) {
+        let fixture = fixture(cx);
+        fixture.root.update(cx, |root, _| {
+            let workspace = root.desk.active_workspace();
+            let project = root.desk.projects().next().unwrap().id;
+            let id = root.desk.add_session(SessionRecord::new(
+                "Agent".into(),
+                guild_session::Seat { workspace, project },
+                fixture.folder.path().into(),
+                guild_session::Runs::Codex(SessionMode::Terminal),
+            ));
+            root.available.probe = claude_only;
+            assert_eq!(
+                root.resumable(&id.to_string(), None).map(|_| ()),
+                Err(guild_session::command::not_installed(HarnessKind::Codex))
+            );
         });
     }
 }

@@ -49,7 +49,6 @@ struct Read {
     folder: PathBuf,
     history: History,
     rows: Vec<Past>,
-    available: Vec<HarnessKind>,
 }
 
 impl Root {
@@ -115,15 +114,15 @@ impl Root {
         std::thread::spawn(move || {
             // Asked here, not on the window's thread: the login shell's
             // `PATH` may still be on its way, and `path` waits for it.
+            // Which agents it has is `root::availability`'s, on the same
+            // clock with or without the screen.
             let path = guild_session::login_path::path_or_inherited();
-            let stores = Stores::home(path.clone().into());
+            let stores = Stores::home(path.into());
             let rows = history.recent(&stores, &folder, LIMIT);
-            let available = HarnessKind::available_on(&path);
             let _ = send.send(Read {
                 folder,
                 history,
                 rows,
-                available,
             });
         });
         self.start_reading.answer = Some(receive);
@@ -176,10 +175,6 @@ impl Root {
         self.start_reading.answer = None;
         self.start_reading.history = Some(read.history);
         let mut changed = false;
-        if self.available != read.available {
-            self.available = read.available;
-            changed = true;
-        }
         if self.start_reading.folder.as_ref() == Some(&read.folder) {
             changed |= self.start.answered(read.rows);
         }
@@ -208,7 +203,7 @@ impl Root {
             return;
         }
         cx.stop_propagation();
-        let available = self.available.clone();
+        let available = self.available.shown().to_vec();
         match self.start.key(key, &available) {
             Some(deed) => self.start_deed(deed, window, cx),
             // An arrow moved the highlight or the chip; a dead tile's key
@@ -293,7 +288,7 @@ impl Root {
             Deed::Default => {
                 // A missing harness is refused, with its install page, in
                 // `open_harness_tab`, where every new-tab gesture meets.
-                let runs = self.runs_for_default_tab();
+                let runs = self.runs_for_default_tab(cx);
                 self.open_harness_tab(project, runs, window, cx);
             }
             Deed::Tile { tab } => {

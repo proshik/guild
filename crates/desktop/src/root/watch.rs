@@ -135,6 +135,10 @@ impl Root {
         // And the start screen's history, read on a thread while the
         // screen is up for a folder (M14.5).
         self.poll_start(cx);
+        // And which agents the login `PATH` has, asked on a thread at the
+        // start and every ten seconds while the window is in front — with
+        // tabs open as well as on the start screen (GLD-081's review).
+        self.poll_available(cx);
         // And the Sessions mode's Settled history, read on a thread while
         // the column lists sessions.
         self.poll_settled(cx);

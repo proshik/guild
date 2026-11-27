@@ -1853,3 +1853,17 @@ still exiting. A session terminal is counted in `terminal::retiring` from the
 hang-up until its child is reaped; `resume_past` waits for it off the window's
 thread and refuses after three seconds, and `guild session resume` refuses
 while it is counted. `cmd-shift-t` still reopens at once.
+
+### A picture's optimistic seed must not choose (2026-11-27)
+
+The window seeded its list of installed agents with every agent, so a tile
+was not greyed for the tens of milliseconds the first probe takes. Harmless
+while the list only greyed tiles; once GLD-081 made an unchosen default
+follow it, an early `cmd-t` on a Mac with Codex and no Claude Code asked for
+Claude, and the list was refreshed only while the start screen was up, so
+an agent installed or removed with tabs open was never seen. "Not asked yet"
+is a state of its own in `root::availability`: the tiles may still be drawn
+enabled by it, but the default drawn meanwhile is the Terminal, the clock
+probes with or without the start screen, and every press whose default
+nobody chose asks again on the spot. A seed chosen for how a thing looks
+must be re-read before it decides what a press does.

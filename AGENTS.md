@@ -36,6 +36,9 @@ crates/desktop/
                    and the one path that hands it to everything; the customizer's card
       areas        where a tab lands and which area has the keys: the window asking
                    stage.rs, and the one `Root::adopt_panes` every tab is made by
+      availability which agent CLIs the login PATH has: one shared answer, unknown
+                   until the first probe, refreshed on the clock and asked again
+                   at a press whose default nobody chose
       picker everywhere file_index symbols find_in_files preview speed_search
                    the one popup slot and what fills it: Search Everywhere,
                    the file and symbol indexes on threads, Find in Files, the

@@ -317,5 +317,5 @@ macOS 13 or later, on Apple silicon.
 2. Choose **File ▸ Open…** and pick a repository.
 3. Press **+** beside the tabs and choose an agent.
 
-Guild is not notarized yet: the first time, Control-click it in Applications and choose Open.
+Guild is not notarized yet, so macOS refuses it the first time. On macOS 15 and later, open it once, then choose Open Anyway in System Settings ▸ Privacy & Security. On macOS 13 and 14, Control-click it in Applications and choose Open.
 {{< /landing/close >}}

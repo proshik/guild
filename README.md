@@ -222,7 +222,7 @@ A window on your Mac around the agent CLIs you already use. Nothing in it needs 
 2. Choose **File ▸ Open…** and pick a repository.
 3. Press **+** beside the tabs and choose an agent.
 
-Guild is not notarized yet: the first time, Control-click it in Applications and choose **Open**.
+Guild is not notarized yet, so macOS refuses it the first time. On macOS 15 and later, open it once, then choose **Open Anyway** in System Settings ▸ Privacy & Security. On macOS 13 and 14, Control-click it in Applications and choose **Open**.
 
 Guild is released as nightlies from `main`, published on the Releases page. Once installed, it updates itself: when a new nightly is ready, **Update** appears in the title bar, with what it brings. If no build is listed there yet, build it from source.
 

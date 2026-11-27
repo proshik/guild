@@ -664,7 +664,7 @@ pub(super) fn russian(text: Text) -> &'static str {
         Text::NoProjects => "Проект не открыт.",
         Text::HintNewTerminal => "Новый терминал",
         Text::HintRecentProjects => "Недавние проекты",
-        Text::HintOpenProject => "Открыть проект",
+        Text::HintOpenProject => "Открыть…",
         Text::HintNewProject => "Новый проект",
         Text::HintSettings => "Настройки",
         Text::StartChoose => "выберите, что запустить",

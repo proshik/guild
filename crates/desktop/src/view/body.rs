@@ -1,7 +1,7 @@
 //! The tab's content, or what stands in for it.
 
 use gpui::prelude::*;
-use gpui::{Context, Window, div, px, rgb};
+use gpui::{Context, Window, div, rgb};
 
 use crate::actions::keymap::Named;
 use gpui_component::{Disableable, Sizable, button::Button};
@@ -356,35 +356,54 @@ impl Root {
                     .child(ui.text(Text::NoProjects)),
             )
             .child(
-                div()
-                    .flex()
-                    .flex_none()
-                    .flex_col()
-                    .gap(px(7.0))
-                    .w(HINTS)
-                    .children(keyboard_hints().into_iter().map(|(name, stroke)| {
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .gap(theme::space::CARD_PADDING)
-                            .child(
-                                div()
-                                    .whitespace_nowrap()
-                                    .text_size(theme::size::UI)
-                                    .text_color(rgb(theme.text.secondary))
-                                    .child(ui.text(name)),
-                            )
-                            .child(
-                                div()
-                                    .flex_none()
-                                    .whitespace_nowrap()
-                                    .font_family(self.code_font.clone())
-                                    .text_size(theme::size::META)
-                                    .text_color(rgb(theme.text.faint))
-                                    .child(crate::actions::printed(&stroke)),
-                            )
-                    })),
+                div().flex().flex_none().flex_col().w(HINTS).children(
+                    offered_rows().into_iter().enumerate().map(
+                        |(index, (name, action, stroke))| {
+                            // GLD-080: a row is a deed — the same action its
+                            // menu item and its stroke dispatch — lit under
+                            // the pointer as the start screen's history rows
+                            // are, so a newcomer who reaches for the mouse is
+                            // answered.
+                            let group: gpui::SharedString = format!("start-hint-{index}").into();
+                            let selector = format!("start-hint-{}", ui.text(name));
+                            div()
+                                .id(("start-hint", index))
+                                .debug_selector(move || selector.clone())
+                                .group(group.clone())
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .gap(theme::space::CARD_PADDING)
+                                .h(theme::space::MENU_ROW)
+                                .px(theme::space::CARD_GAP)
+                                .rounded(theme::radius::ROW)
+                                .cursor_pointer()
+                                .hover(|row| row.bg(rgb(theme.surface.raised)))
+                                .on_click(cx.listener(move |_, _, window, cx| {
+                                    window.dispatch_action(action.action(), cx);
+                                }))
+                                .child(
+                                    div()
+                                        .whitespace_nowrap()
+                                        .text_size(theme::size::UI)
+                                        .text_color(rgb(theme.text.secondary))
+                                        .group_hover(group, |text| {
+                                            text.text_color(rgb(theme.text.primary))
+                                        })
+                                        .child(ui.text(name)),
+                                )
+                                .children(stroke.map(|stroke| {
+                                    div()
+                                        .flex_none()
+                                        .whitespace_nowrap()
+                                        .font_family(self.code_font.clone())
+                                        .text_size(theme::size::META)
+                                        .text_color(rgb(theme.text.faint))
+                                        .child(crate::actions::printed(&stroke))
+                                }))
+                        },
+                    ),
+                ),
             )
             .into_any_element()
     }
@@ -403,13 +422,15 @@ const HINTS_OFFERED: &[(Text, Named)] = &[
     (Text::HintSettings, Named::OpenSettings),
 ];
 
-/// Keyboard guidance includes only actions with a current binding.
-fn keyboard_hints() -> Vec<(Text, String)> {
+/// Every row offered, with its stroke when the keymap has one — GLD-080.
+///
+/// A row is a deed to click, so one without a stroke stays: *Open…* has
+/// none since `cmd-o` went to Open In, and it is the row a newcomer with a
+/// repository on disk needs first.
+fn offered_rows() -> Vec<(Text, Named, Option<String>)> {
     HINTS_OFFERED
         .iter()
-        .filter_map(|(text, action)| {
-            crate::actions::stroke_for(*action).map(|stroke| (*text, stroke))
-        })
+        .map(|(text, action)| (*text, *action, crate::actions::stroke_for(*action)))
         .collect()
 }
 
@@ -424,14 +445,30 @@ const HINTS: gpui::Rems = theme::from_px(300.0);
 mod tests {
     use super::*;
 
+    /// GLD-080: the empty screen's first row opens an existing folder —
+    /// *File ▸ Open…*'s deed — even though it has no stroke (`cmd-o` is
+    /// Open In's), and every row is a deed to click, not only a hint.
     #[test]
-    fn keyboard_hints_omit_the_superseded_add_project_default() {
+    fn the_empty_screen_offers_open_first_with_or_without_a_stroke() {
         assert_eq!(
-            keyboard_hints(),
+            offered_rows(),
             vec![
-                (Text::HintNewProject, "cmd-shift-n".into()),
-                (Text::HintRecentProjects, "cmd-alt-shift-o".into()),
-                (Text::HintSettings, "cmd-,".into()),
+                (Text::HintOpenProject, Named::AddProject, None),
+                (
+                    Text::HintNewProject,
+                    Named::NewProject,
+                    Some("cmd-shift-n".into())
+                ),
+                (
+                    Text::HintRecentProjects,
+                    Named::RecentProjects,
+                    Some("cmd-alt-shift-o".into())
+                ),
+                (
+                    Text::HintSettings,
+                    Named::OpenSettings,
+                    Some("cmd-,".into())
+                ),
             ]
         );
     }

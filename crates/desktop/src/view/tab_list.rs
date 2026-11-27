@@ -451,7 +451,7 @@ impl Root {
                 .tooltip(tip(default_tab_label(ui, self.default_tab()).to_owned()))
                 .on_click(cx.listener(|root, _event, window, cx| {
                     if let Some(project) = root.active_project {
-                        let runs = root.runs_for_default_tab();
+                        let runs = root.runs_for_default_tab(cx);
                         root.open_harness_tab(project, runs, window, cx);
                     }
                 })),
@@ -473,7 +473,7 @@ impl Root {
                     ui.text(Text::NewTabKinds).to_owned(),
                     // Shared background availability snapshot, also used by the chord.
                     |root| Target::NewTab {
-                        available: root.available.clone(),
+                        available: root.available.shown().to_vec(),
                     },
                     cx,
                 ),

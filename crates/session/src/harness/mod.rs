@@ -127,6 +127,16 @@ impl HarnessKind {
         }
     }
 
+    /// The agent's own name, as a person knows it — what the command
+    /// line's refusals say (`command::not_installed`).
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Claude => "Claude Code",
+            Self::OpenCode => "OpenCode",
+            Self::Codex => "Codex",
+        }
+    }
+
     /// Where a person gets this agent: its own install page — GLD-081.
     /// What the notice for a missing agent and README's *Requirements*
     /// name; each was checked to resolve on 2026-11-27.

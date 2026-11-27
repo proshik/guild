@@ -117,22 +117,16 @@ fn shows_of(body: &Body) -> Option<Shows> {
     })
 }
 
-impl NewSession {
-    /// Resolve the action when it is invoked, using the current settings
-    /// and the agents installed — the default nobody chose follows those
-    /// (GLD-081).
-    fn runs(
-        &self,
-        settings: &guild_session::Settings,
-        available: &[guild_session::HarnessKind],
-    ) -> Runs {
-        use guild_session::{DefaultTab, SessionMode};
-        match settings.default_tab_among(available) {
-            DefaultTab::Claude => Runs::Claude(SessionMode::Terminal),
-            DefaultTab::OpenCode => Runs::OpenCode(SessionMode::Terminal),
-            DefaultTab::Codex => Runs::Codex(SessionMode::Terminal),
-            DefaultTab::Terminal => Runs::Shell,
-        }
+/// What a new tab of `tab` runs — `NewSession`'s, resolved when it is
+/// invoked from the current settings and the agents installed then
+/// (`Root::runs_for_default_tab`). Every harness runs in a terminal.
+fn runs_of(tab: guild_session::DefaultTab) -> Runs {
+    use guild_session::{DefaultTab, SessionMode};
+    match tab {
+        DefaultTab::Claude => Runs::Claude(SessionMode::Terminal),
+        DefaultTab::OpenCode => Runs::OpenCode(SessionMode::Terminal),
+        DefaultTab::Codex => Runs::Codex(SessionMode::Terminal),
+        DefaultTab::Terminal => Runs::Shell,
     }
 }
 
@@ -309,16 +303,13 @@ impl Root {
 
     /// The **+** button and start screen use the same current default as
     /// New Session. Every harness runs in a terminal.
-    pub(crate) fn runs_for_default_tab(&self) -> Runs {
-        NewSession.runs(&self.settings, &self.available)
-    }
-
-    /// The tab a new tab opens: the person's choice, or the first agent
-    /// installed until they make one — GLD-081. What the **+**'s mark, the
-    /// start screen's card and Settings' row show, from the same
-    /// availability the tiles and the chevron grey by.
-    pub(crate) fn default_tab(&self) -> guild_session::DefaultTab {
-        self.settings.default_tab_among(&self.available)
+    ///
+    /// **A default nobody chose is resolved at the press** — GLD-081's
+    /// review: the agents installed are asked now, not read off a picture
+    /// that may still be waiting for its first probe or be ten seconds
+    /// old (`root::availability`).
+    pub(crate) fn runs_for_default_tab(&mut self, cx: &mut Context<Root>) -> Runs {
+        runs_of(self.default_tab_now(cx))
     }
 
     /// Move one visible tab before or after another — M14, drag-and-drop in
@@ -2276,9 +2267,9 @@ impl Root {
     /// conflict site, six times. A handler now goes in the file that owns
     /// the subject, beside the method it calls.
     pub(crate) fn bind_tabs(&self, root: gpui::Div, cx: &mut Context<Root>) -> gpui::Div {
-        root.on_action(cx.listener(|root, action: &NewSession, window, cx| {
+        root.on_action(cx.listener(|root, _: &NewSession, window, cx| {
             if let Some(project) = root.active_project {
-                let runs = action.runs(&root.settings, &root.available);
+                let runs = root.runs_for_default_tab(cx);
                 root.open_harness_tab(project, runs, window, cx);
             }
         }))
@@ -2815,35 +2806,34 @@ mod tests {
         use guild_session::{DefaultTab, HarnessKind, SessionMode, Settings};
 
         let all = HarnessKind::ALL;
-        let action = NewSession;
         let mut settings = Settings::default();
         assert_eq!(
-            action.runs(&settings, &all),
+            runs_of(settings.default_tab_among(&all)),
             Runs::Claude(SessionMode::Terminal)
         );
 
         settings.default_tab = Some(DefaultTab::Codex);
         assert_eq!(
-            action.runs(&settings, &all),
+            runs_of(settings.default_tab_among(&all)),
             Runs::Codex(SessionMode::Terminal)
         );
         assert_eq!(
-            action.runs(&settings, &all),
+            runs_of(settings.default_tab_among(&all)),
             Runs::Codex(SessionMode::Terminal)
         );
 
         settings.default_tab = Some(DefaultTab::OpenCode);
         assert_eq!(
-            action.runs(&settings, &all),
+            runs_of(settings.default_tab_among(&all)),
             Runs::OpenCode(SessionMode::Terminal)
         );
 
         settings.default_tab = Some(DefaultTab::Terminal);
-        assert_eq!(action.runs(&settings, &all), Runs::Shell);
+        assert_eq!(runs_of(settings.default_tab_among(&all)), Runs::Shell);
 
         settings.default_tab = Some(DefaultTab::Claude);
         assert_eq!(
-            action.runs(&settings, &all),
+            runs_of(settings.default_tab_among(&all)),
             Runs::Claude(SessionMode::Terminal)
         );
     }
@@ -2854,22 +2844,21 @@ mod tests {
     fn new_session_without_a_choice_opens_the_first_installed_agent() {
         use guild_session::{DefaultTab, HarnessKind, SessionMode, Settings};
 
-        let action = NewSession;
         let mut settings = Settings::default();
         let codex_and_opencode = [HarnessKind::OpenCode, HarnessKind::Codex];
         assert_eq!(
-            action.runs(&settings, &codex_and_opencode),
+            runs_of(settings.default_tab_among(&codex_and_opencode)),
             Runs::Codex(SessionMode::Terminal)
         );
         assert_eq!(
-            action.runs(&settings, &[HarnessKind::OpenCode]),
+            runs_of(settings.default_tab_among(&[HarnessKind::OpenCode])),
             Runs::OpenCode(SessionMode::Terminal)
         );
-        assert_eq!(action.runs(&settings, &[]), Runs::Shell);
+        assert_eq!(runs_of(settings.default_tab_among(&[])), Runs::Shell);
 
         settings.default_tab = Some(DefaultTab::Claude);
         assert_eq!(
-            action.runs(&settings, &codex_and_opencode),
+            runs_of(settings.default_tab_among(&codex_and_opencode)),
             Runs::Claude(SessionMode::Terminal)
         );
     }

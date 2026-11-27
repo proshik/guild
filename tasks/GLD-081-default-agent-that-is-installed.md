@@ -72,6 +72,37 @@ to install it.
   new-tab gesture meets: before, `cmd-t` and the **+** opened a tab that
   died at once for a missing default, with no notice at all.
 
+## Review round 1 fixes
+
+- **bugs+impl-1** — `Root::available` seeded every agent as installed and
+  was refreshed only by the start screen's read, so an early `cmd-t`
+  chose a missing Claude and an agent installed with tabs open was never
+  seen. `root::availability::Availability` keeps "not asked yet" apart
+  (`None`): the tiles are still drawn enabled by it, the default drawn
+  meanwhile is the Terminal. The watch loop probes on a thread at the
+  start and every ten seconds while the window is in front, whatever
+  fills the middle, and a press whose default nobody chose
+  (`Root::default_tab_now`, through `runs_for_default_tab`) asks again on
+  the window's thread — the stat calls `harness_missing` already makes at
+  every press, and the one login-shell wait a process allows — and
+  publishes the answer, so the mark, tooltip, card and Settings row agree
+  with what opened. An older thread's answer never overwrites a newer
+  press's.
+- **adversarial-2 / bugs+impl-3** — the person's decision (2026-11-27),
+  "as the window + an honest refusal": `guild session new`, `--group` and
+  `worktree create --prompt` without `--harness` send none, and the window
+  runs its own default (`command_harness`). A default that is the Terminal
+  is refused, not replaced: a chosen one with `TERMINAL_IS_THE_DEFAULT`
+  (name `--harness`), an automatic one with `no_agent_installed` (the
+  three install pages). A requested or default agent that is not
+  installed is `Answer::Refused` with `command::not_installed` — the
+  agent and its install page — before any record, tab or worktree is
+  made; `session resume` and the continuation path say the same words. A
+  window older than this reads a missing `harness` as Claude Code, as the
+  old wire meant.
+- **docs+tests-3** — the landing page's third install step says what
+  README says.
+
 ## Limits / non-goals
 
 - No new screen; the default's button and the tiles keep their look.

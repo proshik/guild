@@ -10,6 +10,7 @@ pub mod annotate;
 pub(crate) mod appearance;
 pub mod areas;
 pub(crate) mod auto_ff;
+pub(crate) mod availability;
 pub mod body;
 pub mod branches;
 pub mod changes;

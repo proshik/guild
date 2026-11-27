@@ -307,7 +307,8 @@ impl Root {
             .map(|tab| {
                 // §6.5's rule: a harness the `PATH` does not have is drawn
                 // and never taken; the terminal needs nothing on it.
-                let enabled = harness_of(tab).is_none_or(|kind| self.available.contains(&kind));
+                let enabled =
+                    harness_of(tab).is_none_or(|kind| self.available.shown().contains(&kind));
                 let under = focused && enabled && self.start_tile == Some(tab);
                 let tile = div()
                     .id(("start-tile", tile_key(tab).as_bytes()[0] as usize))

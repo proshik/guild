@@ -3,7 +3,7 @@ use crate::{
     Root,
     view::menu::{Anchor, Target},
 };
-use gpui::{AppContext, Context, Window};
+use gpui::{Context, Window};
 
 #[derive(Default)]
 pub(crate) struct Launcher {
@@ -11,7 +11,6 @@ pub(crate) struct Launcher {
     used: bool,
     pub visible: bool,
     ear: Option<gpui::Subscription>,
-    availability: Option<gpui::Task<()>>,
     focus: Option<gpui::FocusHandle>,
     blur: Option<gpui::Subscription>,
     navigation: std::rc::Rc<std::cell::Cell<bool>>,
@@ -50,25 +49,8 @@ impl Root {
         if self.tab_launcher.ear.is_some() {
             return;
         }
-        if self.integrations.external() {
-            let probe = cx.background_spawn(async {
-                let path = guild_session::login_path::path_or_inherited();
-                guild_session::HarnessKind::available_on(&path)
-            });
-            self.tab_launcher.availability = Some(cx.spawn(async move |root, cx| {
-                let available = probe.await;
-                let _ = root.update(cx, |root, cx| {
-                    root.available = available.clone();
-                    if let Some(open) = root.context_menu.as_mut()
-                        && let Target::NewTab { available: shown } = &mut open.target
-                    {
-                        *shown = available;
-                    }
-                    root.repair_tab_launcher_selection();
-                    cx.notify();
-                });
-            }));
-        }
+        // Which agents are installed is `root::availability`'s, asked on
+        // the watch loop's clock; the menu below reads its answer.
         let owner = window.window_handle();
         let root = cx.weak_entity();
         let navigation = self.tab_launcher.navigation.clone();
@@ -122,7 +104,7 @@ impl Root {
         }));
     }
 
-    fn repair_tab_launcher_selection(&mut self) {
+    pub(crate) fn repair_tab_launcher_selection(&mut self) {
         if !self.tab_launcher.visible {
             return;
         }
@@ -211,7 +193,7 @@ impl Root {
         // executable paths synchronously on every modifier gesture.
         self.open_menu(
             Target::NewTab {
-                available: self.available.clone(),
+                available: self.available.shown().to_vec(),
             },
             Anchor::Below(bounds),
             window,
@@ -285,7 +267,7 @@ impl Root {
         let tab = self.settings.tab_launcher_order()[index];
         if let Some(project) = self.active_project {
             let kind = crate::start::harness_of(tab);
-            if kind.is_none_or(|kind| self.available.contains(&kind)) {
+            if kind.is_none_or(|kind| self.available.shown().contains(&kind)) {
                 let runs = kind.map_or(guild_session::Runs::Shell, |kind| self.runs_for_pick(kind));
                 self.open_harness_tab(project, runs, window, cx);
             }
@@ -372,7 +354,7 @@ mod routing_tests {
                 let mut root = Root::diagnostic(desk, fixture.path().join("state"), cx);
                 root.active_project = Some(project);
                 root.isolated_render = true;
-                root.available.clear(); // disabled harness digits must never launch.
+                root.available.set(Vec::new()); // disabled harness digits must never launch.
                 root.open_file(std::path::Path::new("sample.rs"), window, cx);
                 root
             });
@@ -471,7 +453,7 @@ mod routing_tests {
         );
         root.update(cx, |root, _| {
             root.settings.tab_launcher_order.clear();
-            root.available = vec![guild_session::HarnessKind::Claude];
+            root.available.set(vec![guild_session::HarnessKind::Claude]);
         });
         cx.simulate_modifiers_change(chord);
         assert_eq!(
@@ -543,7 +525,7 @@ mod routing_tests {
         root.update(cx, |root, _| {
             use guild_session::{DefaultTab::*, HarnessKind};
             root.settings.tab_launcher_order = vec![Codex, Terminal, OpenCode, Claude];
-            root.available = vec![HarnessKind::Claude];
+            root.available.set(vec![HarnessKind::Claude]);
         });
         cx.simulate_modifiers_change(chord);
         assert_eq!(
@@ -590,7 +572,7 @@ mod routing_tests {
         assert_eq!(root.read_with(cx, |root, _| root.tabs.len()), tabs + 1);
         root.update(cx, |root, _| {
             root.settings.tab_launcher_order.clear();
-            root.available.clear();
+            root.available.set(Vec::new());
         });
         let tabs = root.read_with(cx, |root, _| root.tabs.len());
         // The shell is the real existing launch path, in the disposable project.

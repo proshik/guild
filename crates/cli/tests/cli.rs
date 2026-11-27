@@ -526,6 +526,42 @@ fn worktree_create_with_a_task_sends_it_and_says_both() {
     );
 }
 
+/// A worktree's task without `--harness` names none either: the window
+/// decides, as for `session new` — GLD-081's review.
+#[test]
+fn worktree_create_s_task_without_a_harness_leaves_the_agent_to_the_window() {
+    let dir = scratch("wtdefault");
+    let socket = dir.path().join("s.sock");
+    let listener = UnixListener::bind(&socket).unwrap();
+    let asked = window(
+        listener,
+        Answer::Refused {
+            because: "Codex is not installed: install it from https://github.com/openai/codex"
+                .to_owned(),
+        },
+    );
+    let out = guild()
+        .args(["worktree", "create", "feat", "--prompt", "fix it", "--from"])
+        .arg(dir.path())
+        .env("GUILD_SOCKET", &socket)
+        .env_remove("GUILD_SESSION")
+        .output()
+        .unwrap();
+    let request = asked.join().unwrap();
+    assert!(
+        request.contains(r#""command":"worktree_create""#),
+        "{request}"
+    );
+    assert!(!request.contains("harness"), "{request}");
+    // The window's refusal is the command's: no *started*, and its words.
+    assert!(!out.status.success());
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("https://github.com/openai/codex"),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
 /// The session's flags without a task are a mistake in the command: there
 /// is no session for them to shape.
 #[test]
@@ -667,6 +703,9 @@ fn session_new_sends_the_task_and_who_is_asking() {
     );
     assert!(request.contains(r#""front":false"#), "{request}");
     assert!(request.contains(&real.display().to_string()), "{request}");
+    // GLD-081's review: no `--harness` names none, and the window runs the
+    // default its own `+` opens — not Claude Code whatever is installed.
+    assert!(!request.contains("harness"), "{request}");
     assert!(
         String::from_utf8_lossy(&out.stdout)
             .contains("started 0b6b0a52-8f1e-4b41-9d6e-0f1c2a3b4c5d"),
@@ -2374,6 +2413,7 @@ fn session_new_in_a_group_sends_the_group_variant_and_who_is_asking() {
         "{request}"
     );
     assert!(!request.contains("worktree"), "{request}");
+    assert!(!request.contains("harness"), "{request}");
     assert!(
         String::from_utf8_lossy(&out.stdout)
             .contains("started 0b6b0a52-8f1e-4b41-9d6e-0f1c2a3b4c5d in /w/acme")

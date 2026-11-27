@@ -112,7 +112,8 @@ pub enum Command {
         /// [`Command::SessionNew`].
         #[serde(default)]
         workspace: Option<String>,
-        /// Which harness runs the task — absent means Claude Code.
+        /// Which harness runs the task — absent means the window's default,
+        /// as on [`Command::SessionNew`].
         #[serde(default, skip_serializing_if = "Option::is_none")]
         harness: Option<crate::HarnessKind>,
     },
@@ -151,8 +152,11 @@ pub enum Command {
         /// The workspace to put the session in. Absent on the old wire.
         #[serde(default)]
         workspace: Option<String>,
-        /// Which harness to run — absent means Claude Code, which is the
-        /// default and what the old wire says.
+        /// Which harness to run — absent means the window's default: the
+        /// person's choice, else the first agent installed (GLD-081). A
+        /// window older than that reads it as Claude Code, as the old wire
+        /// meant; a choice of the Terminal, or no agent at all, is refused
+        /// rather than guessed.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         harness: Option<crate::HarnessKind>,
     },
@@ -175,7 +179,8 @@ pub enum Command {
         /// The workspace whose groups are searched.
         #[serde(default)]
         workspace: Option<String>,
-        /// Which harness to run; absent means Claude Code.
+        /// Which harness to run; absent means the window's default, as on
+        /// [`Command::SessionNew`].
         #[serde(default, skip_serializing_if = "Option::is_none")]
         harness: Option<crate::HarnessKind>,
     },
@@ -660,6 +665,39 @@ pub fn with_session(
         other => other,
     }
 }
+
+/// Why a command's session was not started: the agent it needs is not on
+/// the login shell's `PATH` — GLD-081. The window's notice in the command
+/// line's English: the agent, and the page it is installed from, so an
+/// agent reading it can tell the person what to do rather than retry.
+pub fn not_installed(kind: crate::HarnessKind) -> String {
+    format!(
+        "{} is not installed: install it from {}",
+        kind.name(),
+        kind.install_page()
+    )
+}
+
+/// Why a command without `--harness` started nothing on a machine with no
+/// agent at all: the window's default would be the Terminal, which is not
+/// a session an agent can be asked anything in — GLD-081's review.
+pub fn no_agent_installed() -> String {
+    use crate::HarnessKind;
+    let [first, second, third] = [
+        HarnessKind::Claude,
+        HarnessKind::Codex,
+        HarnessKind::OpenCode,
+    ]
+    .map(|kind| format!("{} from {}", kind.name(), kind.install_page()));
+    format!("no agent is installed: install {first}, {second} or {third}")
+}
+
+/// Why a command without `--harness` started nothing when the person chose
+/// the Terminal as the window's default: a shell is not a session a task
+/// can be given to, so the command is asked to name its agent rather than
+/// have one picked behind the person's choice — GLD-081's review.
+pub const TERMINAL_IS_THE_DEFAULT: &str = "the window's default tab is the Terminal, which runs no agent — \
+     name one with --harness claude|opencode|codex";
 
 /// Shared public CLI capability/discovery guidance for managed terminal sessions.
 /// Claude and Codex receive additive SessionStart context; OpenCode receives

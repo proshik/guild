@@ -957,9 +957,10 @@ pub struct Root {
     /// The rows' age words as last drawn: `poll_start` repaints an idle
     /// screen when they would now read differently.
     start_ages: std::cell::RefCell<Vec<String>>,
-    /// The harnesses on the login `PATH`, asked with the history: what the
-    /// start screen greys and whose keys it leaves dead.
-    available: Vec<guild_session::HarnessKind>,
+    /// The harnesses on the login `PATH`, or not yet known: what the start
+    /// screen and the chevron grey, whose keys they leave dead, and what a
+    /// default nobody chose follows — `root::availability`.
+    available: root::availability::Availability,
     /// The sidebar was just brought back by hand and takes the focus at
     /// the next frame.
     activating_sidebar: bool,
@@ -1247,6 +1248,7 @@ impl Root {
         }
 
         let state_dir = integrations.state_dir();
+        let available = root::availability::Availability::new(integrations.external());
         use gpui::AppContext as _;
         let diagrams =
             cx.new(|cx| diagrams::runtime::Manager::new(diagrams::Resources::discover(), cx));
@@ -1529,10 +1531,9 @@ impl Root {
             start_scroll: gpui::ScrollHandle::new(),
             start_tile: None,
             start_ages: std::cell::RefCell::new(Vec::new()),
-            // Every harness until the first read says otherwise: a tile
-            // greyed for the tens of milliseconds a read takes would be
-            // seen more often than one that is really missing.
-            available: guild_session::HarnessKind::ALL.to_vec(),
+            // Not known until the first probe answers; the tiles are drawn
+            // enabled meanwhile, and nothing is chosen by it.
+            available,
             activating_sidebar: false,
             focusing_front: false,
             focus_moved_in_draw: false,

@@ -367,7 +367,7 @@ fn main() -> ExitCode {
                 caller: std::env::var(guild_session::SESSION_VAR).ok(),
                 front,
                 workspace: workspace.map(str::to_owned),
-                harness: Some(harness),
+                harness,
             }
         }
         // How the workspace's project groups stand against their folders —
@@ -399,7 +399,7 @@ fn main() -> ExitCode {
                         caller: std::env::var(guild_session::SESSION_VAR).ok(),
                         front,
                         workspace: workspace.map(str::to_owned),
-                        harness: Some(harness),
+                        harness,
                     }
                 }
                 Err(err) => return refuse_locally(&err),
@@ -425,7 +425,7 @@ fn main() -> ExitCode {
                 );
             }
             let harness = match harness_of(harness) {
-                Ok(harness) => prompt.is_some().then_some(harness),
+                Ok(harness) => harness.filter(|_| prompt.is_some()),
                 Err(code) => return code,
             };
             match here(from.unwrap_or(".")) {
@@ -525,13 +525,16 @@ fn text(prompt: Option<&str>, from_file: Option<&str>) -> Result<Option<String>,
     Ok(Some(text))
 }
 
-/// The harness a session runs, by `--harness`: Claude Code when none is
-/// named.
-fn harness_of(named: Option<&str>) -> Result<guild_session::HarnessKind, ExitCode> {
+/// The harness a session runs, by `--harness`. **None named is `None`**,
+/// and the window decides — the default its own `+` opens, the person's
+/// choice or the first agent installed (GLD-081's review): the command
+/// line cannot see what is installed where the window runs.
+fn harness_of(named: Option<&str>) -> Result<Option<guild_session::HarnessKind>, ExitCode> {
     match named {
-        None | Some("claude") => Ok(guild_session::HarnessKind::Claude),
-        Some("opencode") => Ok(guild_session::HarnessKind::OpenCode),
-        Some("codex") => Ok(guild_session::HarnessKind::Codex),
+        None => Ok(None),
+        Some("claude") => Ok(Some(guild_session::HarnessKind::Claude)),
+        Some("opencode") => Ok(Some(guild_session::HarnessKind::OpenCode)),
+        Some("codex") => Ok(Some(guild_session::HarnessKind::Codex)),
         Some(other) => {
             eprintln!("guild: unknown harness `{other}`\n\n{USAGE}");
             Err(ExitCode::from(2))
@@ -1211,7 +1214,10 @@ Usage:
                                       an agent session in a tab, in that worktree
                                       (the one you are in by default), asked TEXT
                                       first; behind your work unless --front;
-                                      harness is claude by default
+                                      without --harness, the agent the window's
+                                      + opens: the one chosen in Settings, else
+                                      the first installed; refused when that is
+                                      the Terminal or the agent is not installed
   guild session new --group NAME [--workspace WORKSPACE_ID] [--prompt TEXT | --from-file PATH] [--front] [--harness claude|opencode|codex] [--json]
                                       the same, in the folder a project group is
                                       bound to; refused when it has none

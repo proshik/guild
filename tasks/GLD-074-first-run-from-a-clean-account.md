@@ -88,28 +88,29 @@ Run A — "a new account on this Mac":
    site's landing page fixed in this branch.
 2. **First window.** It opens with *What's new in Guild* — the nightly's
    changelog about merge requests and glab — before the person has seen
-   Guild at all. → task.
+   Guild at all. → GLD-079.
 3. **Before any agent is started**, Guild's startup ran the agent CLIs it
    found: `codex` created `~/.codex` (sqlite databases, `config.toml` with
    a `# >>> guild hooks >>>` block written by Guild), and `opencode`
    created `~/.config/opencode`, `~/.local/{share,state}/opencode`,
    `~/.cache/opencode` and downloaded about 109 MB into `~/.npm`. A
-   newcomer is not told, and it happens over the network. → task; input
+   newcomer is not told, and it happens over the network. → GLD-078; input
    for GLD-077.
 4. **No project open.** The start screen offers *New project* (a Save
    panel for a new folder), *Recent projects* and *Settings*; there is no
    *Open…* there, although README's step is *File ▸ Open…* (which exists
    in the menu bar and worked). Clicking the *New project* row twice did
-   nothing; its shortcut ⌘⇧N opened the panel. → task (the row's click to
-   be reproduced first).
+   nothing; its shortcut ⌘⇧N opened the panel. → GLD-080 (the row's click
+   to be reproduced first).
 5. **Repository open** (a local repository without a remote, through
    *File ▸ Open…*): the worktree's start screen. Its default button says
    *Claude Code — Default* while the Claude Code tile below says *not on
    PATH*; Codex and OpenCode, which are installed, are not offered as the
    default. Pressing the default raises a Warning, "claude is not on the
-   PATH", with no word on what to install or where. → task.
+   PATH", with no word on what to install or where. → GLD-081.
 6. README's step 3 says to press **+** beside the tabs; the control there
-   is the harness mark with a chevron, not a plus. *Not checked* what it
+   is the harness mark with a chevron, not a plus — README to name it in
+   GLD-080. *Not checked* what it
    offers: the screen went to the login window (the display locked or
    changed) and the walk stopped here.
 

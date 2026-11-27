@@ -603,4 +603,169 @@ mod tests {
             }
         }
     }
+
+    /// GLD-078's contract, through the production launch: a Codex or
+    /// OpenCode tab opened by `Body::open` finds its status door — the hook
+    /// block, the plugin — on disk before its process began, in agent
+    /// directories that did not exist; and a saved tab whose agent is not on
+    /// the launch's `PATH` creates neither directory. The stand-in compares
+    /// the door's mtime with its terminal's start, so a write moved after
+    /// the spawn fails as surely as one removed.
+    #[test]
+    fn isolated_launch_writes_the_door_before_the_agent_starts() {
+        let fixture = tempfile::tempdir().unwrap();
+        let dir = fixture.path();
+        let bin = dir.join("bin");
+        std::fs::create_dir(&bin).unwrap();
+        let source = dir.join("door-harness.c");
+        std::fs::write(&source, include_str!("../../tests/fixtures/door-harness.c")).unwrap();
+        assert!(
+            std::process::Command::new("/usr/bin/cc")
+                .arg(&source)
+                .arg("-o")
+                .arg(bin.join("codex"))
+                .status()
+                .unwrap()
+                .success()
+        );
+        std::fs::copy(bin.join("codex"), bin.join("opencode")).unwrap();
+        std::fs::write(dir.join("fixture.sb"), "(version 1)\n(allow default)\n(deny network*)\n(allow network-outbound (remote unix-socket))\n(allow network-inbound (local unix-socket))\n(allow network-bind (local unix-socket))\n(deny process-exec (literal \"/usr/bin/security\"))\n").unwrap();
+        for present in [true, false] {
+            // A directory of its own per run: the first run's doors are
+            // not the second's absence.
+            let case = dir.join(if present { "present" } else { "absent" });
+            std::fs::create_dir(&case).unwrap();
+            let path = if present {
+                format!("{}:/usr/bin:/bin:/usr/sbin:/sbin", bin.display())
+            } else {
+                "/usr/bin:/bin:/usr/sbin:/sbin".to_owned()
+            };
+            let output = std::process::Command::new("/usr/bin/sandbox-exec")
+                .arg("-f")
+                .arg(dir.join("fixture.sb"))
+                .arg(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "root::body::tests::launch_door_fixture",
+                    "--ignored",
+                    "--nocapture",
+                    "--test-threads=1",
+                ])
+                .env("PATH", path)
+                .env("HOME", case.join("home"))
+                .env("SHELL", "/bin/zsh")
+                .env("ZDOTDIR", &case)
+                .env("GUILD_STATE_DIR", case.join("state"))
+                .env("GUILD_NO_GLOBAL_HOOKS", "1")
+                .env("CODEX_HOME", case.join("codex-home"))
+                .env("CLAUDE_CONFIG_DIR", case.join("claude-home"))
+                .env("XDG_CONFIG_HOME", case.join("xdg-home"))
+                .env("GUILD_LAUNCH_FIXTURE_DIR", &case)
+                .env("GUILD_DOOR_FIXTURE_PRESENT", if present { "1" } else { "" })
+                .env_remove("GUILD_SOCKET")
+                .env_remove("GUILD_SESSION")
+                .env_remove("GUILD_HOOK_SOCKET")
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "present={present}\n{}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+
+    #[gpui::test]
+    #[ignore = "runs with sandboxed native stand-ins in isolated_launch_writes_the_door_before_the_agent_starts"]
+    fn launch_door_fixture(cx: &mut gpui::TestAppContext) {
+        use guild_session::{HarnessKind, SessionMode};
+        let dir = std::path::PathBuf::from(std::env::var_os("GUILD_LAUNCH_FIXTURE_DIR").unwrap());
+        let present = std::env::var_os("GUILD_DOOR_FIXTURE_PRESENT").is_some_and(|v| !v.is_empty());
+        let dirs = guild_session::harness::AgentDirs {
+            codex: dir.join("codex-home"),
+            opencode: dir.join("xdg-home").join("opencode"),
+        };
+        assert!(!dirs.codex.exists() && !dirs.opencode.exists());
+        let settings = Settings::default();
+        let root = cx.update(|cx| {
+            crate::editor::init(cx);
+            cx.new(|cx| crate::Root::from_state(settings.clone(), Default::default(), cx))
+        });
+        // What a production window hands a launch: the doors named — the
+        // flag that keeps them out of this process's start is not read here.
+        let hooks = guild_session::Hooks {
+            settings: dir.join("hooks.json"),
+            statusline_settings: dir.join("statusline.json"),
+            socket: dir.join("fixture.sock"),
+            user_statusline: None,
+            doors: Some(dirs.clone()),
+        };
+        for kind in [HarnessKind::Codex, HarnessKind::OpenCode] {
+            let session = SessionId::new();
+            let runs = match kind {
+                HarnessKind::Codex => Runs::Codex(SessionMode::Terminal),
+                _ => Runs::OpenCode(SessionMode::Terminal),
+            };
+            // A saved tab restored resumes its conversation; a new one starts.
+            let conversation = if present {
+                Conversation::New("door-fixture".into())
+            } else {
+                Conversation::Resume("door-fixture-saved".into())
+            };
+            let body = cx.update(|cx| {
+                root.update(cx, |_, cx| {
+                    Body::open(
+                        session,
+                        runs,
+                        &dir,
+                        Some(conversation),
+                        &settings,
+                        Default::default(),
+                        None,
+                        Some(hooks.clone()),
+                        None,
+                        None,
+                        &Default::default(),
+                        cx,
+                    )
+                })
+            });
+            let door = dir.join(format!("{session}.door"));
+            if let Body::Terminal { view, .. } = &body {
+                let until = std::time::Instant::now() + std::time::Duration::from_secs(3);
+                while present && !door.exists() && std::time::Instant::now() < until {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                let over = cx.update(|cx| view.update(cx, |view, _| view.let_go()));
+                if let Some(over) = over {
+                    over.recv_timeout(std::time::Duration::from_secs(3))
+                        .unwrap();
+                }
+            }
+            if present {
+                assert!(
+                    matches!(body, Body::Terminal { .. }),
+                    "{kind:?} did not launch"
+                );
+                assert_eq!(
+                    std::fs::read_to_string(&door).unwrap_or_default().trim(),
+                    "before",
+                    "{kind:?}'s door was not on disk before its process began"
+                );
+            } else {
+                assert!(!door.exists(), "{kind:?} ran without being on the PATH");
+            }
+        }
+        if !present {
+            assert!(
+                !dirs.codex.exists(),
+                "a saved Codex tab not on the PATH created Codex's home"
+            );
+            assert!(
+                !dirs.opencode.exists(),
+                "a saved OpenCode tab not on the PATH created opencode's config"
+            );
+        }
+    }
 }

@@ -257,10 +257,63 @@ pub fn install_door(
     harness: guild_session::HarnessKind,
 ) -> Option<io::Result<PathBuf>> {
     let dir = dirs.of(harness)?;
-    Some(match harness {
+    let written = match harness {
         guild_session::HarnessKind::Codex => install_codex_into(dir),
         _ => install_opencode_into(dir),
-    })
+    };
+    if written.is_ok() {
+        doors_written()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert((harness, dir.to_path_buf()));
+    }
+    Some(written)
+}
+
+/// The doors this process has written, by agent and directory — the
+/// window's own memory, so a launch after the first does no disk work for
+/// its door at all.
+fn doors_written()
+-> &'static std::sync::Mutex<std::collections::HashSet<(guild_session::HarnessKind, PathBuf)>> {
+    static WRITTEN: std::sync::OnceLock<
+        std::sync::Mutex<std::collections::HashSet<(guild_session::HarnessKind, PathBuf)>>,
+    > = std::sync::OnceLock::new();
+    WRITTEN.get_or_init(Default::default)
+}
+
+/// What a launch from Guild writes before its process starts:
+/// [`install_door`], known or not — the person is starting this agent now
+/// (GLD-078) — but only the first time in this window, and only for an
+/// agent on the launch's `path`.
+///
+/// **Once per window, on the window's thread.** A launch is built and
+/// spawned on the window's thread, and the door must be on disk before the
+/// spawn, so its disk work is done there — and therefore done once: a door
+/// [`install_door`] wrote here, at the window's start for an agent already
+/// known or at an earlier launch, is remembered and not read, compared or
+/// written again. What is left on that thread is one install the first time
+/// an agent never run on this machine is started from Guild — after it the
+/// agent is known, and the next window's start writes its door. A door
+/// removed behind a running window's back comes back at the next start, as
+/// before GLD-078.
+///
+/// **Not on the `PATH`, nothing.** A saved tab restored for an agent that is
+/// gone resumes nothing; writing its door would make the directory the
+/// start left alone (decision 58).
+pub fn prepare_door(
+    dirs: &guild_session::harness::AgentDirs,
+    harness: guild_session::HarnessKind,
+    path: &str,
+) -> Option<io::Result<PathBuf>> {
+    let dir = dirs.of(harness)?;
+    let remembered = doors_written()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .contains(&(harness, dir.to_path_buf()));
+    if remembered || !harness.is_on(path) {
+        return None;
+    }
+    install_door(dirs, harness)
 }
 
 /// [`install_door`], only for an agent [known] here — what the window's
@@ -317,27 +370,83 @@ pub fn install_codex() -> io::Result<PathBuf> {
 /// scratch dir, or wherever `$CODEX_HOME` says. Public so the effect is
 /// checkable without moving the person's real config around.
 pub fn install_codex_into(dir: &Path) -> io::Result<PathBuf> {
+    install_codex_with(dir, &codex_block(&codex_script()), || {})
+}
+
+/// How many times an install reads Codex's config again after finding that
+/// Codex wrote it between Guild's read and Guild's write.
+const CODEX_ATTEMPTS: usize = 3;
+
+/// [`install_codex_into`] with `block` as the block, and `meanwhile` run
+/// just after each read — where Codex may write too.
+///
+/// **What was read is what is compared, and what is replaced.** A block
+/// that is already there is the end of it: nothing is read a second time and
+/// nothing is written, so a Codex running beside the window — which writes
+/// `[hooks.state]` into this file — never has its write replaced by the
+/// window's older copy. A block that must change is written beside and
+/// renamed over the file only while the file still holds the bytes the
+/// block was put into; otherwise the file is read again and the block put
+/// into what Codex wrote. POSIX has no compare-and-rename, so the instant
+/// between the last read and the rename is still open — a microsecond,
+/// against the whole of a read, a merge and a write before.
+fn install_codex_with(dir: &Path, block: &str, mut meanwhile: impl FnMut()) -> io::Result<PathBuf> {
     let path = dir.join("config.toml");
     std::fs::create_dir_all(dir)?;
 
-    let mut mode = 0o644;
-    let existing = match std::fs::read_to_string(&path) {
-        Ok(text) => text,
+    for _ in 0..CODEX_ATTEMPTS {
+        let existing = match std::fs::read_to_string(&path) {
+            Ok(text) => Some(text),
+            Err(err) if err.kind() == io::ErrorKind::NotFound => None,
+            Err(err) => return Err(err),
+        };
+        meanwhile();
+        let text = upsert_codex_block(existing.clone().unwrap_or_default(), block);
+        if existing.as_deref() == Some(text.as_str()) {
+            return Ok(path);
+        }
         // The mode of a file that already exists is its owner's — a shared
         // config is not rewritten to Guild's taste just because Guild
         // writes a block into it.
-        Err(err) if err.kind() == io::ErrorKind::NotFound => String::new(),
-        Err(err) => return Err(err),
-    };
-    if !existing.is_empty()
-        && let Ok(meta) = std::fs::metadata(&path)
-    {
-        use std::os::unix::fs::PermissionsExt;
-        mode = meta.permissions().mode() & 0o777;
+        let mut mode = 0o644;
+        if existing.as_deref().is_some_and(|text| !text.is_empty())
+            && let Ok(meta) = std::fs::metadata(&path)
+        {
+            mode = meta.permissions().mode() & 0o777;
+        }
+        if replace_if_unchanged(&path, existing.as_deref(), &text, mode)? {
+            return Ok(path);
+        }
     }
-    let text = upsert_codex_block(existing, &codex_block(&codex_script()));
-    write_if_changed(&path, &text, mode)?;
-    Ok(path)
+    Err(io::Error::other(
+        "Codex's config.toml kept changing while Guild wrote its hooks into it",
+    ))
+}
+
+/// Put `text` at `path`, written beside and renamed over it, only if `path`
+/// still holds `expected` (`None`: no file) — `false`, and nothing written,
+/// when something else changed it since it was read.
+fn replace_if_unchanged(
+    path: &Path,
+    expected: Option<&str>,
+    text: &str,
+    mode: u32,
+) -> io::Result<bool> {
+    let beside = path.with_extension("writing");
+    let written = std::fs::write(&beside, text)
+        .and_then(|()| std::fs::set_permissions(&beside, std::fs::Permissions::from_mode(mode)));
+    let now = written.and_then(|()| match std::fs::read_to_string(path) {
+        Ok(now) => Ok(Some(now)),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(err) => Err(err),
+    });
+    match now {
+        Ok(now) if now.as_deref() == expected => std::fs::rename(&beside, path).map(|()| true),
+        other => {
+            let _ = std::fs::remove_file(&beside);
+            other.map(|_| false)
+        }
+    }
 }
 
 /// The script's own path, as Guild wrote it out — what the hook command names.
@@ -433,5 +542,67 @@ pub fn socket_path(pid: u32) -> PathBuf {
         candidate
     } else {
         Path::new("/tmp").join(name)
+    }
+}
+
+/// The Codex install's race with Codex itself, which needs the private seam
+/// between Guild's read of `config.toml` and its write: the crate promises
+/// [`install_codex_into`], not the moment inside it a test can stop at.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const BLOCK: &str = "# >>> guild hooks >>>\n[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype = \"command\"\ncommand = \"/scratch/guild-hook.sh Stop\"\n# <<< guild hooks <<<";
+
+    /// What Codex writes while Guild works: trust inside Guild's markers.
+    fn codex_writes(path: &Path) {
+        let text = std::fs::read_to_string(path).unwrap_or_default();
+        let text = text.replace(
+            CODEX_END,
+            "[hooks.state.\"stop\"]\ntrusted_hash = \"sha256:concurrent\"\n# <<< guild hooks <<<",
+        );
+        std::fs::write(path, text).unwrap();
+    }
+
+    /// An install that would change nothing writes nothing — not even the
+    /// snapshot it read, over what Codex wrote after that read.
+    #[test]
+    fn an_install_that_changes_nothing_never_writes_over_codex() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        std::fs::write(&path, format!("model = \"o3\"\n{BLOCK}\n")).unwrap();
+        install_codex_with(dir.path(), BLOCK, || codex_writes(&path)).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(
+            text.contains("sha256:concurrent"),
+            "Codex's write was lost:\n{text}"
+        );
+        assert!(!dir.path().join("config.writing").exists());
+    }
+
+    /// An install that does change the file, raced by Codex, writes its block
+    /// over what Codex wrote — read again — rather than over its old snapshot.
+    #[test]
+    fn a_needed_install_keeps_what_codex_wrote_meanwhile() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let old = BLOCK.replace("/scratch/guild-hook.sh", "/old/guild-hook.sh");
+        std::fs::write(&path, format!("model = \"o3\"\n{old}\n")).unwrap();
+        let mut once = true;
+        install_codex_with(dir.path(), BLOCK, || {
+            if std::mem::take(&mut once) {
+                codex_writes(&path);
+            }
+        })
+        .unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(
+            text.contains("sha256:concurrent"),
+            "Codex's write was lost:\n{text}"
+        );
+        assert!(text.contains("/scratch/guild-hook.sh Stop"), "{text}");
+        assert!(!text.contains("/old/"), "{text}");
+        assert!(text.starts_with("model = \"o3\"\n"), "{text}");
+        assert!(!dir.path().join("config.writing").exists());
     }
 }

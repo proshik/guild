@@ -14,6 +14,7 @@ would notice adds its line under `Unreleased` in its own branch.
 - Until you pick a default agent in Settings, a new tab opens the first agent you have installed — Claude Code, then Codex, then OpenCode, else a terminal — instead of always offering Claude Code. Starting an agent that is not installed now says so and gives the page to install it from, and `cmd-t` and **+** say it too instead of opening a tab that closes at once.
 - The Explorer no longer renames, moves, cuts or sends to the Trash a folder that is open in Guild as a project, or that holds one: those menu items are disabled with a note saying why, the row cannot be dragged, and their keys show a warning instead.
 - Guild no longer sets up Codex or OpenCode on a Mac where you have never used them: opening the window no longer creates `~/.codex`, `~/.config/opencode` or OpenCode's other folders, and no longer starts either program in the background. Their status hooks are added the first time you start them from Guild, so the status still shows from that first session.
+- Reopening Guild with a Codex or OpenCode tab saved, after that program was uninstalled, no longer recreates its settings folder; and Guild adding its status hooks to Codex's `config.toml` no longer undoes a change Codex saved there at the same moment.
 
 ## [nightly-2026-11-27] - 2026-11-27
 

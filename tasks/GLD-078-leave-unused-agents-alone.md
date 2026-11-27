@@ -93,6 +93,24 @@ over each agent's own directory: `CodexHarness::home()`,
    — writes the harness's door through `write_door` before the process is
    built and spawned. A diagnostic window's launches carry `None`.
 
+**Review round 1 fixes.** (1) A launch's door is done once per window:
+`hooks::prepare_door` remembers every door `install_door` wrote — the
+start's, for a known agent, or an earlier launch's — and does no disk work
+for it again, so a restored or new tab of a known agent costs the window's
+thread nothing. The spawn stays synchronous on that thread (a terminal tab
+is built around its running process), so the door's one install for an
+agent never run here — once per machine — is still done there, before the
+spawn; deferring the spawn to a background install was judged a larger
+change than the finding. (2) `install_codex_with` writes nothing when the
+block is already there, and renames a changed file in only over the bytes
+it read, else reads again (three tries). (3) A launch writes no door for
+an agent not on its own `PATH`, so a saved tab restored after the agent was
+uninstalled makes no directory. (4) `root::body`'s
+`isolated_launch_writes_the_door_before_the_agent_starts` runs the
+production `Body::open` against compiled stand-ins that compare the door's
+mtime with their session leader's start; a door write removed, or moved
+after `Emulator::spawn_harness`, fails it (both mutations checked).
+
 **Probe finding (not changed):** measured with an empty scratch `HOME`,
 `opencode --version` (v2.4.2) itself creates `~/.config/opencode`,
 `~/.local/{share,state}/opencode` and `~/.cache/opencode`; `codex --version`

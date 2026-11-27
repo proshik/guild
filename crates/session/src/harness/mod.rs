@@ -145,8 +145,14 @@ impl HarnessKind {
         Self::ALL
             .iter()
             .copied()
-            .filter(|&kind| on_path(kind.program(), path))
+            .filter(|&kind| kind.is_on(path))
             .collect()
+    }
+
+    /// Whether this harness's program is on the given `PATH` — one of
+    /// [`Self::available_on`]'s answers, asked alone.
+    pub fn is_on(self, path: &str) -> bool {
+        on_path(self.program(), path)
     }
 
     /// The `(major, minor)` version its CLI reports, by running

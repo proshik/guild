@@ -1521,10 +1521,13 @@ pub fn open_with_selection(
             .flatten(),
         ..hooks.clone()
     });
+    // The login shell's, before the one the window was started with —
+    // decision 22 of M5.11.
+    let path = guild_session::login_path::path().or_else(|| std::env::var_os("PATH"));
     // GLD-078: the agent's status door, written before the process starts
     // — an agent the window's start left alone, because it was never run
     // here, is started now, and its first session's status must move.
-    if let Some(Err(err)) = write_door(harness, hooks.as_ref()) {
+    if let Some(Err(err)) = write_door(harness, hooks.as_ref(), path.as_deref()) {
         tracing::warn!(%err, ?harness, "Guild could not write its status door before the launch");
     }
     let mut command = harness_command(
@@ -1536,11 +1539,7 @@ pub fn open_with_selection(
         hooks.as_ref(),
         None,
         crate::paths::guild_dir().as_deref(),
-        // The login shell's, before the one the window was started with —
-        // decision 22 of M5.11.
-        guild_session::login_path::path()
-            .or_else(|| std::env::var_os("PATH"))
-            .as_deref(),
+        path.as_deref(),
     );
     let (material, diagnostics) = launch_discovery(
         &mut command,
@@ -1612,13 +1611,16 @@ pub fn open_with_selection(
 
 /// What a launch writes before its process starts: `harness`'s status door
 /// in the directories `hooks` names — nothing when it names none, which is
-/// a window that may not touch the agents' global files, or for Claude.
-/// Known or not, the person is starting this agent now (GLD-078).
+/// a window that may not touch the agents' global files, or for Claude, or
+/// for an agent not on the launch's `path`. Known or not, the person is
+/// starting this agent now (GLD-078); [`crate::hooks::prepare_door`] says
+/// why it is once per window.
 pub(crate) fn write_door(
     harness: HarnessKind,
     hooks: Option<&guild_session::Hooks>,
+    path: Option<&std::ffi::OsStr>,
 ) -> Option<std::io::Result<std::path::PathBuf>> {
-    crate::hooks::install_door(hooks?.doors.as_ref()?, harness)
+    crate::hooks::prepare_door(hooks?.doors.as_ref()?, harness, &path?.to_string_lossy())
 }
 
 /// The program a tab runs, as a command — what `open` launches, without
@@ -2326,7 +2328,9 @@ mod tests {
 
     /// GLD-078: a launch writes its agent's door into the directories its
     /// hooks name — even where none was, an agent first started from Guild —
-    /// and nothing when they name none, or for Claude.
+    /// and nothing when they name none, or for Claude, or when the agent is
+    /// not on the launch's `PATH`: a saved tab restored for an agent that is
+    /// gone makes no directory for it.
     #[test]
     fn a_launch_writes_the_door_its_hooks_name_and_only_then() {
         let root = tempfile::tempdir().unwrap();
@@ -2334,18 +2338,33 @@ mod tests {
             codex: root.path().join("codex"),
             opencode: root.path().join("opencode"),
         };
+        let bin = root.path().join("bin");
+        std::fs::create_dir(&bin).unwrap();
+        for program in ["codex", "opencode"] {
+            std::fs::write(bin.join(program), "#!/bin/sh\n").unwrap();
+            std::fs::set_permissions(
+                bin.join(program),
+                std::os::unix::fs::PermissionsExt::from_mode(0o755),
+            )
+            .unwrap();
+        }
+        let there = Some(bin.as_os_str());
+        let gone = Some(std::ffi::OsStr::new("/usr/bin:/bin"));
         let quiet = hooks();
-        assert!(write_door(HarnessKind::Codex, None).is_none());
-        assert!(write_door(HarnessKind::Codex, Some(&quiet)).is_none());
-        assert!(write_door(HarnessKind::OpenCode, Some(&quiet)).is_none());
+        assert!(write_door(HarnessKind::Codex, None, there).is_none());
+        assert!(write_door(HarnessKind::Codex, Some(&quiet), there).is_none());
+        assert!(write_door(HarnessKind::OpenCode, Some(&quiet), there).is_none());
         let doors = guild_session::Hooks {
             doors: Some(dirs.clone()),
             ..quiet
         };
-        assert!(write_door(HarnessKind::Claude, Some(&doors)).is_none());
+        assert!(write_door(HarnessKind::Claude, Some(&doors), there).is_none());
+        assert!(write_door(HarnessKind::Codex, Some(&doors), gone).is_none());
+        assert!(write_door(HarnessKind::OpenCode, Some(&doors), gone).is_none());
+        assert!(write_door(HarnessKind::Codex, Some(&doors), None).is_none());
         assert!(!dirs.codex.exists() && !dirs.opencode.exists());
 
-        let codex = write_door(HarnessKind::Codex, Some(&doors))
+        let codex = write_door(HarnessKind::Codex, Some(&doors), there)
             .unwrap()
             .unwrap();
         assert_eq!(codex, dirs.codex.join("config.toml"));
@@ -2354,12 +2373,48 @@ mod tests {
                 .unwrap()
                 .contains("# >>> guild hooks >>>")
         );
-        let plugin = write_door(HarnessKind::OpenCode, Some(&doors))
+        let plugin = write_door(HarnessKind::OpenCode, Some(&doors), there)
             .unwrap()
             .unwrap();
         assert_eq!(
             plugin,
             dirs.opencode.join("plugins").join("opencode-status.js")
+        );
+    }
+
+    /// The window's thread does an agent's door's disk work once: a door
+    /// this window wrote — at its start or at an earlier launch — is not
+    /// read, compared or written again by the next launch. The proof is a
+    /// door taken away behind the window's back and not put back.
+    #[test]
+    fn a_door_this_window_wrote_costs_the_next_launch_no_disk_work() {
+        let root = tempfile::tempdir().unwrap();
+        let dirs = guild_session::harness::AgentDirs {
+            codex: root.path().join("codex"),
+            opencode: root.path().join("opencode"),
+        };
+        let bin = root.path().join("bin");
+        std::fs::create_dir(&bin).unwrap();
+        std::fs::write(bin.join("codex"), "#!/bin/sh\n").unwrap();
+        std::fs::set_permissions(
+            bin.join("codex"),
+            std::os::unix::fs::PermissionsExt::from_mode(0o755),
+        )
+        .unwrap();
+        let doors = guild_session::Hooks {
+            doors: Some(dirs.clone()),
+            ..hooks()
+        };
+        // The start's install, for an agent known here.
+        std::fs::create_dir(&dirs.codex).unwrap();
+        crate::hooks::install_door_if_known(&dirs, HarnessKind::Codex)
+            .unwrap()
+            .unwrap();
+        std::fs::remove_dir_all(&dirs.codex).unwrap();
+        assert!(write_door(HarnessKind::Codex, Some(&doors), Some(bin.as_os_str())).is_none());
+        assert!(
+            !dirs.codex.exists(),
+            "the launch touched Codex's home again"
         );
     }
 

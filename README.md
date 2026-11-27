@@ -214,7 +214,7 @@ A window on your Mac around the agent CLIs you already use. Nothing in it needs 
 ### Requirements
 
 - macOS 13 or later, on Apple silicon.
-- At least one agent CLI. Guild reads each agent's status from its CLI, which needs **Claude Code 2.1.295**, **Codex 0.163.0** or **OpenCode 2.2** or later.
+- At least one agent CLI. Guild reads each agent's status from its CLI, which needs **Claude Code 2.1.295**, **Codex 0.163.0** or **OpenCode 2.2** or later. Each comes from its own install page: [Claude Code](https://code.claude.com/docs/en/setup), [Codex](https://github.com/openai/codex), [OpenCode](https://opencode.ai/docs). Until you choose a default agent in Settings, a new tab opens the first one installed.
 
 ### Download
 

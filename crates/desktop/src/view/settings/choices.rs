@@ -162,7 +162,7 @@ impl Root {
                     self.cycle_language(cx);
                 }
             }
-            Value::Tab(value) => self.settings.default_tab = value,
+            Value::Tab(value) => self.settings.default_tab = Some(value),
             Value::Permission(value) => self.settings.permission_mode = value,
             Value::Diff(value) => self.settings.diff_view = value,
             Value::Markdown(value) => self.settings.markdown_default_view = value,

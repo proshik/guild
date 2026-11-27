@@ -118,10 +118,16 @@ fn shows_of(body: &Body) -> Option<Shows> {
 }
 
 impl NewSession {
-    /// Resolve the action when it is invoked, using the current settings.
-    fn runs(&self, settings: &guild_session::Settings) -> Runs {
+    /// Resolve the action when it is invoked, using the current settings
+    /// and the agents installed — the default nobody chose follows those
+    /// (GLD-081).
+    fn runs(
+        &self,
+        settings: &guild_session::Settings,
+        available: &[guild_session::HarnessKind],
+    ) -> Runs {
         use guild_session::{DefaultTab, SessionMode};
-        match settings.default_tab {
+        match settings.default_tab_among(available) {
             DefaultTab::Claude => Runs::Claude(SessionMode::Terminal),
             DefaultTab::OpenCode => Runs::OpenCode(SessionMode::Terminal),
             DefaultTab::Codex => Runs::Codex(SessionMode::Terminal),
@@ -251,6 +257,12 @@ impl Root {
         window: &mut gpui::Window,
         cx: &mut Context<Root>,
     ) {
+        // A harness not on the `PATH` would open a tab that dies at once;
+        // every gesture that starts one meets here, so each says how to
+        // install it instead (GLD-081).
+        if let Some(kind) = Self::harness_missing(runs) {
+            return self.say_missing(kind, cx);
+        }
         if let Runs::OpenCode(_) = runs
             && Self::opencode_floor_missed()
         {
@@ -298,7 +310,15 @@ impl Root {
     /// The **+** button and start screen use the same current default as
     /// New Session. Every harness runs in a terminal.
     pub(crate) fn runs_for_default_tab(&self) -> Runs {
-        NewSession.runs(&self.settings)
+        NewSession.runs(&self.settings, &self.available)
+    }
+
+    /// The tab a new tab opens: the person's choice, or the first agent
+    /// installed until they make one — GLD-081. What the **+**'s mark, the
+    /// start screen's card and Settings' row show, from the same
+    /// availability the tiles and the chevron grey by.
+    pub(crate) fn default_tab(&self) -> guild_session::DefaultTab {
+        self.settings.default_tab_among(&self.available)
     }
 
     /// Move one visible tab before or after another — M14, drag-and-drop in
@@ -2258,7 +2278,8 @@ impl Root {
     pub(crate) fn bind_tabs(&self, root: gpui::Div, cx: &mut Context<Root>) -> gpui::Div {
         root.on_action(cx.listener(|root, action: &NewSession, window, cx| {
             if let Some(project) = root.active_project {
-                root.open_harness_tab(project, action.runs(&root.settings), window, cx);
+                let runs = action.runs(&root.settings, &root.available);
+                root.open_harness_tab(project, runs, window, cx);
             }
         }))
         .on_action(cx.listener(|root, _: &NewTerminal, _window, cx| {
@@ -2791,29 +2812,66 @@ mod tests {
     // window or launching a real agent.
     #[test]
     fn new_session_follows_settings_changed_between_invocations() {
-        use guild_session::{DefaultTab, SessionMode, Settings};
+        use guild_session::{DefaultTab, HarnessKind, SessionMode, Settings};
 
+        let all = HarnessKind::ALL;
         let action = NewSession;
         let mut settings = Settings::default();
-        assert_eq!(action.runs(&settings), Runs::Claude(SessionMode::Terminal));
-
-        settings.default_tab = DefaultTab::Codex;
-        assert_eq!(action.runs(&settings), Runs::Codex(SessionMode::Terminal));
-
-        assert_eq!(action.runs(&settings), Runs::Codex(SessionMode::Terminal));
-
-        settings.default_tab = DefaultTab::OpenCode;
         assert_eq!(
-            action.runs(&settings),
+            action.runs(&settings, &all),
+            Runs::Claude(SessionMode::Terminal)
+        );
+
+        settings.default_tab = Some(DefaultTab::Codex);
+        assert_eq!(
+            action.runs(&settings, &all),
+            Runs::Codex(SessionMode::Terminal)
+        );
+        assert_eq!(
+            action.runs(&settings, &all),
+            Runs::Codex(SessionMode::Terminal)
+        );
+
+        settings.default_tab = Some(DefaultTab::OpenCode);
+        assert_eq!(
+            action.runs(&settings, &all),
             Runs::OpenCode(SessionMode::Terminal)
         );
 
-        settings.default_tab = DefaultTab::Terminal;
-        assert_eq!(action.runs(&settings), Runs::Shell);
+        settings.default_tab = Some(DefaultTab::Terminal);
+        assert_eq!(action.runs(&settings, &all), Runs::Shell);
 
-        settings.default_tab = DefaultTab::Claude;
-        assert_eq!(action.runs(&settings), Runs::Claude(SessionMode::Terminal));
-        assert_eq!(action.runs(&settings), Runs::Claude(SessionMode::Terminal));
+        settings.default_tab = Some(DefaultTab::Claude);
+        assert_eq!(
+            action.runs(&settings, &all),
+            Runs::Claude(SessionMode::Terminal)
+        );
+    }
+
+    /// GLD-081: `cmd-t` with no default chosen opens the first agent
+    /// installed, and a chosen one even when it is missing.
+    #[test]
+    fn new_session_without_a_choice_opens_the_first_installed_agent() {
+        use guild_session::{DefaultTab, HarnessKind, SessionMode, Settings};
+
+        let action = NewSession;
+        let mut settings = Settings::default();
+        let codex_and_opencode = [HarnessKind::OpenCode, HarnessKind::Codex];
+        assert_eq!(
+            action.runs(&settings, &codex_and_opencode),
+            Runs::Codex(SessionMode::Terminal)
+        );
+        assert_eq!(
+            action.runs(&settings, &[HarnessKind::OpenCode]),
+            Runs::OpenCode(SessionMode::Terminal)
+        );
+        assert_eq!(action.runs(&settings, &[]), Runs::Shell);
+
+        settings.default_tab = Some(DefaultTab::Claude);
+        assert_eq!(
+            action.runs(&settings, &codex_and_opencode),
+            Runs::Claude(SessionMode::Terminal)
+        );
     }
 
     #[test]

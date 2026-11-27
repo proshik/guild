@@ -1874,14 +1874,22 @@ impl Ui {
         }
     }
 
-    /// A harness asked for from the start screen whose program the login
-    /// shell's `PATH` does not have — said instead of opening a tab that
-    /// dies at once. The program is named, as a server's command is,
-    /// because it is what a person installs. M14.5.
-    pub fn not_on_path(self, program: &str) -> String {
+    /// A harness asked for whose program the login shell's `PATH` does
+    /// not have — said instead of opening a tab that dies at once. M14.5.
+    ///
+    /// **It says what to do** — GLD-081: *claude is not on the PATH* named
+    /// the fact and left the person to find the agent. The agent's own
+    /// install page is the next step, so the notice ends with it.
+    pub fn not_installed(self, kind: guild_session::HarnessKind) -> String {
+        let name = self.text(match kind {
+            guild_session::HarnessKind::Claude => Text::AgentClaudeCode,
+            guild_session::HarnessKind::OpenCode => Text::AgentOpenCode,
+            guild_session::HarnessKind::Codex => Text::AgentCodex,
+        });
+        let page = kind.install_page();
         match self.0 {
-            Language::English => format!("{program} is not on the PATH"),
-            Language::Russian => format!("{program} нет в PATH"),
+            Language::English => format!("{name} is not installed: install it from {page}"),
+            Language::Russian => format!("{name} не установлен: установите по инструкции {page}"),
         }
     }
 

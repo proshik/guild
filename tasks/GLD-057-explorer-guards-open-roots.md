@@ -51,7 +51,52 @@ surfaces read the same guard as the handlers. To be drawn in Penpot from
 the Library's components and approved before code (`docs/penpot.md`); the
 person's answer here is the decision, the Penpot approval is the gate.
 
+## Proposal (Penpot) — to draw on Screens › Proposals, then approve
+
+What the code draws today (read 2026-11-27, main f65258f):
+- A row's right-button menu is `view/menu/tree.rs`: a directory gets the
+  transform group (`MenuMove`, `MenuCutFiles`, `MenuCopyFiles`,
+  `MenuPasteFiles`, `MenuRename`, `MenuDelete` — `entries_for_directory`,
+  `transform_group()`); the tree's own row passes `root: true` and gets only
+  *Paste* (the two writes are withheld). The refusal today is
+  `writable_row` (tree.rs:231) — only the tree's own empty path.
+- `view/tree_drag.rs:70` — a row is a drag source only when
+  `project_row && writable_row(&path)`. A member/worktree row is `writable`
+  (its relative path is non-empty), so it is draggable today.
+- `root/transfers.rs:106` `operation_sources` and `:73` `select_operation_target`
+  filter by `writable_row` only.
+
+Board to add (built from Library components + tokens, real states only):
+1. `Explorer — group folder · member row` (a directory row that is itself an
+   open root): the transform group's *Rename…*, *Move to Trash*, *Cut*,
+   *Move* drawn disabled (the Library's disabled state), *Copy* and
+   *Paste* stay enabled (Copy is not a write to the source); the row's drag
+   handle absent / row not draggable.
+2. `Explorer — directory containing an open root` (e.g. a checkout holding a
+   worktree): same — the whole directory row's writes disabled.
+3. The same two rows with the menu open on a key-binding route: the gesture
+   is refused with the notice "<name> is open in Guild as a project; close it
+   first" (EN) and its Russian string, drawn as a Notice (Library Dialogs/Notices).
+
+States that must NOT appear: the tree's own root row is already refused
+(`writable_row`) and is unchanged (limits); Copy stays enabled.
+
 ## Plan
+
+- [ ] Draw the refusal in Penpot (menu items disabled, row not draggable)
+      on the Screens file's Proposals page and get the person's approval
+      before any code (`docs/penpot.md`).
+- [ ] Reproduce: a test in `crates/desktop/tests/all/tree.rs` that renames
+      / trashes / moves an open-root member row today and fails for that
+      reason before the fix (acceptance 1).
+- [ ] Add the guard: a source that is an open root, or contains one, is
+      refused at `file_operations`/`tree`/`transfers`/`tree_drag` handlers
+      on the resolved source path, and the menu (`view/menu/tree.rs`) and
+      drag (`view/tree_drag.rs`) stop offering it (acceptances 3-7).
+- [ ] Tell the person why in English and Russian (`i18n/english.rs`,
+      `i18n/russian.rs`).
+- [ ] `just check`, isolated; the window check against the approved
+      proposal; then the Penpot file brought to what was merged.
 
 - [ ] Draw the refusal in Penpot (menu items disabled, row not draggable)
       on the Screens file's Proposals page and get the person's approval

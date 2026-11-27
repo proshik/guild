@@ -440,7 +440,7 @@ impl Root {
                 StripButton::holding(
                     "tab-new",
                     crate::view::kind::harness_mark(
-                        self.settings.default_tab,
+                        self.default_tab(),
                         theme,
                         theme::space::STATUS_ICON,
                         crate::view::kind::Shade::Full,
@@ -448,9 +448,7 @@ impl Root {
                     theme,
                 )
                 .hint_delay()
-                .tooltip(tip(
-                    default_tab_label(ui, self.settings.default_tab).to_owned()
-                ))
+                .tooltip(tip(default_tab_label(ui, self.default_tab()).to_owned()))
                 .on_click(cx.listener(|root, _event, window, cx| {
                     if let Some(project) = root.active_project {
                         let runs = root.runs_for_default_tab();

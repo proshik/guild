@@ -192,7 +192,7 @@ impl Root {
     fn start_card(&self, focused: bool, cx: &mut Context<Root>) -> AnyElement {
         let theme = self.theme;
         let ui = self.ui();
-        let tab = self.settings.default_tab;
+        let tab = self.default_tab();
         let lit = focused && self.start.lit == Lit::Card;
         let mut outline: Hsla = rgb(theme.accent.brass).into();
         outline.a = if lit { theme::alpha::LIT_OUTLINE } else { 0.0 };

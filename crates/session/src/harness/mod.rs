@@ -72,6 +72,17 @@ impl HarnessKind {
         }
     }
 
+    /// Where a person gets this agent: its own install page — GLD-081.
+    /// What the notice for a missing agent and README's *Requirements*
+    /// name; each was checked to resolve on 2026-11-27.
+    pub fn install_page(self) -> &'static str {
+        match self {
+            Self::Claude => "https://code.claude.com/docs/en/setup",
+            Self::OpenCode => "https://opencode.ai/docs",
+            Self::Codex => "https://github.com/openai/codex",
+        }
+    }
+
     /// Which of `ALL` are on the given `PATH` — what the harness-choice
     /// menu offers as enabled rows. Pure, so the menu's state is testable
     /// without a window.

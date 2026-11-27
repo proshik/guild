@@ -1124,3 +1124,68 @@ fn an_unknown_collapsed_section_is_dropped_alone() {
     assert!(restored.session_folds.settled_open);
     assert_eq!(restored.column_width, 300.0);
 }
+
+/// GLD-081: until the person picks a default agent, the default is the
+/// first installed of Claude Code, Codex and OpenCode, else the terminal.
+#[test]
+fn an_unchosen_default_is_the_first_installed_agent() {
+    use guild_session::{DefaultTab, HarnessKind::*};
+    let fresh = Settings::default();
+    assert_eq!(fresh.default_tab, None, "nobody chose it");
+    for (installed, expected) in [
+        (vec![Claude, OpenCode, Codex], DefaultTab::Claude),
+        (vec![Claude], DefaultTab::Claude),
+        (vec![OpenCode, Codex], DefaultTab::Codex),
+        (vec![Codex], DefaultTab::Codex),
+        (vec![OpenCode], DefaultTab::OpenCode),
+        (vec![Claude, OpenCode], DefaultTab::Claude),
+        (vec![], DefaultTab::Terminal),
+    ] {
+        assert_eq!(
+            fresh.default_tab_among(&installed),
+            expected,
+            "installed: {installed:?}"
+        );
+    }
+}
+
+/// GLD-081: a chosen default stays the person's even when its agent is
+/// missing, and a file that already names one keeps it.
+#[test]
+fn a_chosen_default_is_kept_even_when_missing() {
+    use guild_session::{DefaultTab, HarnessKind::*};
+    let chosen = Settings {
+        default_tab: Some(DefaultTab::Claude),
+        ..Settings::default()
+    };
+    assert_eq!(chosen.default_tab_among(&[Codex]), DefaultTab::Claude);
+    assert_eq!(chosen.default_tab_among(&[]), DefaultTab::Claude);
+
+    let existing: Settings = serde_json::from_str(r#"{"default_tab":"claude"}"#).unwrap();
+    assert_eq!(existing.default_tab, Some(DefaultTab::Claude));
+    assert_eq!(existing.default_tab_among(&[OpenCode]), DefaultTab::Claude);
+    let terminal: Settings = serde_json::from_str(r#"{"default_tab":"terminal"}"#).unwrap();
+    assert_eq!(terminal.default_tab_among(&[Claude]), DefaultTab::Terminal);
+}
+
+/// GLD-081: a fresh settings file does not write a default nobody chose,
+/// so the next start still picks one by what is installed; a chosen one
+/// survives a restart.
+#[test]
+fn only_a_chosen_default_is_written_down() {
+    use guild_session::DefaultTab;
+    let dir = temp_dir("default-tab");
+    let store: Store<Settings> = Store::new(dir.join("settings.json"));
+    store.save(&Settings::default()).unwrap();
+    let text = std::fs::read_to_string(dir.join("settings.json")).unwrap();
+    assert!(!text.contains("default_tab"), "{text}");
+    assert_eq!(store.load().unwrap().default_tab, None);
+
+    store
+        .save(&Settings {
+            default_tab: Some(DefaultTab::Codex),
+            ..Settings::default()
+        })
+        .unwrap();
+    assert_eq!(store.load().unwrap().default_tab, Some(DefaultTab::Codex));
+}

@@ -16,11 +16,10 @@ use crate::store::Normalise;
 /// one place and what it opens is the immediate question. `Terminal` is
 /// deliberately a variant: a hands-on person's **+** may want a shell as
 /// simply as a session.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DefaultTab {
     /// Claude Code.
-    #[default]
     Claude,
     /// OpenCode.
     OpenCode,
@@ -33,6 +32,22 @@ pub enum DefaultTab {
 impl DefaultTab {
     /// Every tab the **+** can open, in the order the choice lists them.
     pub const ALL: [Self; 4] = [Self::Claude, Self::OpenCode, Self::Codex, Self::Terminal];
+
+    /// The default nobody chose — GLD-081: the first of Claude Code,
+    /// Codex and OpenCode in `available`, else a terminal, which needs
+    /// nothing on the `PATH`. Its own order, not [`Self::ALL`]'s: the
+    /// tiles' order is a layout, this one is a preference.
+    pub fn first_installed(available: &[crate::HarnessKind]) -> Self {
+        use crate::HarnessKind;
+        [
+            (HarnessKind::Claude, Self::Claude),
+            (HarnessKind::Codex, Self::Codex),
+            (HarnessKind::OpenCode, Self::OpenCode),
+        ]
+        .into_iter()
+        .find(|(kind, _)| available.contains(kind))
+        .map_or(Self::Terminal, |(_, tab)| tab)
+    }
 
     /// The tab after this one, wrapping around — what a setting button that
     /// cycles through the choices lands on.
@@ -163,13 +178,19 @@ pub struct Settings {
     pub branch_update_receipts: std::collections::BTreeMap<std::path::PathBuf, BranchUpdateRecord>,
     /// Branch-update source, keyed by the canonical worktree path.
     pub branch_update_sources: std::collections::BTreeMap<std::path::PathBuf, String>,
-    /// Which tab the strip's **+** opens by default — M14.
+    /// Which tab the strip's **+** opens by default, when the person has
+    /// chosen one — M14, GLD-081.
     ///
     /// The harness's own mark stands on the button, and a click opens that
     /// tab directly; the arrow beside it still offers the whole choice. A
     /// terminal is a row of the choice, so it can be the default too.
-    #[serde(default)]
-    pub default_tab: DefaultTab,
+    ///
+    /// **`None` is "not chosen", and it is not written down**: a fresh file
+    /// then keeps following what is installed
+    /// ([`Settings::default_tab_among`]), while a file that names a default
+    /// keeps it even when its agent goes missing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_tab: Option<DefaultTab>,
     /// New-tab menu order; missing entries retain their historical order.
     #[serde(default)]
     pub tab_launcher_order: Vec<DefaultTab>,
@@ -891,9 +912,8 @@ impl Default for Settings {
             repository_settings: Default::default(),
             branch_update_sources: Default::default(),
             branch_update_receipts: Default::default(),
-            // A new tab opens the harness that first-made sense; the
-            // setting beside it changes that.
-            default_tab: DefaultTab::default(),
+            // Nobody has chosen: a new tab opens the first agent installed.
+            default_tab: None,
             tab_launcher_order: Vec::new(),
             launch_prefixes: LaunchPrefixes::default(),
             launch_arguments: LaunchPrefixes::default(),
@@ -965,6 +985,15 @@ impl Settings {
     /// The palette in effect while the system is dark or not.
     pub fn theme_kind(&self, system_dark: bool) -> ThemeKind {
         self.theme_mode().resolve(system_dark)
+    }
+
+    /// The tab a new tab opens: the person's choice, or — until there is
+    /// one — the first of `available` in [`DefaultTab::first_installed`]'s
+    /// order. The one place every surface asks, so the start screen, the
+    /// **+** and `cmd-t` cannot disagree.
+    pub fn default_tab_among(&self, available: &[crate::HarnessKind]) -> DefaultTab {
+        self.default_tab
+            .unwrap_or_else(|| DefaultTab::first_installed(available))
     }
 
     /// Every supported launcher item exactly once, preserving the saved preference.

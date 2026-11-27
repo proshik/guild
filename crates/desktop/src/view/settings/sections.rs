@@ -367,7 +367,7 @@ impl Root {
             }
             Setting::TabLauncherOrder => self.render_tab_launcher_order(cx),
             Setting::DefaultTab => {
-                self.settings_choice("setting-defaulttab", Value::Tab(settings.default_tab), cx)
+                self.settings_choice("setting-defaulttab", Value::Tab(self.default_tab()), cx)
             }
             Setting::ClaudePrefix | Setting::CodexPrefix | Setting::OpenCodePrefix => {
                 let (harness, id) = match setting {

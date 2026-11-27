@@ -34,23 +34,43 @@ to install it.
 
 ## Acceptance
 
-- [ ] WHEN the person has never chosen a default agent THEN the default is
+- [x] WHEN the person has never chosen a default agent THEN the default is
       the first on the `PATH` of Claude Code, Codex, OpenCode, else the
       Terminal, and the start screen, the tab launcher and the new-tab
       gesture all use it.
-- [ ] WHEN the person has chosen one (Settings) THEN it stays theirs even
+- [x] WHEN the person has chosen one (Settings) THEN it stays theirs even
       when it is missing, as today. A settings file that already names a
       default keeps it (the author's machine sees no change).
-- [ ] WHEN an agent that is not on the `PATH` is started THEN the notice
+- [x] WHEN an agent that is not on the `PATH` is started THEN the notice
       says it is not installed and where to get it — the agent's own
       install page, checked to resolve — in English and in Russian.
-- [ ] README's *Requirements* names where each agent comes from.
+- [x] README's *Requirements* names where each agent comes from.
 
 ## Checks
 
 - Tests for the choice (none chosen with each combination installed;
   chosen and missing) and for the notice text.
 - `just check`, isolated; a dev-window check with `claude` absent.
+
+## Design
+
+- `Settings::default_tab` is `Option<DefaultTab>`, `None` meaning "not
+  chosen", read as before and skipped when written: a file that names a
+  default keeps it, a fresh one is never given one by a save.
+- `Settings::default_tab_among(available)` is the one answer: the choice,
+  or `DefaultTab::first_installed` — Claude Code, Codex, OpenCode, else the
+  Terminal. The window asks it through `Root::default_tab()` with
+  `Root::available` (the same list the tiles and the chevron grey by) for
+  the start screen's card, the **+**'s mark and tooltip, Settings' row and
+  `cmd-t`. Choosing in Settings writes `Some`.
+- `HarnessKind::install_page()` names each agent's page; checked with
+  `curl -sIL` on 2026-11-27 (all 200): Claude Code
+  `https://code.claude.com/docs/en/setup` (the docs.claude.com page
+  redirects there), Codex `https://github.com/openai/codex`, OpenCode
+  `https://opencode.ai/docs`. `Ui::not_installed` replaces `not_on_path`.
+- The missing-agent refusal moved into `open_harness_tab`, where every
+  new-tab gesture meets: before, `cmd-t` and the **+** opened a tab that
+  died at once for a missing default, with no notice at all.
 
 ## Limits / non-goals
 

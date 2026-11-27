@@ -291,10 +291,9 @@ impl Root {
         };
         match deed {
             Deed::Default => {
+                // A missing harness is refused, with its install page, in
+                // `open_harness_tab`, where every new-tab gesture meets.
                 let runs = self.runs_for_default_tab();
-                if let Some(kind) = Self::harness_missing(runs) {
-                    return self.say_missing(kind, cx);
-                }
                 self.open_harness_tab(project, runs, window, cx);
             }
             Deed::Tile { tab } => {
@@ -303,10 +302,8 @@ impl Root {
                     None => Runs::Shell,
                 };
                 // A greyed tile takes no click, but the deed is safe on
-                // its own: a key or a stale press says why, too.
-                if let Some(kind) = Self::harness_missing(runs) {
-                    return self.say_missing(kind, cx);
-                }
+                // its own: `open_harness_tab` says why to a key or a stale
+                // press, too.
                 self.open_harness_tab(project, runs, window, cx);
             }
             Deed::Resume { past } => {
@@ -594,9 +591,10 @@ impl Root {
         (!HarnessKind::available_on(&path).contains(&kind)).then_some(kind)
     }
 
-    /// Say why a press opened nothing: *codex is not on the PATH*.
+    /// Say why a press opened nothing, and where the agent comes from:
+    /// *Codex is not installed: install it from …* — GLD-081.
     pub(crate) fn say_missing(&mut self, kind: HarnessKind, cx: &mut Context<Root>) {
-        let text = self.ui().not_on_path(kind.program());
+        let text = self.ui().not_installed(kind);
         self.warn(text);
         cx.notify();
     }

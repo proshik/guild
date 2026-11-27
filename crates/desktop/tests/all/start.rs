@@ -493,3 +493,38 @@ fn command_enter_keeps_the_same_launch_and_resume_deeds() {
         assert_eq!(screen.take(Lit::Row(0)), screen.key("enter", &ALL));
     }
 }
+
+/// GLD-081: a missing agent's notice says it is not installed and where
+/// its own install page is, in both languages.
+#[test]
+fn a_missing_agent_s_notice_says_where_to_install_it() {
+    for (kind, name, page) in [
+        (
+            HarnessKind::Claude,
+            "Claude Code",
+            "https://code.claude.com/docs/en/setup",
+        ),
+        (
+            HarnessKind::Codex,
+            "Codex",
+            "https://github.com/openai/codex",
+        ),
+        (
+            HarnessKind::OpenCode,
+            "OpenCode",
+            "https://opencode.ai/docs",
+        ),
+    ] {
+        assert_eq!(kind.install_page(), page);
+        let english = Ui(Language::English).not_installed(kind);
+        assert_eq!(
+            english,
+            format!("{name} is not installed: install it from {page}")
+        );
+        let russian = Ui(Language::Russian).not_installed(kind);
+        assert_eq!(
+            russian,
+            format!("{name} не установлен: установите по инструкции {page}")
+        );
+    }
+}

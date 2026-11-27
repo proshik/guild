@@ -9,6 +9,7 @@ would notice adds its line under `Unreleased` in its own branch.
 
 ### Fixed
 
+- Until you pick a default agent in Settings, a new tab opens the first agent you have installed — Claude Code, then Codex, then OpenCode, else a terminal — instead of always offering Claude Code. Starting an agent that is not installed now says so and gives the page to install it from, and `cmd-t` and **+** say it too instead of opening a tab that closes at once.
 - The Explorer no longer renames, moves, cuts or sends to the Trash a folder that is open in Guild as a project, or that holds one: those menu items are disabled with a note saying why, the row cannot be dragged, and their keys show a warning instead.
 
 ## [nightly-2026-11-27] - 2026-11-27

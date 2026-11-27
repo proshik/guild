@@ -59,7 +59,7 @@ pub fn tooltip_root(
         )
     });
     root.update(cx, |root, cx| {
-        root.settings.default_tab = guild_session::DefaultTab::Terminal;
+        root.settings.default_tab = Some(guild_session::DefaultTab::Terminal);
         root.ensure_open_in_apps();
         eprintln!(
             "Open In preview: selected={:?}; apps={:?}; icon_ids={:?}",

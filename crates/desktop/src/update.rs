@@ -229,13 +229,29 @@ pub fn seen_file(state_dir: &Path) -> PathBuf {
     state_dir.join("release-seen")
 }
 
+/// Whether an earlier Guild worked in this state folder: its desk is
+/// there, under today's name or the one before it. **Not
+/// `settings.json`**: the run being greeted writes that before it asks —
+/// `Root::from_state` saves the panels it adopts — so on a first launch
+/// it is already there. The desk is written only by a `Root` that
+/// exists, and the greeting is asked while one is being built.
+fn held_a_guild(state_dir: &Path) -> bool {
+    ["workspace.json", "sessions.json"]
+        .iter()
+        .any(|name| state_dir.join(name).exists())
+}
+
 /// *What's new*, at start: a nightly not greeted before gets its own
 /// bundle's changelog since the version seen last, a block per release, and becomes
 /// the version seen — written **now**, when the card is about to show,
 /// so a window that goes down before it is dismissed does not show it
 /// twice. A dev or a debug build gets nothing and writes nothing, so the
 /// next nightly still knows which one was seen; a release that says
-/// nothing is seen and shows nothing.
+/// nothing is seen and shows nothing. **A first launch** — no version
+/// seen and no earlier Guild in the folder — is seen and shows nothing:
+/// before Guild has been seen at all, everything in the changelog is new
+/// and none of it is news (GLD-079). A folder an earlier Guild worked in
+/// with no record is an install from before the record, and is greeted.
 pub fn greet(state_dir: &Path, running: Option<&Build>, bundle: Option<&Path>) -> Option<Greeting> {
     let version = running?.version()?;
     let file = seen_file(state_dir);
@@ -246,7 +262,12 @@ pub fn greet(state_dir: &Path, running: Option<&Build>, bundle: Option<&Path>) -
     if seen.as_deref() == Some(version) {
         return None;
     }
-    let changelog = bundle.map(changelog_of).unwrap_or_default();
+    let first_launch = seen.is_none() && !held_a_guild(state_dir);
+    let changelog = if first_launch {
+        Vec::new()
+    } else {
+        bundle.map(changelog_of).unwrap_or_default()
+    };
     let releases: Vec<Section> = changelog::between(&changelog, seen.as_deref(), version)
         .into_iter()
         .map(|release| Section {

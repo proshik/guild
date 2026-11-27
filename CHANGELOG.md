@@ -9,6 +9,7 @@ would notice adds its line under `Unreleased` in its own branch.
 
 ### Fixed
 
+- Guild's very first launch no longer opens What's new with the whole changelog; it appears from the next update on, with what that update brings.
 - The Explorer no longer renames, moves, cuts or sends to the Trash a folder that is open in Guild as a project, or that holds one: those menu items are disabled with a note saying why, the row cannot be dragged, and their keys show a warning instead.
 
 ## [nightly-2026-11-27] - 2026-11-27

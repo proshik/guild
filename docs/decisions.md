@@ -735,3 +735,22 @@ here; the comment beside the citation carries the rule it names.
       its real path. A symlink row is the link, not its target.
     - **Closing the root first is the way.** The window offers no shortcut
       that closes and then renames.
+
+58. **An agent CLI is left alone until it is known.** Guild writes into an
+    agent's own directory (Codex's hook block, opencode's plugin) and runs
+    it in the background (`codex app-server` for the limits, `opencode`
+    for history) only when the agent is known on the machine — its own
+    directory exists (`guild_session::harness::known`) — or when the person
+    starts it from Guild, whose launch writes its status door before the
+    process starts. GLD-074 found Guild's start creating `~/.codex` and
+    downloading about 109 MB for opencode on an account that had never run
+    either. The `--version` probes that decide *not on PATH* are exempt;
+    `docs/traps.md` notes that opencode's own probe creates its folders.
+
+59. **A preference the person has not chosen is not written down.** An
+    unset value is `None` and skipped when serialized, and its effective
+    value is computed where it is read, so it can follow the machine until
+    the person picks one: `Settings::default_tab` is the first installed
+    agent until a default is chosen (`Settings::default_tab_among`), and a
+    file that names one keeps it even when that agent goes missing
+    (GLD-081).

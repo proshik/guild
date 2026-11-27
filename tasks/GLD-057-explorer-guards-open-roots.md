@@ -124,9 +124,23 @@ starts), and a drop of other rows onto it is unchanged.
       faint Rename… does nothing; ⇧F6 and ⌘X raise board 2's Warning and
       arm nothing; ⌘V into `plain` moves nothing. ⌘Backspace, F6 and the
       drag were not driven in the window — the person took the machine
-      back — and are covered by the window test. *Open:* Penpot
-      promotion (Library footnote row, Screens copy, proposal boards
-      removed).
+      back — and are covered by the window test.
+      *Penpot, 2026-11-27:* the footnote is the Library component
+      `menu / note` (Components › section *Explorer open roots*); Screens
+      has `Menu — open project row in a group folder Explorer` and `Main
+      window — group folder Explorer, an open project refused` at x 13300,
+      y 7200 and 8100, built from Library copies. No token changed, so the
+      token script's counts are untouched. *Open:* the three GLD-057 boards
+      on Proposals — selected, not yet deleted (the tab crashed twice on
+      the heavy Screens page, then the person took the machine back).
+- [x] Code review, round 1 of 1 (revust, project profile `comprehensive`,
+      2026-11-27): partial — verification of two single-source findings
+      did not finish. All five reported findings checked against the code
+      and fixed, each with a test that fails without its fix: a refused
+      Paste now puts its Cut away; a move's collision retry asks again for
+      a root opened while the question was up; the handlers also compare
+      resolved paths, so a symlinked ancestor does not hide a member; the
+      window test drives a real drag; `project_root`'s doc is back on it.
 - [x] The lasting rule: decision 57 in `docs/decisions.md`.
 
 ## Acceptance

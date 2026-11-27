@@ -121,7 +121,23 @@ fn an_open_root_in_the_explorer_is_not_renamed_trashed_cut_or_moved(cx: &mut Tes
     unmoved(cx);
     dismiss_notices(&root, cx);
 
-    // A drag does not start, and a drop's transfer is refused all the same.
+    // A real drag gesture on the row starts no drag at all.
+    let start = cx.debug_bounds("explorer-row-member").unwrap().center();
+    let end = cx.debug_bounds("explorer-row-plain").unwrap().center();
+    cx.simulate_mouse_down(start, gpui::MouseButton::Left, Default::default());
+    cx.simulate_mouse_move(
+        start + gpui::point(gpui::px(12.), gpui::px(0.)),
+        gpui::MouseButton::Left,
+        Default::default(),
+    );
+    cx.update(|_, cx| assert!(!cx.has_active_drag(), "an open root was picked up"));
+    cx.simulate_mouse_move(end, gpui::MouseButton::Left, Default::default());
+    cx.simulate_mouse_up(end, gpui::MouseButton::Left, Default::default());
+    unmoved(cx);
+    dismiss_notices(&root, cx);
+
+    // A drag started elsewhere does not carry it along, and a drop's
+    // transfer is refused all the same.
     cx.update(|window, cx| {
         root.update(cx, |r, cx| {
             let drag = FileDrag::new(project, "member".into());
@@ -175,4 +191,98 @@ fn an_open_root_in_the_explorer_is_not_renamed_trashed_cut_or_moved(cx: &mut Tes
     cx.simulate_keystrokes("escape");
     assert!(notices(&root, cx).is_empty());
     unmoved(cx);
+
+    // The same gesture on a row that is no open root does pick it up, so
+    // the drag check above is not passing for want of a drag.
+    let start = cx.debug_bounds("explorer-row-plain").unwrap().center();
+    cx.simulate_mouse_down(start, gpui::MouseButton::Left, Default::default());
+    cx.simulate_mouse_move(
+        start + gpui::point(gpui::px(12.), gpui::px(0.)),
+        gpui::MouseButton::Left,
+        Default::default(),
+    );
+    cx.update(|_, cx| assert!(cx.has_active_drag()));
+    cx.simulate_mouse_up(start, gpui::MouseButton::Left, Default::default());
+    cx.run_until_parked();
+}
+
+/// GLD-057's review: a Paste refused because its source became an open
+/// root after the Cut puts the Cut away, rather than leaving the rows
+/// marked cut and every later Paste meeting the same refusal.
+#[gpui::test]
+#[ignore = "run through isolated_speed_search_window_regressions"]
+fn a_paste_refused_for_an_open_root_puts_the_cut_away(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    for folder in ["member/src", "plain"] {
+        std::fs::create_dir_all(dir.path().join(folder)).unwrap();
+    }
+    std::fs::write(dir.path().join("member/README.md"), "member").unwrap();
+    let (root, cx) = explorer_fixture(cx, dir.path());
+    click(cx, "member", false);
+    cx.simulate_keystrokes("cmd-x");
+    assert!(!nothing_cut(&root, cx), "an ordinary folder is cut");
+    cx.update(|_, cx| {
+        root.update(cx, |r, cx| {
+            let workspace = r.active_workspace;
+            r.desk.open_in(workspace, &dir.path().join("member"));
+            cx.notify();
+        })
+    });
+    click(cx, "plain", false);
+    cx.simulate_keystrokes("cmd-v");
+    cx.run_until_parked();
+    assert!(dir.path().join("member/README.md").exists());
+    assert!(!dir.path().join("plain/member").exists());
+    assert!(notices(&root, cx).contains("“member”"));
+    assert!(nothing_cut(&root, cx), "the refused Cut is put away");
+}
+
+/// GLD-057's review: a move held at its collision question does not write
+/// a source that was opened as a project while the question was up — the
+/// retry asks again, refuses, and lets the frozen editors go.
+#[gpui::test]
+#[ignore = "run through isolated_speed_search_window_regressions"]
+fn a_collision_retry_refuses_a_root_opened_while_it_asked(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    for folder in ["member/src", "dest/member"] {
+        std::fs::create_dir_all(dir.path().join(folder)).unwrap();
+    }
+    std::fs::write(dir.path().join("member/README.md"), "member").unwrap();
+    let (root, cx) = explorer_fixture(cx, dir.path());
+    let project = cx.update(|_, cx| root.read(cx).active_project.unwrap());
+    cx.update(|window, cx| {
+        root.update(cx, |r, cx| {
+            r.select_operation_target(std::path::Path::new("member"));
+            r.start_transfer(
+                project,
+                vec!["member".into()],
+                "dest".into(),
+                Operation::Move,
+                window,
+                cx,
+            );
+        })
+    });
+    cx.run_until_parked();
+    assert!(cx.has_pending_prompt(), "the name is taken in dest");
+    cx.update(|_, cx| {
+        root.update(cx, |r, cx| {
+            let workspace = r.active_workspace;
+            r.desk.open_in(workspace, &dir.path().join("member"));
+            cx.notify();
+        })
+    });
+    cx.simulate_prompt_answer("Keep Both");
+    cx.run_until_parked();
+    assert!(
+        dir.path().join("member/README.md").exists(),
+        "the open root moved"
+    );
+    assert_eq!(
+        std::fs::read_dir(dir.path().join("dest")).unwrap().count(),
+        1,
+        "nothing was kept beside the taken name"
+    );
+    assert!(notices(&root, cx).contains("“member”"));
+    cx.update(|_, cx| assert!(root.read(cx).file_operations.busy.is_none()));
 }

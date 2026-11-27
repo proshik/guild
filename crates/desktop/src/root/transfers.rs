@@ -554,6 +554,17 @@ impl Root {
         // Every move meets here — Paste after Cut, the Move field, a drop
         // — so the refusal does too. GLD-057.
         if operation == Operation::Move && self.refuse_open_root(&root_path, &sources.paths) {
+            // A refused Paste puts its Cut away, as a failed or cancelled
+            // move does: the rows stop looking cut, and the next Paste does
+            // not meet the same refusal. GLD-057's review.
+            if sources.clipboard_nonce.as_ref().is_some_and(|nonce| {
+                self.file_operations
+                    .clipboard
+                    .as_ref()
+                    .is_some_and(|payload| &payload.nonce == nonce)
+            }) {
+                self.file_operations.clipboard = None;
+            }
             cx.notify();
             return;
         }
@@ -693,6 +704,25 @@ impl Root {
                             break;
                         }
                     };
+                    // A root opened while the question was up is refused
+                    // before the retry writes — GLD-057's review. The
+                    // question awaits the person, and `guild worktree open`
+                    // or Open Recent can open one meanwhile.
+                    if operation == Operation::Move {
+                        let refused = cx
+                            .update(|_, cx| {
+                                root.update(cx, |root, _| {
+                                    root.refuse_open_root(&root_path, &remaining)
+                                })
+                            })
+                            .ok()
+                            .and_then(Result::ok)
+                            .unwrap_or(true);
+                        if refused {
+                            cancelled = true;
+                            break;
+                        }
+                    }
                 }
                 let _ = cx.update(|window, cx| {
                     root.update(cx, |root, cx| {

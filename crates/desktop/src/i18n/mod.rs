@@ -1186,6 +1186,11 @@ labels! {
     MenuCutFiles,
     MenuCopyFiles,
     MenuPasteFiles,
+    /// The footnote of a directory that is itself a root Guild has open —
+    /// GLD-057. One line, so short.
+    MenuOpenAsProject,
+    /// The footnote of a directory with an open root below it — GLD-057.
+    MenuHoldsOpenProject,
     FileTransferCompleted,
     FileTransferRemaining,
     FileClipboardChanged,
@@ -1970,6 +1975,21 @@ impl Ui {
         match self.0 {
             Language::English => format!("Could not rename {name}: {reason}"),
             Language::Russian => format!("Не удалось переименовать {name}: {reason}"),
+        }
+    }
+
+    /// A rename, a move or a Trash refused because the row is, or holds,
+    /// a root Guild has open — GLD-057. `root` is that root's path in the
+    /// tree, so a folder holding one names the one inside it: the thing to
+    /// close.
+    pub fn notice_open_root(self, root: &str) -> String {
+        match self.0 {
+            Language::English => {
+                format!("“{root}” is open in Guild as a project — close it first")
+            }
+            Language::Russian => {
+                format!("«{root}» открыт в Guild как проект — сначала закройте его")
+            }
         }
     }
 

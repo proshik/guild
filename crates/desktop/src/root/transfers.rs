@@ -170,6 +170,11 @@ impl Root {
         let Some(root) = self.project_root() else {
             return;
         };
+        // A copy does not write its source; a cut is a move — GLD-057.
+        if cut && self.refuse_open_root(&root, &sources) {
+            cx.notify();
+            return;
+        }
         let identities = match sources
             .iter()
             .map(|p| clipboard_identity(&root, p))
@@ -275,6 +280,12 @@ impl Root {
         };
         let sources = self.operation_sources();
         if sources.is_empty() {
+            return;
+        }
+        if let Some(root) = self.project_root()
+            && self.refuse_open_root(&root, &sources)
+        {
+            cx.notify();
             return;
         }
         self.file_operations.form = Some(Form {
@@ -540,6 +551,12 @@ impl Root {
         let Some(root_path) = self.desk.project(project).map(|p| p.path.clone()) else {
             return;
         };
+        // Every move meets here — Paste after Cut, the Move field, a drop
+        // — so the refusal does too. GLD-057.
+        if operation == Operation::Move && self.refuse_open_root(&root_path, &sources.paths) {
+            cx.notify();
+            return;
+        }
         let TransferSources {
             paths: sources,
             identities,

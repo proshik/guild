@@ -69,7 +69,15 @@ impl Root {
             return Vec::new();
         }
         self.select_operation_target(&drag.source);
-        let sources = self.operation_sources();
+        let mut sources = self.operation_sources();
+        // A row that is an open root is no drag source at all; this is a
+        // selection dragged from another row that takes one along. GLD-057.
+        if let Some(root) = self.project_root()
+            && self.refuse_open_root(&root, &sources)
+        {
+            sources.clear();
+            cx.notify();
+        }
         *drag.sources.borrow_mut() = sources.clone();
         if sources.is_empty() {
             return sources;

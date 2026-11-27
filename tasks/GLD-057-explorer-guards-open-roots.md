@@ -99,17 +99,35 @@ starts), and a drop of other rows onto it is unchanged.
 - [x] Draw the refusal in Penpot (menu items disabled, row not draggable)
       on the Screens file's Proposals page and get the person's approval
       before any code (`docs/penpot.md`).
-- [ ] Reproduce: a test in `crates/desktop/tests/all/tree.rs` that renames
+- [x] Reproduce: a test in `crates/desktop/tests/all/tree.rs` that renames
       / trashes / moves an open-root member row today and fails for that
       reason before the fix (acceptance 1).
-- [ ] Add the guard: a source that is an open root, or contains one, is
+      *Changed while doing it:* the handlers are `Root`'s and reachable only
+      inside the crate, so the window test is
+      `src/root/speed_search/tests/open_roots.rs`, beside the Explorer's
+      other clipboard and move tests and run the same isolated way; the
+      menu's pure rule is pinned in `tests/all/menu.rs`. Against the base
+      commit it fails on its first gesture: ⇧F6 on the open member opens
+      the rename field.
+- [x] Add the guard: a source that is an open root, or contains one, is
       refused at `file_operations`/`tree`/`transfers`/`tree_drag` handlers
       on the resolved source path, and the menu (`view/menu/tree.rs`) and
       drag (`view/tree_drag.rs`) stop offering it (acceptances 3-7).
-- [ ] Tell the person why in English and Russian (`i18n/english.rs`,
+- [x] Tell the person why in English and Russian (`i18n/english.rs`,
       `i18n/russian.rs`).
 - [ ] `just check`, isolated; the window check against the approved
       proposal; then the Penpot file brought to what was merged.
+      *Done 2026-11-27:* `just check` green (isolated state). In a dev
+      window, `acme` with `backend` opened as a project: the row's menu
+      matches board 1 (Move…, Cut, Rename…, Delete faint with strokes,
+      Copy and Paste live, "Open as a project" at the foot); clicking the
+      faint Rename… does nothing; ⇧F6 and ⌘X raise board 2's Warning and
+      arm nothing; ⌘V into `plain` moves nothing. ⌘Backspace, F6 and the
+      drag were not driven in the window — the person took the machine
+      back — and are covered by the window test. *Open:* Penpot
+      promotion (Library footnote row, Screens copy, proposal boards
+      removed).
+- [x] The lasting rule: decision 57 in `docs/decisions.md`.
 
 ## Acceptance
 

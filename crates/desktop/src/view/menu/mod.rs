@@ -84,6 +84,17 @@ pub use terminal::TerminalDeed;
 pub use tree::TreeDeed;
 pub use workspace::WorkspaceDeed;
 
+/// How a directory of the tree stands to the roots Guild has open —
+/// GLD-057.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpenRoot {
+    /// The directory is itself an open root: a member of a group folder,
+    /// a worktree opened from inside its checkout.
+    Is,
+    /// An open root lies somewhere below it.
+    Holds,
+}
+
 /// What a menu is about, as far as its items are concerned.
 ///
 /// The facts the rule below turns on, and nothing else: no path, no tab
@@ -107,6 +118,13 @@ pub enum Subject {
         /// has refused the delete since it was written. A row is a row
         /// to the menu, so the flag is how it tells them apart.
         root: bool,
+        /// Whether the directory is, or holds, another root Guild has
+        /// open — GLD-057. Its writes are drawn disabled.
+        ///
+        /// [`Target::subject`] cannot know it, since a target is a row and
+        /// nothing about the desk; the window answers it where the menu is
+        /// built, from the projects it holds.
+        open_root: Option<OpenRoot>,
     },
     /// A row under External Libraries: somebody else's source, which
     /// the window reads and never writes. M8.8.3.
@@ -421,6 +439,7 @@ impl Target {
             } => Subject::TreeDirectory {
                 expanded: *expanded,
                 root: path.as_os_str().is_empty(),
+                open_root: None,
             },
             Target::TreeRow { .. } => Subject::TreeFile,
             Target::LibraryRow {
@@ -736,7 +755,11 @@ pub enum Entry {
 pub fn entries(subject: Subject) -> Vec<Entry> {
     match subject {
         Subject::TreeFile => tree::entries_for_file(),
-        Subject::TreeDirectory { expanded, root } => tree::entries_for_directory(expanded, root),
+        Subject::TreeDirectory {
+            expanded,
+            root,
+            open_root,
+        } => tree::entries_for_directory(expanded, root, open_root),
         Subject::Library { is_dir, expanded } => tree::entries_for_library(is_dir, expanded),
         Subject::Tab {
             has_file,
@@ -1177,6 +1200,17 @@ impl crate::Root {
             Target::ProjectGroupAdd { choices, .. } => {
                 return column::add_project_entries(choices, |group| {
                     self.ui().group_member_of(group)
+                });
+            }
+            Target::TreeRow {
+                path,
+                is_dir: true,
+                expanded,
+            } => {
+                return entries(Subject::TreeDirectory {
+                    expanded: *expanded,
+                    root: path.as_os_str().is_empty(),
+                    open_root: self.open_root_of_row(path),
                 });
             }
             Target::SessionRow { key } => return sessions::row_entries(key),

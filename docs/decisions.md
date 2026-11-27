@@ -710,3 +710,22 @@ here; the comment beside the citation carries the rule it names.
       child when off; one already running finishes and its answer is
       dropped. `↑N`, the commits a push would send, is git's — refs only,
       Push Commits' rule without an upstream — and shows either way.
+
+57. **A file operation never takes away a root Guild has open.** The Explorer
+    refuses Rename, Move, Cut and the Trash for its own root (`writable_row`)
+    and, since GLD-057, for any row that is, or holds, a project the desk
+    has open in any workspace — a member in its group folder's Explorer, a
+    worktree opened from inside its checkout. Each would leave that root's
+    tabs and sessions on a path that no longer exists, and the Trash's
+    question about unsaved buffers counts only the tree's own project.
+    Copy and Paste into it stay: neither writes the directory itself.
+    - **Visible before the gesture, refused in the handler.** The row's menu
+      draws the four disabled with a one-line footnote, and the row is no
+      drag source; the handlers ask again on the resolved source paths
+      (`Root::refuse_open_root`) and say why in a Warning, because a key
+      binding reaches the handler without the menu and a drop reaches the
+      transfer without either. Every move meets in one place, the transfer's
+      start, so the refusal is there too, and the Trash and a rename ask
+      once more at the write for a root opened while their question was up.
+    - **Closing the root first is the way.** The window offers no shortcut
+      that closes and then renames.

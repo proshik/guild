@@ -1302,6 +1302,8 @@ pub(super) fn russian(text: Text) -> &'static str {
         Text::MenuCutFiles => "Вырезать",
         Text::MenuCopyFiles => "Копировать",
         Text::MenuPasteFiles => "Вставить",
+        Text::MenuOpenAsProject => "Открыт как проект",
+        Text::MenuHoldsOpenProject => "Внутри открытый проект",
         Text::FileTransferCompleted => "Выполнено",
         Text::FileTransferRemaining => "Не перенесено",
         Text::FileClipboardChanged => {

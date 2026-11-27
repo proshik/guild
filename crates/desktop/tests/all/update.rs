@@ -387,11 +387,44 @@ fn seen(state: &Path) -> Option<String> {
     std::fs::read_to_string(update::seen_file(state)).ok()
 }
 
-/// The first nightly started with no record: its own section, and the
-/// record written the moment it is shown.
+/// A state folder an earlier Guild worked in: its desk is there.
+fn earlier_guild(state: &Path) {
+    std::fs::write(state.join("workspace.json"), "{}\n").unwrap();
+}
+
+/// The very first launch — a state folder no Guild has worked in —
+/// shows nothing: *What's new* before Guild has been seen at all is
+/// everything in the changelog (GLD-079). The version is recorded, so
+/// the next nightly greets with what came after it.
+#[test]
+fn a_first_launch_greets_with_nothing_and_records_the_version() {
+    let state = scratch("greet-fresh");
+    let (app, build) = released("greet-fresh-app", "nightly-2026-09-26");
+
+    assert_eq!(update::greet(&state, Some(&build), Some(&app)), None);
+    assert_eq!(seen(&state).as_deref(), Some("nightly-2026-09-26\n"));
+}
+
+/// The run being greeted writes `settings.json` before it asks — the
+/// panels adopted as the window is built — so that file is no sign of
+/// an earlier Guild.
+#[test]
+fn a_first_launch_is_not_fooled_by_its_own_settings() {
+    let state = scratch("greet-fresh-settings");
+    std::fs::write(state.join("settings.json"), "{}\n").unwrap();
+    let (app, build) = released("greet-fresh-settings-app", "nightly-2026-09-26");
+
+    assert_eq!(update::greet(&state, Some(&build), Some(&app)), None);
+    assert_eq!(seen(&state).as_deref(), Some("nightly-2026-09-26\n"));
+}
+
+/// The first nightly started with no record by an earlier Guild — one
+/// from before `release-seen` existed: its own section, and the record
+/// written the moment it is shown.
 #[test]
 fn a_first_nightly_greets_with_its_own_section() {
     let state = scratch("greet-first");
+    earlier_guild(&state);
     let (app, build) = released("greet-first-app", "nightly-2026-09-26");
 
     let greeting = update::greet(&state, Some(&build), Some(&app)).expect("a greeting");
@@ -482,10 +515,23 @@ fn a_dev_build_greets_with_nothing_and_writes_nothing() {
     assert_eq!(seen(&state), None);
 }
 
+/// The desk under its name before `workspace.json` is an earlier Guild
+/// too.
+#[test]
+fn a_legacy_desk_is_an_earlier_guild() {
+    let state = scratch("greet-legacy");
+    std::fs::write(state.join("sessions.json"), "[]\n").unwrap();
+    let (app, build) = released("greet-legacy-app", "nightly-2026-09-26");
+
+    let greeting = update::greet(&state, Some(&build), Some(&app)).expect("a greeting");
+    assert_eq!(greeting.since, None);
+}
+
 /// A release that says nothing is not a card, and is still seen.
 #[test]
 fn an_empty_release_greets_with_nothing_and_is_seen() {
     let state = scratch("greet-empty");
+    earlier_guild(&state);
     let (app, build) = released("greet-empty-app", "nightly-2026-09-27");
 
     assert_eq!(update::greet(&state, Some(&build), Some(&app)), None);
@@ -515,6 +561,7 @@ fn the_notes_of_an_update_are_those_since_the_running_version() {
 #[test]
 fn stable_versions_greet_without_expanding_legacy_nightly_install_policy() {
     let state = scratch("greet-stable");
+    earlier_guild(&state);
     let (app, build) = released("greet-stable-app", "v1.2.0");
     std::fs::write(
         app.join("Contents/Resources/CHANGELOG.md"),

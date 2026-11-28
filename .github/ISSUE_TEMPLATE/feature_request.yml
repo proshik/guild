@@ -1,0 +1,22 @@
+name: Feature request
+description: Something Guild could do, or do differently.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: The work you were doing when you missed it, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: How you picture it working. If it changes the window, a sketch or a screenshot of something similar helps.
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Other tools that do it, or workarounds you use now.

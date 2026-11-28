@@ -39,14 +39,14 @@ ships without it while there is no Apple Developer account.
       update path learns to read. The update path offers only `nightly-*`
       today (`crates/desktop/src/update.rs:13`, `:156`), so the second one
       is a code change with its own tests.
-- [ ] WHEN a person opens the Releases page THEN the preview is the release
+- [x] WHEN a person opens the Releases page THEN the preview is the release
       shown first, and its notes say what is known not to work.
 - [ ] WHEN Guild from the preview runs THEN its Update button still offers
       the later nightlies, unless the person decided otherwise above.
-- [ ] WHEN the preview is not notarized THEN its notes and README say so
+- [x] WHEN the preview is not notarized THEN its notes and README say so
       plainly, with the first-launch steps for macOS 13–14 and for 15 and
       later, as checked by GLD-074.
-- [ ] README and the site point at the preview rather than at "the
+- [x] README and the site point at the preview rather than at "the
       releases".
 
 ## Decisions
@@ -84,8 +84,10 @@ ships without it while there is no Apple Developer account.
 - Draft release 461411935, *Guild 0.1.0 — preview*, not a prerelease,
   with the four signed assets and the build-info and SHA-256 evidence;
   re-downloaded by release ID, every hash equal, `verify` passed again.
-- **Not published.** Publishing waits for the person's word; then this
-  branch (README and the site) is merged.
+- Published on the person's word on 2026-11-28 as *Latest*
+  (https://github.com/proshik/guild/releases/tag/v0.1.0); the page and
+  `guild-update.json` answer 200 without a login. This branch, README and
+  the site, merged after it.
 
 ## Release notes (draft)
 

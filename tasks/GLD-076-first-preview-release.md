@@ -71,6 +71,22 @@ ships without it while there is no Apple Developer account.
   reader is positional (`changelog::between`), so What's new for later
   nightlies is unaffected.
 
+## Release state
+
+- 2026-11-28: `Release v0.1.0` (`7f2981c30bf86732c1e85115e1bd26c3f94a809f`)
+  cut `[Unreleased]` into `[v0.1.0] - 2026-11-28`; `just check` on it green
+  (3569 passed, 0 failed, isolated); tag `v0.1.0` pushed with main
+  atomically.
+- CI `bundle.yml` run 46125847808, attempt 1, success; artifact
+  `Guild-v0.1.0-macos-arm64` (15255064025): tag, commit, arm64, clean,
+  channel `stable`, GitHub provenance and SHA-256 checked.
+- Signed with `owner-2026`; `guild-release verify` passed.
+- Draft release 461411935, *Guild 0.1.0 — preview*, not a prerelease,
+  with the four signed assets and the build-info and SHA-256 evidence;
+  re-downloaded by release ID, every hash equal, `verify` passed again.
+- **Not published.** Publishing waits for the person's word; then this
+  branch (README and the site) is merged.
+
 ## Release notes (draft)
 
 **Guild 0.1.0 is a preview** — the build to try if you have not used Guild before. Guild also ships as nightlies; this preview is one of them, checked and marked for newcomers.

@@ -218,13 +218,13 @@ A window on your Mac around the agent CLIs you already use. Nothing in it needs 
 
 ### Download
 
-1. Download Guild from the [releases](https://github.com/proshik/guild/releases) and move it to Applications.
+1. Download **Guild 0.1.0, the preview**, from [its release](https://github.com/proshik/guild/releases/tag/v0.1.0) and move it to Applications.
 2. Choose **Open…** in the empty window (or **File ▸ Open…**) and pick a repository.
 3. Choose an agent on the start screen that appears, or with the agent button beside the tabs.
 
 Guild is not notarized yet, so macOS refuses it the first time. On macOS 15 and later, open it once, then choose **Open Anyway** in System Settings ▸ Privacy & Security. On macOS 13 and 14, Control-click it in Applications and choose **Open**.
 
-Guild is released as nightlies from `main`, published on the Releases page. Once installed, it updates itself: when a new nightly is ready, **Update** appears in the title bar, with what it brings. If no build is listed there yet, build it from source.
+The preview is the build to start with. Guild is also released as nightlies from `main`, on the [Releases page](https://github.com/proshik/guild/releases); once installed, it updates itself: when a new nightly is ready, **Update** appears in the title bar, with what it brings.
 
 ### Build from source
 

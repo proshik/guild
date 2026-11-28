@@ -296,8 +296,8 @@ Guild writes to a repository through twenty-one named git commands and nothing e
 [Decisions](https://github.com/proshik/guild/blob/main/docs/decisions.md)
 {{< /landing/qa >}}
 {{< landing/qa q="How does it update?" >}}
-Guild is released as nightlies. When one is ready, Update appears in the title bar, with what it
-brings. [Changelog](https://github.com/proshik/guild/blob/main/CHANGELOG.md)
+Start with the preview, Guild 0.1.0. Guild is also released as nightlies: when one is ready,
+Update appears in the title bar, with what it brings. [Changelog](https://github.com/proshik/guild/blob/main/CHANGELOG.md)
 {{< /landing/qa >}}
 {{< landing/qa q="Is Guild open source?" >}}
 Yes: Guild is licensed under [MIT](https://github.com/proshik/guild/blob/main/LICENSE-MIT) or
@@ -312,9 +312,9 @@ macOS 13 or later, on Apple silicon.
 {{< landing/close title="Download Guild" shot="close"
   alt="The Commit panel with a message ready, beside the Git log"
 >}}
-1. Download Guild from the [releases](https://github.com/proshik/guild/releases) and move it to
-   Applications.
-2. Choose **File ▸ Open…** and pick a repository.
+1. Download **Guild 0.1.0, the preview**, from
+   [its release](https://github.com/proshik/guild/releases/tag/v0.1.0) and move it to Applications.
+2. Choose **Open…** in the empty window (or **File ▸ Open…**) and pick a repository.
 3. Choose an agent on the start screen that appears, or with the agent button beside the tabs.
 
 Guild is not notarized yet, so macOS refuses it the first time. On macOS 15 and later, open it once, then choose Open Anyway in System Settings ▸ Privacy & Security. On macOS 13 and 14, Control-click it in Applications and choose Open.

@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in Guild does not work as it should.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting it. A **security problem** goes to private reporting instead — see [SECURITY.md](https://github.com/proshik/guild/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Guild version
+      description: "**Guild ▸ About Guild** shows the version and the build's commit, e.g. `0.1.0 · f65258f · nightly-2026-11-27`."
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. macOS 15.4 on Apple silicon"
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent CLI and its version
+      description: "If an agent was involved: Claude Code, Codex or OpenCode, and what `claude --version`, `codex --version` or `opencode --version` prints."
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you did
+      description: The steps that lead to the problem, from opening Guild.
+      placeholder: |
+        1. Open a repository with File ▸ Open…
+        2. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        The lines from `~/Library/Logs/Guild/guild.log` around the problem (**Help ▸ Show Log** reveals the file in Finder). The log can hold paths, branch names and command lines: **remove anything private** before pasting it.
+      render: text
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots, a screen recording, or what you already tried.

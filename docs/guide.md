@@ -127,5 +127,7 @@ The pre-commit check is `just check`: formatting, clippy with no warnings, crate
 
 Everything else is `just --list`. The toolchain comes from `rust-toolchain.toml` and is installed through rustup.
 
+The log is `~/Library/Logs/Guild/guild.log`: **Help ▸ Show Log** reveals it in Finder, and **Guild ▸ About Guild** shows its path beside the version and the build's commit. It is always written; a window started from a terminal prints the same lines there too. `RUST_LOG` changes what is logged (`info` by default).
+
 Native review is removed; external revust uses the generic Terminal Jobs and
 archive viewer APIs. Existing native review archives and settings remain untouched.

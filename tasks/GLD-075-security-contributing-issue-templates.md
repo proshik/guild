@@ -30,23 +30,37 @@ more than usual.
 
 ## Acceptance
 
-- [ ] WHEN the task is taken THEN the person decides the private reporting
+- [x] WHEN the task is taken THEN the person decides the private reporting
       channel for `SECURITY.md`: GitHub's private vulnerability reporting, or
       an address they choose. No personal address is written without their
       word.
-- [ ] `SECURITY.md` says which versions are supported (the latest nightly),
+- [x] `SECURITY.md` says which versions are supported (the latest nightly),
       how to report privately and what to expect back.
-- [ ] `CONTRIBUTING.md` is for people, beside `AGENTS.md` for agents. It
+- [x] `CONTRIBUTING.md` is for people, beside `AGENTS.md` for agents. It
       covers building (`just`, rustup, not Homebrew's rust), `just check`
       before a pull request, the changelog line, the Penpot step for a
       visible change, and the task files. It points at `AGENTS.md` and does
       not repeat it.
-- [ ] `.github/ISSUE_TEMPLATE/` has a bug report asking for the Guild
+- [x] `.github/ISSUE_TEMPLATE/` has a bug report asking for the Guild
       version (the build's commit), the macOS version, the agent CLI and its
       version, the steps, and the log from `~/Library/Logs/Guild`, with a
       word on removing anything private from it. It also has a feature
       request.
-- [ ] README and the guide say where the logs are.
+- [x] README and the guide say where the logs are.
+
+## Decisions
+
+- **The person's decision (2026-11-28):** private reports go through
+  GitHub's private vulnerability reporting (Security ▸ Report a
+  vulnerability). It was off; on the person's word it was switched on
+  on 2026-11-28 (`gh api -X PUT repos/proshik/guild/private-vulnerability-reporting`,
+  checked `{"enabled":true}`).
+- **No code review**, the person's call (2026-11-28): documents and forms
+  only, checked by links, YAML and the code they describe.
+- `SECURITY.md` promises no response time: none was given.
+- The issue forms are GitHub issue forms (YAML); blank issues are off, and
+  the chooser links to private reporting.
+- No changelog line: documents only.
 
 ## Checks
 

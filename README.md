@@ -293,12 +293,16 @@ crates/
 
 The window is designed in Penpot before it is coded — [docs/penpot.md](docs/penpot.md) says where and how.
 
+## Reporting a problem
+
+- **A bug or an idea:** [open an issue](https://github.com/proshik/guild/issues/new/choose); the form asks for what helps.
+- **A security problem:** report it privately, as [`SECURITY.md`](SECURITY.md) says.
+- **The version:** **Guild ▸ About Guild** shows it, with the build's commit.
+- **The log:** `~/Library/Logs/Guild/guild.log` — **Help ▸ Show Log** reveals it in Finder. It can hold paths, branch names and command lines; remove anything private before you send it.
+
 ## Contributing
 
-- Read [`AGENTS.md`](AGENTS.md) first, and [`docs/traps.md`](docs/traps.md) before working in an area a trap names.
-- Run `just check` before each commit: formatting, clippy with no warnings, crate boundaries, tests — in that order. `just --list` shows the rest.
-- A change a person would see in the window is designed in Penpot first ([docs/penpot.md](docs/penpot.md)).
-- A change a person would notice adds its line to [`CHANGELOG.md`](CHANGELOG.md) under `## [Unreleased]`, in its own branch.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) says how to build Guild and what a change needs before it is merged; [`AGENTS.md`](AGENTS.md) holds the rules every change follows.
 
 ## License
 

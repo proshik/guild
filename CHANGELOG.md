@@ -7,6 +7,8 @@ would notice adds its line under `Unreleased` in its own branch.
 
 ## [Unreleased]
 
+## [v0.1.0] - 2026-11-28
+
 ### Fixed
 
 - Guild's very first launch no longer opens What's new with the whole changelog; it appears from the next update on, with what that update brings.

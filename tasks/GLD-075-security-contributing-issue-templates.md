@@ -52,8 +52,11 @@ more than usual.
 
 - **The person's decision (2026-11-28):** private reports go through
   GitHub's private vulnerability reporting (Security ▸ Report a
-  vulnerability). It was off on 2026-11-28; switching it on is a repository
-  setting, done by the person or on their word.
+  vulnerability). It was off; on the person's word it was switched on
+  on 2026-11-28 (`gh api -X PUT repos/proshik/guild/private-vulnerability-reporting`,
+  checked `{"enabled":true}`).
+- **No code review**, the person's call (2026-11-28): documents and forms
+  only, checked by links, YAML and the code they describe.
 - `SECURITY.md` promises no response time: none was given.
 - The issue forms are GitHub issue forms (YAML); blank issues are off, and
   the chooser links to private reporting.
